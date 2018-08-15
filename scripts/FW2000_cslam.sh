@@ -1,18 +1,24 @@
 #!/bin/tcsh
-setenv ACCOUNT_NO
 setenv PBS_ACCOUNT P93300642
+#
+# source code (assumed to be in /glade/u/home/$USER/src)
+#
 setenv src "opt-se-cslam"
-setenv caze trunk-aug15-NTHRDS1_trunk_waccm_cslam_FW2000_1day
+
+setenv res ne30pg3_ne30pg3_mg17
+setenv cset "FW2000"
+setenv pecount "1800"
+setenv nsteps "nsteps"
+setenv steps "5"
+setenv caze ${src}_${cset}_${res}_${pecount}_${steps}${nsteps}
 setenv pg3map "/glade/p/cgd/amp/pel/cslam-mapping-files"
 setenv inic "/glade/p/cgd/amp/pel/inic"
 echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
-echo $caze
-/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset FW2000 --res ne30pg3_ne30pg3_mg17  --q regular --walltime 00:15:00 --pecount 2016  --project $PBS_ACCOUNT --run-unsupported
+/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res ne30pg3_ne30pg3_mg17  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
-#./xmlchange STOP_OPTION=nmonths,STOP_N=13
-./xmlchange STOP_OPTION=steps,STOP_N=5
+./xmlchange STOP_OPTION=$steps,STOP_N=$nsteps
 ./xmlchange DOUT_S=FALSE
 ./xmlchange CASEROOT=/glade/scratch/$USER/$caze
 ./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
