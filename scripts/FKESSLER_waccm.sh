@@ -42,6 +42,7 @@ if(`hostname` == 'hobart.cgd.ucar.edu') then
   #
   set pg3map="/scratch/cluster/pel/cslam-mapping-files"
   set pecount="192"
+  set compiler="nag"
 else
   echo "setting up for Cheyenne"
   set inic="/glade/p/cgd/amp/pel/inic"
@@ -56,11 +57,12 @@ else
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
   set pecount="900"
+  set compiler="intel"  
 endif
 
 
 set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
-$homedir/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+$homedir/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --compiler $compiler --run-unsupported
 
 cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
