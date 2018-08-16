@@ -112,7 +112,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
    use dimensions_mod, only: qsize_d, ne, npart
    use dimensions_mod, only: qsize_condensate_loading, lcp_moist
-   use dimensions_mod, only: hypervis_on_plevs
+   use dimensions_mod, only: hypervis_on_plevs,large_Courant_incr
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
@@ -157,6 +157,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_tracer_num_threads
    logical                      :: se_hypervis_on_plevs
    logical                      :: se_write_restart_unstruct
+   logical                      :: se_large_Courant_incr
 
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
@@ -195,7 +196,8 @@ subroutine dyn_readnl(NLFileName)
       se_vert_num_threads,         &
       se_tracer_num_threads,       &
       se_hypervis_on_plevs,        &
-      se_write_restart_unstruct
+      se_write_restart_unstruct,   &
+      se_large_Courant_incr
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -262,6 +264,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_hypervis_on_plevs, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -345,6 +348,7 @@ subroutine dyn_readnl(NLFileName)
    vert_remap_q_alg         = se_vert_remap_q_alg
    fv_nphys                 = se_fv_nphys
    hypervis_on_plevs        = se_hypervis_on_plevs
+   large_Courant_incr       = se_large_Courant_incr
 
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection

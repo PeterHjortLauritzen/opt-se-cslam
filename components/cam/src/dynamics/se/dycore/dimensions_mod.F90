@@ -67,6 +67,7 @@ module dimensions_mod
                                                 !(different from halo needed for elements on edges and corners
   integer, parameter, public :: lbc = 1-nhc
   integer, parameter, public :: ubc = nc+nhc
+  logical, public            :: large_Courant_incr
 
 
   integer, parameter, public :: kmin_jet=1,kmax_jet=PLEV !min and max level index for the jet

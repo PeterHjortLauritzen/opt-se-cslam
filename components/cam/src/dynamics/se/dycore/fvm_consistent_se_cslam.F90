@@ -41,6 +41,7 @@ contains
     use bndry_mod             , only: ghost_exchange
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
+    use dimensions_mod        , only: large_Courant_incr
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -132,63 +133,64 @@ contains
      ! amount of mass for which the Courant number is >1
      !
      !
-     call t_startf('fvm:fill_halo_fvm:large_Courant')
-     call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,np1_fvm,1,kmin_jet,kmax_jet)
-     call t_stopf('fvm:fill_halo_fvm:large_Courant')
-     call t_startf('fvm:large_Courant_number_increment')
-     do ie=nets,nete
-       do k=kmin_jet,kmax_jet !1,nlev
+    if (large_Courant_incr) then
+      call t_startf('fvm:fill_halo_fvm:large_Courant')
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,np1_fvm,1,kmin_jet,kmax_jet)
+      call t_stopf('fvm:fill_halo_fvm:large_Courant')
+      call t_startf('fvm:large_Courant_number_increment')
+      do ie=nets,nete
+        do k=kmin_jet,kmax_jet !1,nlev
           call large_courant_number_increment(fvm(ie),k)
         end do
       end do
-     call t_stopf('fvm:large_Courant_number_increment')
-
-     call t_startf('fvm:end_of_reconstruct_subroutine')
-     do ie=nets,nete
-       !
-       ! convert to mixing ratio
-       !
-       do k=1,nlev         
-         do j=1,nc
-           do i=1,nc
-             inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k,np1_fvm)
-           end do
-         end do
-
-         do itr=1,ntrac
-           do j=1,nc
-             do i=1,nc
-               ! convert to mixing ratio
-               fvm(ie)%c(i,j,k,itr,np1_fvm) = fvm(ie)%c(i,j,k,itr,np1_fvm)*inv_dp_area(i,j)
-               ! remove round-off undershoots
-               fvm(ie)%c(i,j,k,itr,np1_fvm) = MAX(fvm(ie)%c(i,j,k,itr,np1_fvm),qmin(itr))
-             end do
-           end do
-         end do
-         !
-         ! convert to dp and scale back dp
-         !
-         fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm) = fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
-       end do
-       !
-       ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
-       ! surface pressure
-       !
-       call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,ps_se)
-       fvm(ie)%psc = ps_se*fvm(ie)%inv_se_area_sphere
-!       do j=1,nc
-!         do i=1,nc
-!           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  hvcoord%hyai(1)*hvcoord%ps0
-!         end do
-!       end do
-     end do
-     call t_stopf('fvm:end_of_reconstruct_subroutine')
-     !
-     ! advance fvm time-levels
-     !
-     ntmp     = np1_fvm
-     np1_fvm  = n0_fvm
-     n0_fvm   = ntmp
+      call t_stopf('fvm:large_Courant_number_increment')
+    end if
+    call t_startf('fvm:end_of_reconstruct_subroutine')
+    do ie=nets,nete
+      !
+      ! convert to mixing ratio
+      !
+      do k=1,nlev         
+        do j=1,nc
+          do i=1,nc
+            inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k,np1_fvm)
+          end do
+        end do
+        
+        do itr=1,ntrac
+          do j=1,nc
+            do i=1,nc
+              ! convert to mixing ratio
+              fvm(ie)%c(i,j,k,itr,np1_fvm) = fvm(ie)%c(i,j,k,itr,np1_fvm)*inv_dp_area(i,j)
+              ! remove round-off undershoots
+              fvm(ie)%c(i,j,k,itr,np1_fvm) = MAX(fvm(ie)%c(i,j,k,itr,np1_fvm),qmin(itr))
+            end do
+          end do
+        end do
+        !
+        ! convert to dp and scale back dp
+        !
+        fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm) = fvm(ie)%dp_fvm(1:nc,1:nc,k,np1_fvm)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
+      end do
+      !
+      ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
+      ! surface pressure
+      !
+      call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,ps_se)
+      fvm(ie)%psc = ps_se*fvm(ie)%inv_se_area_sphere
+      !       do j=1,nc
+      !         do i=1,nc
+      !           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  hvcoord%hyai(1)*hvcoord%ps0
+      !         end do
+      !       end do
+    end do
+    call t_stopf('fvm:end_of_reconstruct_subroutine')
+    !
+    ! advance fvm time-levels
+    !
+    ntmp     = np1_fvm
+    np1_fvm  = n0_fvm
+    n0_fvm   = ntmp
   end subroutine run_consistent_se_cslam
 
   subroutine swept_flux(elem,fvm,ilev,ctracer)
