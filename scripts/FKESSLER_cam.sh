@@ -139,5 +139,9 @@ echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."  
 #echo "se_nu_p   =  0.1E17" >> user_nl_cam
 #echo "se_hypervis_subcycle = 3" >> user_nl_cam
 
-qcmd -- ./case.build
+if(`hostname` == 'hobart.cgd.ucar.edu') then
+  ./case.build
+else
+  qcmd -- ./case.build
+endif
 ./case.submit

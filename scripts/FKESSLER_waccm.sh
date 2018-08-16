@@ -42,7 +42,6 @@ if(`hostname` == 'hobart.cgd.ucar.edu') then
   #
   set pg3map="/scratch/cluster/pel/cslam-mapping-files"
   set pecount="192"
-  set build=""  
 else
   echo "setting up for Cheyenne"
   set inic="/glade/p/cgd/amp/pel/inic"
@@ -57,7 +56,6 @@ else
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
   set pecount="900"
-  set build="qcmd -- "
 endif
 
 
@@ -144,5 +142,9 @@ echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."  
 #echo "se_nu_p   =  0.1E17" >> user_nl_cam
 #echo "se_hypervis_subcycle = 3" >> user_nl_cam
 
-${build} ./case.build
+if(`hostname` == 'hobart.cgd.ucar.edu') then
+  ./case.build
+else
+  qcmd -- ./case.build
+endif
 ./case.submit
