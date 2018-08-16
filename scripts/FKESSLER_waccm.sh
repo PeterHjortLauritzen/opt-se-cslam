@@ -17,7 +17,7 @@ setenv res ne30pg3_ne30pg3_mg17 #cslam
 #
 # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
 #
-setenv pecount "1800"
+setenv pecount "900"
 setenv stopoption "nsteps"
 setenv steps "5"
 #
@@ -25,7 +25,7 @@ setenv steps "5"
 #
 setenv nlev 70
 setenv cset "FKESSLER"
-setenv caze ${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+setenv caze ${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # mapping files (not in cime yet)
 #

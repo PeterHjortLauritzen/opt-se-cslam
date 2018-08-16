@@ -7,8 +7,8 @@ setenv src "opt-se-cslam"
 #
 # run with CSLAM or without
 #
-#setenv res ne30pg3_ne30pg3_mg17 #cslam
-setenv res ne30_ne30_mg17        #no cslam
+setenv res ne30pg3_ne30pg3_mg17 #cslam
+#setenv res ne30_ne30_mg17        #no cslam
 #
 # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
 #

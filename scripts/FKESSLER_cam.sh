@@ -25,7 +25,7 @@ setenv steps "5"
 #
 setenv nlev 33
 setenv cset "FKESSLER"
-setenv caze ${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+setenv caze ${src}_${cset}_CAM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # mapping files (not in cime yet)
 #
