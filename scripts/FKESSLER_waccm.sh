@@ -1,50 +1,76 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT P93300642
+set PBS_ACCOUNT="P93300642"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-setenv src "opt-se-cslam"
+set src="opt-se-cslam"
 #
 # number of test tracers
 #
 setenv qsize "194" #there are already 6 tracers in FKESSLER!
-setenv NTHRDS "1"
+set NTHRDS="1"
 #
 # run with CSLAM or without
 #
-setenv res ne30pg3_ne30pg3_mg17 #cslam
+set res=ne30pg3_ne30pg3_mg17 #cslam
 #setenv res ne30_ne30_mg17        #no cslam
-#
-# 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
-#
-setenv pecount "900"
-setenv stopoption "nsteps"
-setenv steps "5"
+set stopoption="nsteps"
+set steps="5"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
-setenv nlev 70
-setenv cset "FKESSLER"
-setenv caze ${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+set nlev="70"
+set cset="FKESSLER"
+set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # mapping files (not in cime yet)
 #
-setenv pg3map "/glade/p/cgd/amp/pel/cslam-mapping-files"
+set pg3map="/glade/p/cgd/amp/pel/cslam-mapping-files"
 #
 # location of initial condition file (not in CAM yet)
 #
-setenv inic "/glade/p/cgd/amp/pel/inic"
 echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
-/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+if(`hostname` == 'hobart.cgd.ucar.edu') then
+  echo "setting up for Hobart"
+  set inic="/scratch/cluster/pel/inic"
+  set home="/home"
+  set scratch="/scratch/cluster"
+  set queue="verylong"
+  #
+  # mapping files (not in cime yet)
+  #
+  set pg3map="/scratch/cluster/pel/cslam-mapping-files"
+  set pecount="192"
+  set build=""  
+else
+  echo "setting up for Cheyenne"
+  set inic="/glade/p/cgd/amp/pel/inic"
+  set home="/glade/u/home"
+  set scratch="/glade/scratch/"
+  set queue="regular"
+  #
+  # mapping files (not in cime yet)
+  #
+  set pg3map="/glade/p/cgd/amp/pel/cslam-mapping-files"
+  #
+  # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
+  #
+  set pecount="900"
+  set build="qcmd -- "
+endif
 
-cd /glade/scratch/$USER/$caze
+
+
+$home/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+
+cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
 ./xmlchange DOUT_S=FALSE
-./xmlchange CASEROOT=/glade/scratch/$USER/$caze
-./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
-./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
+./xmlchange CASEROOT=$scratch/$USER/$caze
+./xmlchange EXEROOT=$scratch/$USER/$caze/bld
+./xmlchange RUNDIR=$scratch/$USER/$caze/run
 #
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
@@ -73,7 +99,7 @@ endif
 
 
 if ($cset == "FKESSLER") then
-cat >> /glade/scratch/$USER/$caze/SourceMods/src.cam/dctest_baro_kessler.xml <<EOF
+cat >> $scratch/$USER/$caze/SourceMods/src.cam/dctest_baro_kessler.xml <<EOF
 <?xml version="1.0"?>
 <namelist_defaults>
 <start_ymd> 10101 </start_ymd>
@@ -95,10 +121,11 @@ echo "se_statefreq       = 244"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
 echo "interpolate_output = .true.,.true." >> user_nl_cam
+#
+# 70 layer IC file
+#
+echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
 
-if ($cset == "FW2000") then
-  echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
-endif
 echo "se_statefreq       = 244"   >> user_nl_cam
 echo "se_nsplit          = 10"   >> user_nl_cam
 echo "inithist           = 'DAILY'"   >> user_nl_cam
@@ -118,5 +145,5 @@ echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."  
 #echo "se_nu_p   =  0.1E17" >> user_nl_cam
 #echo "se_hypervis_subcycle = 3" >> user_nl_cam
 
-qcmd -- ./case.build
+${build} ./case.build
 ./case.submit
