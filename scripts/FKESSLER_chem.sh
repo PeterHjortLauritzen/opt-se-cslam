@@ -22,7 +22,6 @@ set steps="5"
 #
 set nlev="32"
 set cset="FKESSLER"
-set caze=${src}_${cset}_CAM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # location of initial condition file (not in CAM yet)
 #
@@ -31,7 +30,7 @@ source clm_and_cime_mods_for_cslam.sh
 echo "Done"
 if(`hostname` == 'hobart.cgd.ucar.edu') then
   set inic="/scratch/cluster/pel/inic"
-  set home="/home"
+  set homedir="/home"
   set scratch="/scratch/cluster"
   set queue="verylong"
   set pecount="192"
@@ -42,7 +41,7 @@ if(`hostname` == 'hobart.cgd.ucar.edu') then
 else
   echo "setting up for Cheyenne"
   set inic="/glade/p/cgd/amp/pel/inic"
-  set home="/glade/u/home"
+  set homedir="/glade/u/home"
   set scratch="/glade/scratch/"
   set queue="regular"
   #
@@ -55,8 +54,8 @@ else
   set pecount="900"  
 endif
 
-
-$home/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+set caze=${src}_${cset}_Chem_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+$homedir/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 
 cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps

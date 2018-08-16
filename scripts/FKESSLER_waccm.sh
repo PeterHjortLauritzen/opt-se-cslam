@@ -21,7 +21,6 @@ set steps="5"
 #
 set nlev="70"
 set cset="FKESSLER"
-set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # mapping files (not in cime yet)
 #
@@ -35,7 +34,7 @@ echo "Done"
 if(`hostname` == 'hobart.cgd.ucar.edu') then
   echo "setting up for Hobart"
   set inic="/scratch/cluster/pel/inic"
-  set home="/home"
+  set homedir="/home"
   set scratch="/scratch/cluster"
   set queue="verylong"
   #
@@ -47,7 +46,7 @@ if(`hostname` == 'hobart.cgd.ucar.edu') then
 else
   echo "setting up for Cheyenne"
   set inic="/glade/p/cgd/amp/pel/inic"
-  set home="/glade/u/home"
+  set homedir="/glade/u/home"
   set scratch="/glade/scratch/"
   set queue="regular"
   #
@@ -62,8 +61,8 @@ else
 endif
 
 
-
-$home/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+$homedir/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 
 cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
