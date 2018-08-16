@@ -7,7 +7,7 @@ setenv src "opt-se-cslam"
 #
 # number of test tracers
 #
-setenv qsize "100"
+setenv qsize "194" #there are already 6 tracers in FKESSLER!
 setenv NTHRDS "1"
 #
 # run with CSLAM or without
@@ -37,15 +37,17 @@ setenv inic "/glade/p/cgd/amp/pel/inic"
 echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
-/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res ne30pg3_ne30pg3_mg17  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+
 cd /glade/scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
 ./xmlchange DOUT_S=FALSE
 ./xmlchange CASEROOT=/glade/scratch/$USER/$caze
 ./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 ./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
-## timing detail
+#
 ./xmlchange NTHRDS=$NTHRDS
+## timing detail
 ./xmlchange TIMER_LEVEL=10
 ##
 if ($res == "ne30pg3_ne30pg3_mg17") then
@@ -56,7 +58,7 @@ if ($res == "ne30pg3_ne30pg3_mg17") then
   ./xmlchange LND2ROF_FMAPNAME=$pg3map/map_ne30pg3_TO_0.5x0.5_nomask_aave_da_180515.nc
   ./xmlchange ROF2LND_FMAPNAME=$pg3map/map_0.5x0.5_nomask_TO_ne30pg3_aave_da_180515.nc
 endif
-./xmlchange --append CAM_CONFIG_OPTS="-nadv_tt=194" #there are already 6 tracers in FKESSLER
+#./xmlchange --append CAM_CONFIG_OPTS="-nadv_tt=194" #there are already 6 tracers in FKESSLER
 ./xmlchange CAM_CONFIG_OPTS="-phys kessler -chem terminator -analytic_ic -nadv_tt=$qsize -nlev $nlev"
 ##
 ./xmlquery CAM_CONFIG_OPTS

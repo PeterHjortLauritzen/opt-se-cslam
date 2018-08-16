@@ -13,6 +13,7 @@ setenv res ne30_ne30_mg17        #no cslam
 # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
 #
 setenv pecount "1800"
+setenv NTHRDS "1"
 setenv stopoption "nsteps"
 setenv steps "5"
 #
@@ -38,8 +39,9 @@ cd /glade/scratch/$USER/$caze
 ./xmlchange CASEROOT=/glade/scratch/$USER/$caze
 ./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 ./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
+#
+./xmlchange NTHRDS=$NTHRDS
 ## timing detail
-./xmlchange NTHRDS=1
 ./xmlchange TIMER_LEVEL=10
 ##
 if ($res == "ne30pg3_ne30pg3_mg17") then
