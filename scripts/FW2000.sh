@@ -31,7 +31,7 @@ setenv inic "/glade/p/cgd/amp/pel/inic"
 echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
-/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res ne30pg3_ne30pg3_mg17  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
 ./xmlchange DOUT_S=FALSE
@@ -60,7 +60,9 @@ endif
 if ($res == "ne30pg3_ne30pg3_mg17") then
   echo "fsurdat='$pg3map/surfdata_ne30np4.pg3_78pfts_CMIP6_simyr2000_c180228.nc'">>user_nl_clm
 endif
-
+#if ($res == "ne30_ne30_mg17") then
+#  echo "fsurdat='/glade/p/cesmdata/cseg/inputdata/lnd/clm2/surfdata_map/surfdata_ne30np4_simyr2000_c110801.nc'">>user_nl_clm
+#endif
 echo "se_statefreq       = 244"        >> user_nl_cam
 echo "empty_htapes       = .true."   >> user_nl_cam
 echo "fincl1             = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',  "   >> user_nl_cam

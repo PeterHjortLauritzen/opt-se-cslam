@@ -8,6 +8,7 @@ setenv src "opt-se-cslam"
 # number of test tracers
 #
 setenv qsize "100"
+setenv NTHRDS "1"
 #
 # run with CSLAM or without
 #
@@ -24,7 +25,7 @@ setenv steps "5"
 #
 setenv nlev 70
 setenv cset "FKESSLER"
-setenv caze ${src}_${cset}_${res}_${pecount}_${steps}${stopoption}
+setenv caze ${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 #
 # mapping files (not in cime yet)
 #
@@ -44,7 +45,7 @@ cd /glade/scratch/$USER/$caze
 ./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 ./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
 ## timing detail
-./xmlchange NTHRDS=1
+./xmlchange NTHRDS=$NTHRDS
 ./xmlchange TIMER_LEVEL=10
 ##
 if ($res == "ne30pg3_ne30pg3_mg17") then
@@ -55,7 +56,7 @@ if ($res == "ne30pg3_ne30pg3_mg17") then
   ./xmlchange LND2ROF_FMAPNAME=$pg3map/map_ne30pg3_TO_0.5x0.5_nomask_aave_da_180515.nc
   ./xmlchange ROF2LND_FMAPNAME=$pg3map/map_0.5x0.5_nomask_TO_ne30pg3_aave_da_180515.nc
 endif
-./xmlchange --append CAM_CONFIG_OPTS="-nadv_tt=100"
+./xmlchange --append CAM_CONFIG_OPTS="-nadv_tt=194" #there are already 6 tracers in FKESSLER
 ./xmlchange CAM_CONFIG_OPTS="-phys kessler -chem terminator -analytic_ic -nadv_tt=$qsize -nlev $nlev"
 ##
 ./xmlquery CAM_CONFIG_OPTS
