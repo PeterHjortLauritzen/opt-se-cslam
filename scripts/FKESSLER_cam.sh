@@ -12,8 +12,8 @@ set NTHRDS="1"
 #
 # run with CSLAM or without
 #
-set res=ne30pg3_ne30pg3_mg17 #cslam
-#setenv res ne30_ne30_mg17        #no cslam
+set res="ne30pg3_ne30pg3_mg17" #cslam
+#set res="ne30_ne30_mg17"        #no cslam
 
 set stopoption="nsteps"
 set steps="5"
