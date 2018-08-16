@@ -1,5 +1,5 @@
 #!/bin/tcsh
-set PBS_ACCOUNT="P93300642"
+setenv PBS_ACCOUNT P93300642
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
