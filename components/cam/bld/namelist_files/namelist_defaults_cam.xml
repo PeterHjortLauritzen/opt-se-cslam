@@ -1756,7 +1756,7 @@
 <se_hypervis_on_plevs> .true.  </se_hypervis_on_plevs>
 
 <se_large_Courant_incr> .true.  </se_large_Courant_incr>
-<se_large_Courant_incr dyn="se" waccm_phys="1">.false.</se_hypervis_subcycle>
+<se_large_Courant_incr dyn="se" waccm_phys="1">.false.</se_large_Courant_incr>
 
 <se_hypervis_power> 3.322 </se_hypervis_power>
 

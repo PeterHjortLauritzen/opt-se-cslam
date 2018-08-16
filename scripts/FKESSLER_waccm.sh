@@ -125,10 +125,11 @@ echo "interpolate_output = .true.,.true." >> user_nl_cam
 #
 echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
 
-echo "se_statefreq       = 244"   >> user_nl_cam
-echo "se_nsplit          = 10"   >> user_nl_cam
+echo "se_statefreq       = 244"       >> user_nl_cam
+echo "se_nsplit          = 10"        >> user_nl_cam   #WACCM mod
+echo "se_large_Courant_incr=.false."  >> user_nl_cam   #WACCM mod
 echo "inithist           = 'DAILY'"   >> user_nl_cam
-echo "se_hypervis_subcycle = 1"   >> user_nl_cam
+echo "se_hypervis_subcycle = 1"       >> user_nl_cam
 echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 
 #

@@ -409,7 +409,8 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)') 'dyn_readnl: se_statediag_numtrac   = ',statediag_numtrac
       write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_subcycle   = ',se_hypervis_subcycle
       write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_subcycle_q = ',se_hypervis_subcycle_q
-      write(iulog, '(a,i0)') 'dyn_readnl: se_limiter_option = ',se_limiter_option
+      write(iulog, '(a,l4)') 'dyn_readnl: se_large_Courant_incr  = ',se_large_Courant_incr
+      write(iulog, '(a,i0)') 'dyn_readnl: se_limiter_option      = ',se_limiter_option
       if (.not. se_refined_mesh) then
          write(iulog, '(a,i0)') 'dyn_readnl: se_ne = ',se_ne
       end if

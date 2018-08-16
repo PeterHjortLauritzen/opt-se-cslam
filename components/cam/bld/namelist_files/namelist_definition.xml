@@ -6202,12 +6202,19 @@ Default: Set by build-namelist.
 
 <entry id="se_hypervis_on_plevs" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
-If TRUE hyperviscosity operators for u,v,T are applied on approximate pressure levels
+If TRUE hyperviscosity operators for T are applied on approximate pressure levels
 If TRUE and se_nu_p>0 then hyperviscosity is also applied to difference between a
 reference dp and dp
 If FALSE all hyperviscosity operators are applied on eta levels
 Default: TRUE
 </entry>
+
+<entry id="se_large_Courant_incr" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  If TRUE the CSLAM algorithm will work for Courant number larger than 1 with
+  a low-order increment for tracer mass more than one grid cell width away
+</entry>  
+
 
 <entry id="se_qsplit" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >

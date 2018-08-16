@@ -126,7 +126,7 @@ contains
      !
      ! In the jet region the effective Courant number
      ! in the cslam trajectory algorithm can be > 1
-     ! (by up to 20%)
+     ! (by up to 20%) in CAM
      !
      ! We limit the trajectories to < 1 but in this step
      ! we do a piecewise constant update for the

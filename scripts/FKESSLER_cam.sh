@@ -7,7 +7,7 @@ set src="opt-se-cslam"
 #
 # number of test tracers
 #
-set qsize="27" #there are already 6 tracers in FKESSLER!
+set qsize="1" #there are already 6 tracers in FKESSLER!
 set NTHRDS="1"
 #
 # run with CSLAM or without
@@ -66,6 +66,7 @@ cd $scratch/$USER/$caze
 ./xmlchange EXEROOT=$scratch/$USER/$caze/bld
 ./xmlchange RUNDIR=$scratch/$USER/$caze/run
 #
+#./xmlchange DEBUG=TRUE
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
 ./xmlchange TIMER_LEVEL=10
@@ -111,7 +112,7 @@ cat >> $scratch/$USER/$caze/SourceMods/src.cam/dctest_baro_kessler.xml <<EOF
 EOF
 endif
 
-echo "se_statefreq       = 244"        >> user_nl_cam
+echo "se_statefreq       = 1"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
 echo "interpolate_output = .true.,.true." >> user_nl_cam
