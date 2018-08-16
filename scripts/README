@@ -1,1 +1,9 @@
-this direcotry contains scripts to run code on Cheyenne (or Hobart)
+this direcotry contains scripts to run code on Cheyenne
+
+FW2000.sh: WACCM run with and without CSLAM
+
+FKESSLER_WACCM.sh: Simple setup to do performance testing with same 
+		   number of levels and tracers as WACCM but without WACCM physics
+
+FKESSLER_WACCM.sh: Simple setup to do performance testing with same 
+		   number of levels and tracers as CAM but without CAM physics
