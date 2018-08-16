@@ -142,6 +142,6 @@ echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."  
 if(`hostname` == 'hobart.cgd.ucar.edu') then
   ./case.build
 else
-  qcmd -- ./case.build
+qcmd -- ./case.build
 endif
 ./case.submit

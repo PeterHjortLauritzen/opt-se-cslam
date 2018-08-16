@@ -1,9 +1,20 @@
-this direcotry contains scripts to run code on Cheyenne
+FKESSLER_cam.sh
+===============
 
-FW2000.sh: WACCM run with and without CSLAM
+dycore performance testing mimicking CAM6 setup (32 layers and 33 tracers)
 
-FKESSLER_WACCM.sh: Simple setup to do performance testing with same 
-		   number of levels and tracers as WACCM but without WACCM physics
+FKESSLER_waccm.sh
+=================
 
-FKESSLER_WACCM.sh: Simple setup to do performance testing with same 
-		   number of levels and tracers as CAM but without CAM physics
+dycore performance testing mimicking WACCM setup (70 layers and 200 tracers)
+
+FKESSLER_chem.sh
+================
+
+dycore performance testing mimicking CAM-Chem setup (32 layers and 199 tracers)
+
+FW2000.sh:
+==========
+
+WACCM
+
