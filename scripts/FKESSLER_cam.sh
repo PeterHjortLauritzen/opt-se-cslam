@@ -42,7 +42,7 @@ else
   echo "setting up for Cheyenne"
   set inic="/glade/p/cgd/amp/pel/inic"
   set homedir="/glade/u/home"
-  set scratch="/glade/scratch/"
+  set scratch="/glade/scratch"
   set queue="regular"
   #
   # mapping files (not in cime yet)
