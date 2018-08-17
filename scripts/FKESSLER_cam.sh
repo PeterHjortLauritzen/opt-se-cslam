@@ -7,7 +7,7 @@ set src="opt-se-cslam"
 #
 # number of test tracers
 #
-set qsize="1" #there are already 6 tracers in FKESSLER!
+set qsize="27" #there are already 6 tracers in FKESSLER!
 set NTHRDS="1"
 #
 # run with CSLAM or without
