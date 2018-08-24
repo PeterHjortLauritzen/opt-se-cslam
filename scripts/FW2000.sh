@@ -1,5 +1,10 @@
 #!/bin/tcsh
-set PBS_ACCOUNT="P93300642"
+setenv PBS_ACCOUNT "P93300042"
+# P03010039
+# P93300042
+# P03010083
+# P93300075
+# P05010048
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
@@ -14,8 +19,8 @@ set res="ne30pg3_ne30pg3_mg17" #cslam
 #
 set pecount="1800"
 set NTHRDS="1"
-set stopoption="nsteps"
-set steps="5"
+set stopoption="ndays"
+set steps="1"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
@@ -75,7 +80,11 @@ echo "nhtfrq             = -24,-24 " >> user_nl_cam
 echo "interpolate_output = .true.,.true." >> user_nl_cam
 
 if ($cset == "FW2000") then
-  echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
+  if ($res == "ne30pg3_ne30pg3_mg17") then
+    echo "ncdata = '$inic/waccm_cslam_FW2000_1day.cam.i.0001-01-02-00000.nc'" >> user_nl_cam
+  else
+    echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
+  endif
 endif
 if ($cset == "FKESSLER") then
   echo "ncdata = '$inic/trunk-F2000climo-30yrs-C60topo.cam.i.0023-02-01-00000.nc'"   >> user_nl_cam
