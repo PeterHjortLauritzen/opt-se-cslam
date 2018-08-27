@@ -4,6 +4,7 @@ module fvm_consistent_se_cslam
   use dimensions_mod,         only: irecons_tracer
   use dimensions_mod,         only: kmin_jet,kmax_jet
   use cam_abortutils,         only: endrun
+  use cam_logfile,            only: iulog
 
   use time_mod,               only: timelevel_t
   use element_mod,            only: element_t
@@ -518,8 +519,8 @@ contains
             end do
             fvm%se_flux(i,j,iside,ilev) = mass_flux_se(i,j,iside)-flux
             if (fvm%se_flux(i,j,iside,ilev)>1.0E-13_r8.and.(ilev<kmin_jet.or.ilev>kmax_jet)) then
-              write(*,*) "CN excess flux outside of pre-scribed jet region"
-              write(*,*) "Increase jet region with kmin_jet and kmax_jet ",&
+              write(iulog,*) "CN excess flux outside of pre-scribed jet region"
+              write(iulog,*) "Increase jet region with kmin_jet and kmax_jet ",&
                    ilev,fvm%se_flux(i,j,iside,ilev),mass_flux_se(i,j,iside),flux,flowcase,&
                    kmin_jet,kmax_jet
             end if
@@ -642,6 +643,7 @@ contains
   end subroutine ghost_flux_unpack
 
   subroutine compute_displacements_for_swept_areas(fvm,cair,irecons)
+    use dimensions_mod, only: large_Courant_incr
     implicit none
     type (fvm_struct), intent(inout)     :: fvm
     integer, intent(in) :: irecons
@@ -768,6 +770,10 @@ contains
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
               if (gamma(iside)>1_r8) then
+                 if (.not.large_Courant_incr) then
+                    write(iulog,*) 'ERROR in CSLAM: local Courant number is >1: gamma=',gamma(iside),' k=',k
+                    call endrun('ERROR in CSLAM: local Courant number is > 1; set namelist se_large_Courant_incr=.true. ')
+                 endif
                 gamma(iside)=1.0_r8-eps
               end if              
             else
@@ -1161,7 +1167,7 @@ contains
            ! dgamma set to minimum displacement to avoid f2-f1=0
            !
            gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-           write(*,*) "WARNING: setting gamma to min",gamma3,iter
+           write(iulog,*) "WARNING: setting gamma to min",gamma3,iter
          end if
          gamma3=MAX(gamma3,gamma_min)
          !
@@ -1170,7 +1176,7 @@ contains
          gamma1 = gamma2; f1 = f2; gamma2 = gamma3;
        endif
      end do
-     if (iter>iter_max) write(*,*) "WARNING: iteration not converged",&
+     if (iter>iter_max) write(iulog,*) "WARNING: iteration not converged",&
           ABS(f2),flux,gamma1,gamma2,gamma3
   end subroutine get_flux_segments_area_iterate
 
