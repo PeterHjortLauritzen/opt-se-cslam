@@ -947,7 +947,8 @@ contains
     use dimensions_mod        , only : ntrac
     use dimensions_mod        , only : qsize_condensate_loading, qsize_condensate_loading_idx_gll
     use dimensions_mod,         only : lcp_moist,qsize_condensate_loading_cp
-    
+    use cam_logfile,            only : iulog
+    use physconst,              only : pi
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
@@ -962,7 +963,7 @@ contains
     real (kind=r8), dimension(np,np,nlev)  :: dp_moist,dp_star_moist, dp_inv,dp_dry,dp_star_dry
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
-    
+    real(r8), parameter                    :: rad2deg = 180.0_r8/pi
     
     ! reference levels:
     !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
@@ -1006,7 +1007,6 @@ contains
              ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%psdry(:,:)
         elem(ie)%state%dp3d(:,:,k,np1) = dp_dry(:,:,k)
       enddo
-      if (minval(dp_star_dry)<0) call endrun('negative dry layer thickness.  timestep or remap time too large B')
       !
       dp_star_moist(:,:,:) = dp_star_dry(:,:,:)
       do q=1,qsize_condensate_loading
@@ -1015,8 +1015,27 @@ contains
           dp_star_moist(:,:,k)= dp_star_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
         end do
       end do
-      if (minval(dp_star_moist)<0) call endrun('negative moist layer thickness.  timestep or remap time too large')
-      
+      !
+      ! DEBUGGING CODE
+      !
+      if (minval(dp_star_moist)<0) then
+        write(iulog,*) "NEGATIVE LAYER THICKNESS DIAGNOSTICS:"
+        write(iulog,*) " "
+        do j=1,np
+          do i=1,np
+            if (minval(dp_star_moist(i,j,:))<0) then
+              write(iulog,'(A13,2f6.2)') "(lon,lat) = ",&
+                   elem(ie)%spherep(i,j)%lon*rad2deg,elem(ie)%spherep(i,j)%lat*rad2deg
+              write(iulog,*) " "
+              do k=1,nlev
+                write(iulog,'(A21,I5,4f8.2)') "k,dp_star_moist,u,v,T: ",k,dp_star_moist(i,j,k),&
+                     elem(ie)%state%v(i,j,1,k,np1),elem(ie)%state%v(i,j,2,k,np1),elem(ie)%state%T(i,j,k,np1)
+              end do
+            end if
+          end do
+        end do
+        call endrun('negative moist layer thickness.  timestep or remap time too large')
+      endif
       call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,hybrid=hybrid)
       !
       ! compute moist reference pressure level thickness
@@ -1028,10 +1047,8 @@ contains
           dp_moist(:,:,k) = dp_moist(:,:,k)+elem(ie)%state%Qdp(:,:,k,m_cnst,np1_qdp)
         end do
       end do
-      if (minval(dp_star_moist)<0) call endrun('negative layer thickness.  timestep or remap time too large')
       
-      dp_inv=1.0_R8/dp_moist !for efficiency
-      
+      dp_inv=1.0_R8/dp_moist !for efficiency      
       !
       ! remap internal energy and back out temperature
       !      
