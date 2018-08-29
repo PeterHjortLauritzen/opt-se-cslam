@@ -371,12 +371,6 @@ contains
     real (kind=r8) :: dp_np1(np,np)
 
     dt_q = dt*qsplit
-    if (ntrac>0.and.rstep==1) then
-      do ie=nets,nete
-        elem(ie)%sub_elem_mass_flux=0
-      end do
-    end if
-
     ! ===============
     ! initialize mean flux accumulation variables and save some variables at n0
     ! for use by advection
@@ -490,6 +484,11 @@ contains
       if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) &
       call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
       dt_q,tl,nets,nete)
+      do ie=nets,nete
+        elem(ie)%sub_elem_mass_flux=0
+      end do
+
+      
 #ifdef waccm_debug
       do ie=nets,nete
         call outfld('CSLAM_gamma', RESHAPE(fvm(ie)%CSLAM_gamma(:,:,:,1), &

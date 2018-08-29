@@ -1734,6 +1734,7 @@ subroutine read_phis(dyn_in)
          allocate(lonvals_phys(fv_nphys*fv_nphys*nelemd))
          indx = 1
          do ie = 1, nelemd
+           elem(ie)%sub_elem_mass_flux=0
             do j = 1, fv_nphys
                do i = 1, fv_nphys
                   latvals_phys(indx) = dyn_in%fvm(ie)%center_cart_physgrid(i,j)%lat
