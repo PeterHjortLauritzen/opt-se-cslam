@@ -40,7 +40,9 @@ module fvm_control_volume_mod
     ! number of south,....,swest and 0 for interior element 
     integer                  :: cubeboundary                                                 
 
-
+#ifdef waccm_debug
+    real (kind=r8) :: CSLAM_gamma(nc,nc,nlev,4)
+#endif    
     real (kind=r8) :: displ_max(1-nhc:nc+nhc,1-nhc:nc+nhc,4)
     integer        :: flux_vec (2,1-nhc:nc+nhc,1-nhc:nc+nhc,4) 
     !

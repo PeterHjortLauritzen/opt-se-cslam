@@ -11,7 +11,6 @@ module fvm_consistent_se_cslam
   use fvm_control_volume_mod, only: fvm_struct
   use hybrid_mod,             only: hybrid_t
   use perf_mod,               only: t_startf, t_stopf 
-
   implicit none
   private
   save
@@ -184,6 +183,15 @@ contains
       !           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,np1_fvm)) +  hvcoord%hyai(1)*hvcoord%ps0
       !         end do
       !       end do
+#ifdef waccm_debug
+      do k=1,nlev
+        do j=1,nc
+          do i=1,nc
+            fvm(ie)%CSLAM_gamma(i,j,k,1) = MAXVAL(fvm(ie)%CSLAM_gamma(i,j,k,:))
+          end do
+        end do
+      end do
+#endif      
     end do
     call t_stopf('fvm:end_of_reconstruct_subroutine')
     !
@@ -769,6 +777,9 @@ contains
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
+#ifdef waccm_debug
+              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
+#endif              
               if (gamma(iside)>1_r8) then
                  if (.not.large_Courant_incr) then
                     write(iulog,*) 'ERROR in CSLAM: local Courant number is >1: gamma=',gamma(iside),' k=',k
@@ -778,6 +789,9 @@ contains
               end if              
             else
               fvm%se_flux(i,j,iside,k) = 0.0_r8
+#ifdef waccm_debug
+              fvm%CSLAM_gamma(i,j,k,iside) = 0.0_r8
+#endif                            
             end if
           enddo
         end do

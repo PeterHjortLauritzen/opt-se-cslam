@@ -721,7 +721,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    call addfld ('ABS_dPSdt',  horiz_only, 'A', 'Pa/s', 'Absolute surface pressure tendency',gridname='GLL')
 
    if (ntrac>0) then
-#ifdef cslam_waccm_debug
+#ifdef waccm_debug
      call addfld ('CSLAM_gamma',  (/ 'lev' /), 'A', '', 'Courant number from CSLAM',     gridname='FVM')
 #endif
      call addfld ('WV_PDC',   horiz_only, 'A', 'kg/m2','Total column water vapor lost in physics-dynamics coupling',gridname='FVM')

@@ -343,6 +343,10 @@ contains
     use fvm_control_volume_mod, only: fvm_supercycling
     use hybrid_mod,             only: set_region_num_threads, config_thread_region
     use dimensions_mod,         only: ntrac
+#ifdef waccm_debug
+  use cam_history, only: outfld
+#endif  
+    
 
     type (element_t) ,  intent(inout) :: elem(:)
     type(fvm_struct),   intent(inout) :: fvm(:)
@@ -485,7 +489,13 @@ contains
        !
       if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) &
       call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-           dt_q,tl,nets,nete)
+      dt_q,tl,nets,nete)
+#ifdef waccm_debug
+      do ie=nets,nete
+        call outfld('CSLAM_gamma', RESHAPE(fvm(ie)%CSLAM_gamma(:,:,:,1), &
+             (/nc*nc,nlev/)), nc*nc, ie)
+      end do
+#endif
     endif
 
   end subroutine prim_step
