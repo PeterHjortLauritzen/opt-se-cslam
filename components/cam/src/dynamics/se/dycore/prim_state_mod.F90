@@ -282,7 +282,51 @@ CONTAINS
 100 format (A12,4(E23.15))
 101 format (A12,A23,A23,A23,A23)
 
+    call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
   end subroutine prim_printstate
 
+
+#ifdef waccm_debug
+  subroutine prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+    type (element_t),             intent(inout) :: elem(:)
+    type(fvm_struct),             intent(inout) :: fvm(:)
+    type (TimeLevel_t), target,   intent(in)    :: tl
+    type (hybrid_t),              intent(in)    :: hybrid
+    integer,                      intent(in)    :: nets,nete
+
+    ! Local variables...
+    integer            :: k,ie
+
+    real (kind=r8), dimension(nets:nete,nlev) :: max_local
+    real (kind=r8), dimension(nlev)           :: max_p
+    integer        :: n0, n0_qdp, q, nm, nm2
+
+    !dt=tstep*qsplit
+    !dt = tstep*qsplit*rsplit  ! vertical REMAP timestep
+    !dynamics variables in n0 are at time =  'time': time=tl%nstep*tstep
+    if (hybrid%masterthread) then
+       write(iulog,*) "nstep=",tl%nstep," time=",Time_at(tl%nstep)/(24*3600)," [day]"
+    end if
+    ! dynamics timelevels
+    n0=tl%n0
+    call TimeLevel_Qdp( tl, qsplit, n0_qdp)
+
+    do ie=nets,nete
+      do k=1,nlev
+        max_local(ie,k)  = MAXVAL(fvm(ie)%CSLAM_gamma(:,:,k,1))
+      end do
+    end do
+    !JMD This is a Thread Safe Reduction
+    do k = 1, nlev
+      max_p(k) = ParallelMax(max_local(:,k),hybrid)
+    end do
+    write(iulog,*)   '  '
+    write(iulog,*)   'Gamma max'
+    write(iulog,*)   '  '
+    do k=1,nlev
+      write(iulog,*) 'k,gamma= ',k,max_p(k)
+    end do
+  end subroutine prim_printstate_cslam_gamma
+#endif
 
 end module prim_state_mod

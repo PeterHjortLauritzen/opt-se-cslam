@@ -778,7 +778,7 @@ contains
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
 #ifdef waccm_debug
-              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
+              fvm%CSLAM_gamma(i,j,k,iside) = MAX(gamma(iside),fvm%CSLAM_gamma(i,j,k,iside))
 #endif              
               if (gamma(iside)>1_r8) then
                  if (.not.large_Courant_incr) then
