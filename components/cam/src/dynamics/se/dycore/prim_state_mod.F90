@@ -282,7 +282,9 @@ CONTAINS
 100 format (A12,4(E23.15))
 101 format (A12,A23,A23,A23,A23)
 
+#ifdef waccm_debug
     call prim_printstate_cslam_gamma(elem, tl,hybrid,nets,nete, fvm)
+#endif
   end subroutine prim_printstate
 
 
