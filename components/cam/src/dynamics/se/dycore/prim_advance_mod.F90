@@ -1547,19 +1547,9 @@ contains
 
     if ( hist_fld_active(name_out1).or.hist_fld_active(name_out2).or.hist_fld_active(name_out3).or.&
          hist_fld_active(name_out4)) then
-
-      if (qsize_condensate_loading>1) then
-        if (ntrac>0) then
-          ixcldliq = qsize_condensate_loading_idx(2)
-          ixcldice = qsize_condensate_loading_idx(3)
-        else
-          ixcldliq = qsize_condensate_loading_idx_gll(2)
-          ixcldice = qsize_condensate_loading_idx_gll(3)
-        end if
-      else
-        ixcldliq = -1
-        ixcldice = -1
-      end if
+       
+      call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
+      call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
       call cnst_get_ind('TT_LW' , ixtt    , abort=.false.)
 
       do ie=nets,nete
