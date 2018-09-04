@@ -117,7 +117,7 @@ subroutine dyn_readnl(NLFileName)
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
    use thread_mod,     only: horz_num_threads, vert_num_threads, tracer_num_threads
-
+   use physconst,      only: rearth
    ! Dummy argument
    character(len=*), intent(in) :: NLFileName
 
@@ -287,8 +287,9 @@ subroutine dyn_readnl(NLFileName)
    uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
    !
    ! compute factor so that at ne30 resolution nu=1E15
+   ! scale so that scaling works for other planets
    !
-   nu_fac = 1.0E15_r8/(110000.0_r8**uniform_res_hypervis_scaling)
+   nu_fac = (rearth/6.37122E6_r8)*1.0E15_r8/(110000.0_r8**uniform_res_hypervis_scaling)
    if (se_nu_div < 0) then
       if (se_ne <= 0) then
          call endrun('dyn_readnl: ERROR must have se_ne > 0 for se_nu_div < 0')
@@ -1112,13 +1113,13 @@ subroutine read_inidat(dyn_in)
       else
          call endrun(trim(subname)//': PS or PSDRY must be on GLL grid')
       end if
-
+#ifndef planet_mars
       if (iam < par%nprocs) then
          if (minval(dbuf2, mask=reshape(pmask, (/npsq,nelemd/))) < 10000._r8) then
             call endrun(trim(subname)//': Problem reading ps or psdry field -- bad values')
          end if
       end if
-
+#endif
       do ie = 1, nelemd
          indx = 1
          do j = 1, np
@@ -1418,6 +1419,7 @@ subroutine read_inidat(dyn_in)
    end if
 
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
+#ifndef planet_mars   
    if (runtype == 0) then
       initial_global_ave_dry_ps = 98288.0_r8
       if (.not. associated(fh_topo)) then
@@ -1430,7 +1432,7 @@ subroutine read_inidat(dyn_in)
         call prim_set_dry_mass(elem, hvcoord, initial_global_ave_dry_ps, qtmp)
       end if
    endif
-
+#endif
    ! store Q values:
    !
    ! if CSLAM is NOT active then state%Qdp for all constituents
