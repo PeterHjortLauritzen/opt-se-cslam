@@ -156,6 +156,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_vert_num_threads
    integer                      :: se_tracer_num_threads
    logical                      :: se_hypervis_on_plevs
+   logical                      :: se_lcp_moist
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
 
@@ -196,6 +197,7 @@ subroutine dyn_readnl(NLFileName)
       se_vert_num_threads,         &
       se_tracer_num_threads,       &
       se_hypervis_on_plevs,        &
+      se_lcp_moist,                &
       se_write_restart_unstruct,   &
       se_large_Courant_incr
    !--------------------------------------------------------------------------
@@ -263,6 +265,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_vert_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_tracer_num_threads, 1, MPI_integer, masterprocid, mpicom,ierr)
    call MPI_bcast(se_hypervis_on_plevs, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
 
@@ -324,7 +327,6 @@ subroutine dyn_readnl(NLFileName)
    topology                 = "cube"
    ! Finally, set the HOMME variables which have different names
    qsize_condensate_loading = se_qsize_condensate_loading
-   lcp_moist                = .true.
    fine_ne                  = se_fine_ne
    ftype                    = se_ftype
    statediag_numtrac        = MIN(se_statediag_numtrac,pcnst)
@@ -349,6 +351,7 @@ subroutine dyn_readnl(NLFileName)
    vert_remap_q_alg         = se_vert_remap_q_alg
    fv_nphys                 = se_fv_nphys
    hypervis_on_plevs        = se_hypervis_on_plevs
+   lcp_moist                = se_lcp_moist
    large_Courant_incr       = se_large_Courant_incr
 
    if (fv_nphys > 0) then
@@ -428,13 +431,13 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)') 'dyn_readnl: se_tstep_type = ',se_tstep_type
       write(iulog, '(a,i0)') 'dyn_readnl: se_vert_remap_q_alg = ',se_vert_remap_q_alg
       write(iulog, '(a,i0)') 'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
-      write(iulog, '(a,l4)') '          : lcp_moist = ',lcp_moist
       write(iulog, '(a,l4)') ' dyn_readnl: hypervis_on_plevs = ',hypervis_on_plevs
       if (hypervis_on_plevs.and.nu_p>0) then
          write(iulog, *) 'FYI: nu_p>0 and hypervis_on_plevs=T => hypervis is applied to dp-dp_ref'
       else if (hypervis_on_plevs.and.nu_p==0) then
          write(iulog, *) 'FYI: hypervis_on_plevs=T and nu_p=0'
       end if
+      write(iulog, '(a,l4)') 'dyn_readnl: lcp_moist = ',lcp_moist
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)

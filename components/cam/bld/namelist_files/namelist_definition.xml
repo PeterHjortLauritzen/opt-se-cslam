@@ -6209,6 +6209,17 @@ If FALSE all hyperviscosity operators are applied on eta levels
 Default: TRUE
 </entry>
 
+<entry id="se_lcp_moist" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+If TRUE the continous equations the dynamical core is based on will conserve a 
+comprehensive moist total energy
+If FALSE the continous equations the dynamical core is based on will conserve 
+a total energy based on cp for dry air and no condensates (same total energy as 
+CAM physics uses).
+For more details see Lauritzen et al., (2018;DOI:10.1029/2017MS001257)
+Default: TRUE
+</entry>
+
 <entry id="se_large_Courant_incr" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
   If TRUE the CSLAM algorithm will work for Courant number larger than 1 with

@@ -41,7 +41,7 @@ else
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
   set pecount="450"
-  set walltime="00:15:00"  
+  set walltime="00:05:00"  
   set compiler="intel"
 endif
 
