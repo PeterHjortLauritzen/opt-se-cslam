@@ -222,7 +222,7 @@ contains
 
     h(:,:,nets:nete)=1.0_r8
 
-    ! Calculate surface area by integrating 1.0d0 over sphere and dividing by 4*PI
+    ! Calculate surface area by integrating 1.0_r8 over sphere and dividing by 4*PI
     ! (Should be 1)
     I_sphere = global_integral(elem, h(:,:,nets:nete),hybrid,np,nets,nete)
 
@@ -296,7 +296,7 @@ contains
        write(iulog,'(a,f9.3)') 'Element area:  max/min',(max_area/min_area)
        if (.not.MeshUseMeshFile) then
            write(iulog,'(a,f6.3,f8.2)') "Average equatorial node spacing (deg, km) = ", &
-                dble(90)/dble(ne*(np-1)), PI*rearth/(2000.0d0*dble(ne*(np-1)))
+                dble(90)/dble(ne*(np-1)), PI*rearth/(2000.0_r8*dble(ne*(np-1)))
        end if
        write(iulog,'(a,2f9.3)') 'norm of Dinv (min, max): ', min_normDinv, max_normDinv
        write(iulog,'(a,1f8.2)') 'Max Dinv-based element distortion: ', max_ratio
@@ -307,7 +307,7 @@ contains
 
     if(present(mindxout)) then
         ! min_len now based on norm(Dinv)
-        min_len = 0.002d0*rearth/(dble(np-1)*max_normDinv)
+        min_len = 0.002_r8*rearth/(dble(np-1)*max_normDinv)
         mindxout=1000_r8*min_len
     end if
 
@@ -368,36 +368,36 @@ contains
     ! Eigenvalues calculated by folks at UMich (Paul U & Jared W)
     select case (np)
         case (2)
-            lambda_max = 0.5d0
-            lambda_vis = 0.0d0  ! need to compute this
+            lambda_max = 0.5_r8
+            lambda_vis = 0.0_r8  ! need to compute this
         case (3)
-            lambda_max = 1.5d0
-            lambda_vis = 12.0d0
+            lambda_max = 1.5_r8
+            lambda_vis = 12.0_r8
         case (4)
-            lambda_max = 2.74d0
-            lambda_vis = 30.0d0
+            lambda_max = 2.74_r8
+            lambda_vis = 30.0_r8
         case (5)
-            lambda_max = 4.18d0
-            lambda_vis = 91.6742d0
+            lambda_max = 4.18_r8
+            lambda_vis = 91.6742_r8
         case (6)
-            lambda_max = 5.86d0
-            lambda_vis = 190.1176d0
+            lambda_max = 5.86_r8
+            lambda_vis = 190.1176_r8
         case (7)
-            lambda_max = 7.79d0
-            lambda_vis = 374.7788d0
+            lambda_max = 7.79_r8
+            lambda_vis = 374.7788_r8
         case (8)
-            lambda_max = 10.0d0
-            lambda_vis = 652.3015d0
+            lambda_max = 10.0_r8
+            lambda_vis = 652.3015_r8
         case DEFAULT
-            lambda_max = 0.0d0
-            lambda_vis = 0.0d0
+            lambda_max = 0.0_r8
+            lambda_vis = 0.0_r8
     end select
 
-    if ((lambda_max.eq.0d0).and.(hybrid%masterthread)) then
+    if ((lambda_max.eq.0_r8).and.(hybrid%masterthread)) then
         print*, "lambda_max not calculated for NP = ",np
         print*, "Estimate of gravity wave timestep will be incorrect"
     end if
-    if ((lambda_vis.eq.0d0).and.(hybrid%masterthread)) then
+    if ((lambda_vis.eq.0_r8).and.(hybrid%masterthread)) then
         print*, "lambda_vis not calculated for NP = ",np
         print*, "Estimate of viscous CFLs will be incorrect"
     end if
@@ -446,7 +446,7 @@ contains
 
 !
 ! note: if L = eigenvalue of metinv, then associated length scale (km) is
-! dx = 1.0d0/( sqrt(L)*0.5d0*dble(np-1)*ra*1000.0d0)
+! dx = 1.0_r8/( sqrt(L)*0.5_r8*dble(np-1)*ra*1000.0_r8)
 !
 !       for viscosity *tensor*, we take at each point:
 !            nu1 = nu*(dx1/max_unif_dx)**3.2      dx1 associated with eigenvalue 1
@@ -525,11 +525,11 @@ contains
                 x = gp%points(i)
                 do j=1,np
                     y = gp%points(j)
-                    elem(ie)%variable_hyperviscosity(i,j) = 0.25d0*( &
-                                            (1.0d0-x)*(1.0d0-y)*sw + &
-                                            (1.0d0-x)*(y+1.0d0)*nw + &
-                                            (x+1.0d0)*(1.0d0-y)*se + &
-                                            (x+1.0d0)*(y+1.0d0)*noreast)
+                    elem(ie)%variable_hyperviscosity(i,j) = 0.25_r8*( &
+                                            (1.0_r8-x)*(1.0_r8-y)*sw + &
+                                            (1.0_r8-x)*(y+1.0_r8)*nw + &
+                                            (x+1.0_r8)*(1.0_r8-y)*se + &
+                                            (x+1.0_r8)*(y+1.0_r8)*noreast)
                 end do
             end do
         end do
@@ -585,11 +585,11 @@ contains
         x = gp%points(i)
         do j=1,np
         y = gp%points(j)
-        elem(ie)%tensorVisc(i,j,rowind,colind) = 0.25d0*( &
-                    (1.0d0-x)*(1.0d0-y)*sw + &
-                    (1.0d0-x)*(y+1.0d0)*nw + &
-                    (x+1.0d0)*(1.0d0-y)*se + &
-                    (x+1.0d0)*(y+1.0d0)*noreast)
+        elem(ie)%tensorVisc(i,j,rowind,colind) = 0.25_r8*( &
+                    (1.0_r8-x)*(1.0_r8-y)*sw + &
+                    (1.0_r8-x)*(y+1.0_r8)*nw + &
+                    (x+1.0_r8)*(1.0_r8-y)*se + &
+                    (x+1.0_r8)*(y+1.0_r8)*noreast)
         end do
       end do
     end do
@@ -610,11 +610,11 @@ contains
        write(iulog,'(a,f10.2)') '(i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)'
        if (rk_stage_user>0) then
           write(iulog,'(a,f10.2,a)') 'SSP preservation (120m/s) RKSSP euler step dt  < S *', &
-               min_gw/(120.0d0*max_normDinv*ra),'s'
+               min_gw/(120.0_r8*max_normDinv*ra),'s'
        endif
        if (qsize>0) &
           write(iulog,'(a,f10.2,a)') 'Stability: advective (120m/s)   dt_tracer < S *',&
-               1/(120.0d0*max_normDinv*lambda_max*ra),'s'
+               1/(120.0_r8*max_normDinv*lambda_max*ra),'s'
        if (ntrac>0) then
           !
           ! rough estimate of Courant number limted time-step:
@@ -628,9 +628,9 @@ contains
           write(iulog,*) "(note that fvm stability is also limited by flow deformation - Lipschitz criterion!)"
        end if
        write(iulog,'(a,f10.2,a)') 'Stability: advective (120m/s)   dt_tracer < S *', &
-                                   1/(120.0d0*max_normDinv*lambda_max*ra),'s'
+                                   1/(120.0_r8*max_normDinv*lambda_max*ra),'s'
        write(iulog,'(a,f10.2,a)') 'Stability: gravity wave(342m/s)   dt_dyn  < S *', &
-                                   1/(342.0d0*max_normDinv*lambda_max*ra),'s'
+                                   1/(342.0_r8*max_normDinv*lambda_max*ra),'s'
        if (nu>0) then
 !          if (hypervis_order==1) then
 !              write(iulog,'(a,f10.2,a)') 'Stability: viscosity dt < S *',1/(((ra*max_normDinv)**2)*lambda_vis),'s'
@@ -638,15 +638,17 @@ contains
 !          if (hypervis_order==2) then
              ! counrant number = dtnu*normDinv_hypervis  < S
              !  dt < S  1/nu*normDinv
-             write(iulog,'(a,f10.2,a)') "Stability: nu_q   hyperviscosity dt < S *", 1/(nu_q*normDinv_hypervis),'s'
-             write(iulog,'(a,f10.2,a)') "Stability: nu_vor hyperviscosity dt < S *", 1/(nu*normDinv_hypervis),'s'
+             write(iulog,'(a,f10.2,a)') "Stability: nu_q   hyperviscosity  dt < S *", 1/(nu_q*normDinv_hypervis),'s'
+             write(iulog,'(a,f10.2,a)') "Stability: nu_vor hyperviscosity  dt < S *", 1/(nu*normDinv_hypervis),'s'
 
-             write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity dt < S *", 1/(nu_div*normDinv_hypervis),'s'
+             write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity  dt < S *", 1/(nu_div*normDinv_hypervis),'s'
+             write(iulog,'(a,f10.2,a)') "Stability: nu_div hypervis sponge dt < S *", &
+                  1.0_r8/(nu_div*normDinv_hypervis*maxval(nu_scale_top(:))),'s'
 !          endif
        endif
        if(nu_top>0) then
           write(iulog,'(a,f10.2,a)') 'TOP3 viscosity CFL: dt < S*', &
-                                  1.0d0/(4*nu_top*((ra*max_normDinv)**2)*lambda_vis),'s'
+                                  1.0_r8/(4*nu_top*((ra*max_normDinv)**2)*lambda_vis),'s'
        end if
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
