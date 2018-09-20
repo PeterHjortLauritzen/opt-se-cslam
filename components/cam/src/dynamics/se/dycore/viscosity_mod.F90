@@ -53,7 +53,7 @@ CONTAINS
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
      dptens2,dp3d_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
-  use dimensions_mod, only : ntrac
+  use dimensions_mod, only : ntrac, nu_scale_top
   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
@@ -78,7 +78,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   real (kind=r8), dimension(np,np) :: tmp
   real (kind=r8), dimension(np,np) :: tmp2
   real (kind=r8), dimension(np,np,2) :: v
-  real (kind=r8) :: nu_ratio1, nu_ratio2
+  real (kind=r8), dimension(nlev) :: nu_ratio1, nu_ratio2
   logical var_coef1
   
   kblk = kend - kbeg + 1
@@ -89,21 +89,23 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
   
-  nu_ratio1=1
-  nu_ratio2=1
-  if (nu_div/=nu) then
-    if(hypervis_scaling /= 0) then
-      ! we have a problem with the tensor in that we cant seperate
-      ! div and curl components.  So we do, with tensor V:
-      ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
-      nu_ratio1=nu_div/nu
-      nu_ratio2=1
-    else
-      nu_ratio1=sqrt(nu_div/nu)
-      nu_ratio2=sqrt(nu_div/nu)
+  do k=kbeg,kend
+    nu_ratio1(k)=1
+    nu_ratio2(k)=1
+    if (nu_div/=nu) then
+      if(hypervis_scaling /= 0) then
+        ! we have a problem with the tensor in that we cant seperate
+        ! div and curl components.  So we do, with tensor V:
+        ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
+        nu_ratio1(k)=nu_scale_top(k)*nu_div/nu
+        nu_ratio2(k)=1
+      else
+        nu_ratio1(k)=sqrt(nu_scale_top(k)*nu_div/nu)
+        nu_ratio2(k)=sqrt(nu_scale_top(k)*nu_div/nu)
+      endif
     endif
-  endif
-  
+  end do
+
   do ie=nets,nete    
 !$omp parallel do num_threads(vert_num_threads) private(tmp)
     do k=kbeg,kend
@@ -120,7 +122,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
         call laplace_sphere_wk(tmp,deriv,elem(ie),dptens2(:,:,k,ie),var_coef=var_coef1)
       end if
       call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),vtens(:,:,:,k,ie), &
-           var_coef=var_coef1,nu_ratio=nu_ratio1)
+           var_coef=var_coef1,nu_ratio=nu_ratio1(k))
     enddo
     
     kptr = kbeg - 1
@@ -190,7 +192,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
       v(:,:,1)=elem(ie)%rspheremp(:,:)*vtens(:,:,1,k,ie)
       v(:,:,2)=elem(ie)%rspheremp(:,:)*vtens(:,:,2,k,ie)
       call vlaplace_sphere_wk(v(:,:,:),deriv,elem(ie),vtens(:,:,:,k,ie), &
-           var_coef=.true.,nu_ratio=nu_ratio2)
+           var_coef=.true.,nu_ratio=nu_ratio2(k))
       
     enddo
   enddo
