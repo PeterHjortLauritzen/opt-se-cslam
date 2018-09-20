@@ -515,7 +515,7 @@ contains
 
     if (hypervis_on_plevs.and.nu_p>0)&
          call calc_dp3d_reference(elem,edge3p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
-
+    
     ! call get_loop_ranges(hybrid,kbeg=kbeg,kend=kend)
     kbeg=1; kend=nlev
     
@@ -586,49 +586,47 @@ contains
         endif
         !$omp parallel do num_threads(vert_num_threads) private(lap_t,lap_dp,lap_v,laplace_fluxes,nu_scale_top,ptop,press)
         do k=kbeg,kend
-          ! advace in time.
-          ! note: DSS commutes with time stepping, so we can time advance and then DSS.
-          ! note: weak operators alreayd have mass matrix "included"
-          
-          ! add regular diffusion in top 3 layers:
-          if (nu_top>0 .and. k<=3) then
-            call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
-            call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
-            call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.)
-          endif
-          !
-          ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
-          !
-          press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-          ptop  = hvcoord%hyai(1)*hvcoord%ps0
-          nu_scale_top = 8.0_r8*(1.0_r8+ tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-          if (nu_scale_top < 1.0_r8) nu_scale_top = 0.0_r8
-          
-          ! biharmonic terms need a negative sign:
-          if (nu_top>0 .and. nu_scale_top>0.0_r8) then
-            !OMP_COLLAPSE_SIMD
-            !DIR_VECTOR_ALIGNED
-            do j=1,np
-              do i=1,np
-                ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top*nu_top*lap_t(i,j) )
-                dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie) + nu_scale_top*nu_top*lap_dp(i,j) )
-                vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top*nu_top*lap_v(i,j,1))
-                vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top*nu_top*lap_v(i,j,2))
+           ! advace in time.
+           ! note: DSS commutes with time stepping, so we can time advance and then DSS.
+           ! note: weak operators alreayd have mass matrix "included"
+           
+           !
+           ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+           !
+           press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+           ptop  = hvcoord%hyai(1)*hvcoord%ps0
+           nu_scale_top = 8.0_r8*(1.0_r8+ tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+           if (nu_scale_top < 1.0_r8) nu_scale_top = 0.0_r8
+           
+           ! biharmonic terms need a negative sign:
+           if (nu_top>0 .and. nu_scale_top>0.0_r8) then
+              call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
+              call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
+              call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.)
+           
+              !OMP_COLLAPSE_SIMD
+              !DIR_VECTOR_ALIGNED
+              do j=1,np
+                 do i=1,np
+                    ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top*nu_top*lap_t(i,j)  )
+                    dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top*nu_top*lap_dp(i,j) )
+                    vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top*nu_top*lap_v(i,j,1))
+                    vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top*nu_top*lap_v(i,j,2))
+                 enddo
               enddo
-            enddo
-          else
-            !OMP_COLLAPSE_SIMD
-            !DIR_VECTOR_ALIGNED
-            do j=1,np
-              do i=1,np
-                ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
-                dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
-                vtens(i,j,1,k,ie) = -nu*vtens(i,j,1,k,ie)
-                vtens(i,j,2,k,ie) = -nu*vtens(i,j,2,k,ie)
+           else
+              !OMP_COLLAPSE_SIMD
+              !DIR_VECTOR_ALIGNED
+              do j=1,np
+                 do i=1,np
+                    ttens(i,j,k,ie)   = -nu_s*ttens(i,j,k,ie)
+                    dptens(i,j,k,ie)  = -nu_p*dptens(i,j,k,ie)
+                    vtens(i,j,1,k,ie) = -nu*vtens(i,j,1,k,ie)
+                    vtens(i,j,2,k,ie) = -nu*vtens(i,j,2,k,ie)
+                 enddo
               enddo
-            enddo
-          endif
-          
+           endif
+           
           if (ntrac>0) then
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
