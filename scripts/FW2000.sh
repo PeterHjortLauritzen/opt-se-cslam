@@ -22,9 +22,9 @@ set energyConsistency="False"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
-#set cset="FW2000"
+set cset="FW2000"
 #set cset="F2000climo"
-set cset="FHS94"
+#set cset="FHS94"
 #
 # mapping files (not in cime yet)
 #
@@ -53,7 +53,7 @@ else
   set stopoption="ndays"
   set steps="1"
 endif
-set caze=climateRun${climateRun}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+set caze=climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
@@ -61,7 +61,7 @@ cd /glade/scratch/$USER/$caze
 #./xmlchange CASEROOT=/glade/scratch/$USER/$caze
 #./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 #./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
-#./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
 #
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
@@ -93,14 +93,15 @@ echo "se_hypervis_subcycle = 1"   >> user_nl_cam
 if ($energyConsistency == "True") then
   echo "se_ftype =  1	">>user_nl_cam
   echo "se_qsize_condensate_loading = 1" >>user_nl_cam
+  echo "se_lcp_moist = .false." >>user_nl_cam
 endif
 
 if ($climateRun == "True") then
   echo "se_statefreq       = 244"        >> user_nl_cam
 if ($cset == "FHS94") then
 else
-  echo "fincl2            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
-  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
+  echo "fincl0            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
+  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma''  ">> user_nl_cam
 #  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
 endif
   echo "avgflag_pertape(1) = 'A'"                                                    >> user_nl_cam
@@ -163,7 +164,7 @@ else
   echo "se_statefreq       = 244"        >> user_nl_cam
   echo "empty_htapes       = .true."   >> user_nl_cam
   echo "fincl1             = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',  "   >> user_nl_cam
-  echo "                     'PTTEND','OMEGAT','CLDTOT','TMQ','T','U','V','Q'    " >> user_nl_cam
+  echo "                     'PTTEND','OMEGAT','CLDTOT','TMQ','T','U','V','Q'" >> user_nl_cam
   echo "fincl2             = 'PS'"   >> user_nl_cam
   echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
   echo "nhtfrq             = -24,-24 " >> user_nl_cam
