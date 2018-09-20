@@ -122,7 +122,7 @@ subroutine dyn_readnl(NLFileName)
    character(len=*), intent(in) :: NLFileName
 
    ! Local variables
-   integer                      :: unitn, ierr
+   integer                      :: unitn, ierr,k
    real(r8)                     :: uniform_res_hypervis_scaling,nu_fac
    real(r8)                     :: press, ptop
 
@@ -314,7 +314,7 @@ subroutine dyn_readnl(NLFileName)
    !
    ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
    !
-   do k=1.nlev
+   do k=1,nlev
      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
      ptop  = hvcoord%hyai(1)*hvcoord%ps0
      nu_scale_top(k) = 8.0_r8*(1.0_r8+ tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top

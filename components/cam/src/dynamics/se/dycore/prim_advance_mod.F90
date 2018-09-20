@@ -458,7 +458,7 @@ contains
     !
     !
     use dimensions_mod, only: np, np, nlev, nc, ntrac
-    use dimensions_mod, only: hypervis_on_plevs
+    use dimensions_mod, only: hypervis_on_plevs,nu_scale_top
     use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
