@@ -72,6 +72,8 @@ module dimensions_mod
 
   integer, parameter, public :: kmin_jet=1,kmax_jet=PLEV !min and max level index for the jet
 
+  real(r8), public :: nu_scale_top(nlev)!scaling of viscosity in sopnge layer (initialized in dyn_comp)
+
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 
   integer,  public :: nhr_phys 

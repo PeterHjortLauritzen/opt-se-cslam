@@ -483,7 +483,6 @@ contains
     real (kind=r8) :: dt2
 
     ! local
-    real (kind=r8) :: nu_scale_top, ptop, press
     integer :: k,kptr,i,j,ie,ic
     integer :: kbeg, kend, kblk
     real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
@@ -590,16 +589,8 @@ contains
            ! note: DSS commutes with time stepping, so we can time advance and then DSS.
            ! note: weak operators alreayd have mass matrix "included"
            
-           !
-           ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
-           !
-           press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-           ptop  = hvcoord%hyai(1)*hvcoord%ps0
-           nu_scale_top = 8.0_r8*(1.0_r8+ tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-           if (nu_scale_top < 1.0_r8) nu_scale_top = 0.0_r8
-           
            ! biharmonic terms need a negative sign:
-           if (nu_top>0 .and. nu_scale_top>0.0_r8) then
+           if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
               call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.)
@@ -608,10 +599,10 @@ contains
               !DIR_VECTOR_ALIGNED
               do j=1,np
                  do i=1,np
-                    ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top*nu_top*lap_t(i,j)  )
-                    dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top*nu_top*lap_dp(i,j) )
-                    vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top*nu_top*lap_v(i,j,1))
-                    vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top*nu_top*lap_v(i,j,2))
+                    ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
+                    dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
+                    vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
+                    vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
                  enddo
               enddo
            else
@@ -636,10 +627,10 @@ contains
                      rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
               enddo
             enddo
-          if (nu_top>0 .and. nu_scale_top>0.0_r8) then
+          if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
               call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
               elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                   rhypervis_subcycle*eta_ave_w*nu_scale_top*nu_top*laplace_fluxes
+                   rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
             endif
           endif
           
