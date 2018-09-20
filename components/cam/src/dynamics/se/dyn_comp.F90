@@ -111,7 +111,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
    use dimensions_mod, only: qsize_d, ne, npart
-   use dimensions_mod, only: qsize_condensate_loading, lcp_moist, nu_scale_top
+   use dimensions_mod, only: qsize_condensate_loading, lcp_moist
    use dimensions_mod, only: hypervis_on_plevs,large_Courant_incr
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
@@ -124,7 +124,6 @@ subroutine dyn_readnl(NLFileName)
    ! Local variables
    integer                      :: unitn, ierr,k
    real(r8)                     :: uniform_res_hypervis_scaling,nu_fac
-   real(r8)                     :: press, ptop
 
    ! SE Namelist variables
    integer                      :: se_qsize_condensate_loading
@@ -311,15 +310,6 @@ subroutine dyn_readnl(NLFileName)
       end if
       se_nu     = 0.4_r8*nu_fac*((30.0_r8/se_ne)*110000.0_r8)**uniform_res_hypervis_scaling
    end if
-   !
-   ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
-   !
-   do k=1,nlev
-     press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-     ptop  = hvcoord%hyai(1)*hvcoord%ps0
-     nu_scale_top(k) = 8.0_r8*(1.0_r8+ tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-     if (nu_scale_top(k) < 1.0_r8) nu_scale_top = 0.0_r8
-   end do
 
    ! Go ahead and enforce ne = 0 for refined mesh runs
    if (se_refined_mesh) then
@@ -531,7 +521,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use thread_mod,         only: horz_num_threads
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
-   use dimensions_mod,     only: qsize_condensate_loading_idx_gll
+   use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
    use dimensions_mod,     only: qsize_condensate_loading_cp
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use prim_driver_mod,    only: prim_init2
@@ -546,6 +536,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    ! Local variables
    integer             :: ithr, nets, nete, ie, k
    real(r8), parameter :: Tinit = 300.0_r8
+   real(r8)            :: press, ptop
+
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
@@ -694,6 +686,19 @@ subroutine dyn_init(dyn_in, dyn_out)
    end if
 
    if (iam < par%nprocs) then
+     !
+     ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+     !
+     if (masterproc) write(iulog,*) "sponge layer viscosity scaling factor"
+     do k=1,nlev
+       press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+       ptop  = hvcoord%hyai(1)*hvcoord%ps0
+       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+       nu_scale_top(k) = MAX(nu_scale_top(k),1.0_r8)
+       if (masterproc) then
+         if (nu_scale_top(k)>1.0_r8) write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
+       end if
+      end do
 
 !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
       hybrid = config_thread_region(par,'horizontal')
@@ -702,7 +707,6 @@ subroutine dyn_init(dyn_in, dyn_out)
 !$OMP END PARALLEL
 
       if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
-
    end if  ! iam < par%nprocs
 
    ! Forcing from physics on the GLL grid

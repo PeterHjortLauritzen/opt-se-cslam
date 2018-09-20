@@ -334,7 +334,7 @@ contains
 !
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac
+    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top
     use quadrature_mod, only: gausslobatto, quadrature_t
 
     use reduction_mod,  only: ParallelMin,ParallelMax

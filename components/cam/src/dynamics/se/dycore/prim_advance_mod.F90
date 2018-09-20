@@ -590,9 +590,20 @@ contains
            ! note: weak operators alreayd have mass matrix "included"
            
            ! biharmonic terms need a negative sign:
-           if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
+          if (nu_top>0 .and. nu_scale_top(k)>1.0_r8) then
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
+!    if(hypervis_scaling /= 0) then
+!      ! we have a problem with the tensor in that we cant seperate
+!      ! div and curl components.  So we do, with tensor V:
+!      ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
+!      nu_ratio1=nu_scaling_top(k)
+!    else
+!      nu_ratio1=sqrt(nu_scaling_top(k))
+!    endif
+
+
+              
               call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.)
            
               !OMP_COLLAPSE_SIMD
