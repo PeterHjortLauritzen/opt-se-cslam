@@ -192,11 +192,10 @@ contains
   subroutine fvm2dyn(elem,fld_fvm,fld_gll,hybrid,nets,nete,numlev,num_flds,fvm,llimiter)
     use dimensions_mod, only: np, nhc, nc
     use hybrid_mod    , only: hybrid_t
-
     use bndry_mod     , only: ghost_exchange
     use edge_mod      , only: initghostbuffer, freeghostbuffer,ghostpack,ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-
+    use fvm_mod       , only: ghostBufQnhc
 
     integer              , intent(in)    :: nets,nete,num_flds,numlev
     real (kind=r8), intent(inout) :: fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,numlev,num_flds,nets:nete)
@@ -205,9 +204,8 @@ contains
     type (element_t)     , intent(in)    :: elem(nets:nete)
     type(fvm_struct)     , intent(in)    :: fvm(nets:nete)
     logical              , intent(in)    :: llimiter(num_flds)
-
     integer               :: ie, iwidth
-    type (edgeBuffer_t)   :: cellghostbuf
+!    type (edgeBuffer_t)   :: cellghostbuf
     !
     !*********************************************
     !
@@ -215,18 +213,21 @@ contains
     !
     !*********************************************
     !
-    call t_startf('fvm2dyn:initbuffer')
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhc,nc)
-    call t_stopf('fvm2dyn:initbuffer')
+!    call t_startf('fvm2dyn:initbuffer')
+!    call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhc,nc)
+!    call t_stopf('fvm2dyn:initbuffer')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+!       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostpack(ghostBufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
-    call ghost_exchange(hybrid,cellghostbuf)
+!    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,ghostbufQnhc)
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+!       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostunpack(ghostbufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
-    call freeghostbuffer(cellghostbuf)
-    !
+!    call freeghostbuffer(cellghostbuf)
+     !
     ! mapping
     !
     iwidth=2
