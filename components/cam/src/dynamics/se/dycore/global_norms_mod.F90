@@ -642,13 +642,11 @@ contains
              write(iulog,'(a,f10.2,a)') "Stability: nu_vor hyperviscosity  dt < S *", 1/(nu*normDinv_hypervis),'s'
 
              write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity  dt < S *", 1/(nu_div*normDinv_hypervis),'s'
-             write(iulog,'(a,f10.2,a)') "Stability: nu_div hypervis sponge dt < S *", &
-                  1.0_r8/(nu_div*normDinv_hypervis*maxval(nu_scale_top(:))),'s'
 !          endif
        endif
        if(nu_top>0) then
-          write(iulog,'(a,f10.2,a)') 'TOP3 viscosity CFL: dt < S*', &
-                                  1.0_r8/(4*nu_top*((ra*max_normDinv)**2)*lambda_vis),'s'
+          write(iulog,'(a,f10.2,a)') 'Del2 sponge viscosity CFL: dt < S*', &
+                                  1.0_r8/(4*nu_top*((ra*max_normDinv)**2)*lambda_vis*maxval(nu_scale_top(:))),'s'
        end if
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
