@@ -61,7 +61,7 @@ cd /glade/scratch/$USER/$caze
 #./xmlchange CASEROOT=/glade/scratch/$USER/$caze
 #./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 #./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
-./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+#./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
 #
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
