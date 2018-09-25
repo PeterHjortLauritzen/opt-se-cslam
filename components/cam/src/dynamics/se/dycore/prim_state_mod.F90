@@ -322,12 +322,14 @@ CONTAINS
     do k = 1, nlev
       max_p(k) = ParallelMax(max_local(:,k),hybrid)
     end do
-    write(iulog,*)   '  '
-    write(iulog,*)   'Gamma max'
-    write(iulog,*)   '  '
-    do k=1,nlev
-      write(iulog,*) 'k,gamma= ',k,max_p(k)
-    end do
+    if (hybrid%masterthread) then
+       write(iulog,*)   '  '
+       write(iulog,*)   'Gamma max'
+       write(iulog,*)   '  '
+       do k=1,nlev
+          write(iulog,*) 'k,gamma= ',k,max_p(k)
+       end do
+    end if
   end subroutine prim_printstate_cslam_gamma
 #endif
 
