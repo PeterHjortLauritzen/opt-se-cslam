@@ -120,23 +120,23 @@ contains
     if (hybrid%masterthread) then
        ! CAM has set tstep based on dtime before calling prim_init2(),
        ! so only now does HOMME learn the timstep.  print them out:
-       write(iulog,'(a,2f9.2)') "dt_remap: (0=disabled)   ",tstep*qsplit*rsplit
+       write(iulog,'(a,2f9.2)') "dt_remap:                        ",tstep*qsplit*rsplit
 
        if (ntrac>0) then
-          write(iulog,'(a,2f9.2)') "dt_tracer (fvm)          ",tstep*qsplit*fvm_supercycling
+          write(iulog,'(a,2f9.2)') "dt_tracer (fvm)               ",tstep*qsplit*fvm_supercycling
        end if
        if (qsize>0) then
           write(iulog,'(a,2f9.2)') "dt_tracer (SE), per RK stage: ",tstep*qsplit,(tstep*qsplit)/(rk_stage_user-1)
        end if
-       write(iulog,'(a,2f9.2)')    "dt_dyn:                  ",tstep
-       write(iulog,'(a,2f9.2)')    "dt_dyn (viscosity):      ",dt_dyn_vis
-       write(iulog,'(a,2f9.2)')    "dt_tracer (viscosity):   ",dt_tracer_vis
+       write(iulog,'(a,2f9.2)')    "dt_dyn:                       ",tstep
+       write(iulog,'(a,2f9.2)')    "dt_dyn (viscosity):           ",dt_dyn_vis
+       write(iulog,'(a,2f9.2)')    "dt_tracer (viscosity):        ",dt_tracer_vis
 
 
        if (phys_tscale/=0) then
-          write(iulog,'(a,2f9.2)') "CAM physics timescale:       ",phys_tscale
+          write(iulog,'(a,2f9.2)') "CAM physics timescale:        ",phys_tscale
        endif
-       write(iulog,'(a,2f9.2)') "CAM dtime (dt_phys):         ",tstep*nsplit*qsplit*max(rsplit,1)
+       write(iulog,'(a,2f9.2)') "CAM dtime (dt_phys):             ",tstep*nsplit*qsplit*rsplit
 
        write(iulog,*) "CAM-SE uses dry-mass vertical coordinates"
      end if
