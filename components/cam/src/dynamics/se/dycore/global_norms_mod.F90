@@ -325,7 +325,7 @@ contains
   !
   ! ================================
 
-  subroutine print_cfl(elem,hybrid,nets,nete,dtnu)
+  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop)
 !
 !   estimate various CFL limits
 !   also, for variable resolution viscosity coefficient, make sure
@@ -347,12 +347,11 @@ contains
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
     use time_mod,       only: tstep
-    use dyn_grid,       only: hvcoord
 
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
-    real (kind=r8), intent(in) :: dtnu
+    real (kind=r8), intent(in) :: dtnu, ptop
 
     ! Element statisics
     real (kind=r8) :: min_max_dx,max_unif_dx   ! used for normalizing scalar HV
@@ -361,7 +360,7 @@ contains
     real (kind=r8) :: normDinv_hypervis
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
-    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw,ptop
+    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw
     integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
 
@@ -609,7 +608,6 @@ contains
      if (hybrid%masterthread) then
        write(iulog,'(a,f10.2)') 'CFL estimates in terms of S=time step stability region'
        write(iulog,'(a,f10.2)') '(i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)'
-       ptop  = hvcoord%hyai(1)*hvcoord%ps0
        if (ptop>100.0_r8) then
           umax = 120.0_r8
        else
@@ -645,8 +643,7 @@ contains
           write(iulog,'(a,f10.2,a)') 'Stability: advective              dt_dyn  < S *', &
                1/(ugw*max_normDinv*lambda_max*ra),'s'
        end if
-       write(iulog,'(a,f10.2,a)') 'Stability: ad(342m/s)   dt_dyn  < S *', &
-                                   1/(umax*max_normDinv*lambda_max*ra),'s'
+
        if (nu>0) then
 !          if (hypervis_order==1) then
 !              write(iulog,'(a,f10.2,a)') 'Stability: viscosity dt < S *',1/(((ra*max_normDinv)**2)*lambda_vis),'s'

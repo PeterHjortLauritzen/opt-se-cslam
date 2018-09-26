@@ -115,7 +115,7 @@ contains
     endif
 
     ! timesteps to use for advective stability:  tstep*qsplit and tstep
-    call print_cfl(elem,hybrid,nets,nete,dtnu)
+    call print_cfl(elem,hybrid,nets,nete,dtnu,hvcoord%hyai(1)*hvcoord%ps0)
 
     if (hybrid%masterthread) then
        ! CAM has set tstep based on dtime before calling prim_init2(),
