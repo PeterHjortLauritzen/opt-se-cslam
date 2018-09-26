@@ -334,7 +334,7 @@ contains
 !
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top
+    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev
     use quadrature_mod, only: gausslobatto, quadrature_t
 
     use reduction_mod,  only: ParallelMin,ParallelMax
@@ -347,6 +347,7 @@ contains
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
     use bndry_mod,      only: bndry_exchange
     use time_mod,       only: tstep
+    use dyn_grid,       only: hvcoord
 
     type(element_t)      , intent(inout) :: elem(:)
     integer              , intent(in) :: nets,nete
@@ -360,8 +361,8 @@ contains
     real (kind=r8) :: normDinv_hypervis
     real (kind=r8) :: x, y, noreast, nw, se, sw
     real (kind=r8), dimension(np,np,nets:nete) :: zeta
-    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda
-    integer :: ie,corner, i, j, rowind, colind
+    real (kind=r8) :: lambda_max, lambda_vis, min_gw, lambda,umax, ugw,ptop
+    integer :: ie,corner, i, j, rowind, colind, k
     type (quadrature_t)    :: gp
 
 
@@ -608,29 +609,44 @@ contains
      if (hybrid%masterthread) then
        write(iulog,'(a,f10.2)') 'CFL estimates in terms of S=time step stability region'
        write(iulog,'(a,f10.2)') '(i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)'
+       ptop  = hvcoord%hyai(1)*hvcoord%ps0
+       if (ptop>100.0_r8) then
+          umax = 120.0_r8
+       else
+          umax = 600.0_r8
+       end if
+       ugw = 342.0_r8 !max gravity wave speed
+       write(iulog,'(a,f,a,f6.1,a)') 'Model top is ',ptop,'Pa => max wind for stability analysis = ',umax,'m/s'
        if (rk_stage_user>0) then
-          write(iulog,'(a,f10.2,a)') 'SSP preservation (120m/s) RKSSP euler step dt  < S *', &
-               min_gw/(120.0_r8*max_normDinv*ra),'s'
+          write(iulog,'(a,f10.2,a)') 'SSP preservation RKSSP euler step dt  < S *', &
+               min_gw/(umax*max_normDinv*ra),'s'
        endif
        if (qsize>0) &
-          write(iulog,'(a,f10.2,a)') 'Stability: advective (120m/s)   dt_tracer < S *',&
-               1/(120.0_r8*max_normDinv*lambda_max*ra),'s'
+          write(iulog,'(a,f10.2,a)') 'Stability: advective dt_tracer < S *',&
+               1/(umax*max_normDinv*lambda_max*ra),'s'
        if (ntrac>0) then
           !
           ! rough estimate of Courant number limted time-step:
           !
-          ! U_max*dt_tracer/dx < nhe
+          ! umax*dt_tracer/dx < nhe
           !
-          ! where U_max=120 m/s and dx = 360 degrees/(4*ne*nc) = (2*pi*Rearth m)/(4*ne*nc)
+          ! where dx = 360 degrees/(4*ne*nc) = (2*pi*Rearth m)/(4*ne*nc)
           !
-          write(iulog,'(a,f10.2,a)') "Stability (fvm Courant number): advective (120m/s)   dt_tracer < ",&
-               dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/120.0e0_r8,'s'
+          write(iulog,'(a,f10.2,a)') "Stability (fvm Courant number): advective dt_tracer < ",&
+               dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax,'s'
           write(iulog,*) "(note that fvm stability is also limited by flow deformation - Lipschitz criterion!)"
        end if
-       write(iulog,'(a,f10.2,a)') 'Stability: advective (120m/s)   dt_tracer < S *', &
-                                   1/(120.0_r8*max_normDinv*lambda_max*ra),'s'
-       write(iulog,'(a,f10.2,a)') 'Stability: gravity wave(342m/s)   dt_dyn  < S *', &
-                                   1/(342.0_r8*max_normDinv*lambda_max*ra),'s'
+       write(iulog,'(a,f10.2,a)') 'Stability: advective            dt_tracer < S *', &
+                                   1/(umax*max_normDinv*lambda_max*ra),'s'
+       if (umax<ugw) then
+          write(iulog,'(a,f10.2,a)') 'Stability: gravity wave(342m/s)   dt_dyn  < S *', &
+               1/(ugw*max_normDinv*lambda_max*ra),'s'
+       else
+          write(iulog,'(a,f10.2,a)') 'Stability: advective              dt_dyn  < S *', &
+               1/(ugw*max_normDinv*lambda_max*ra),'s'
+       end if
+       write(iulog,'(a,f10.2,a)') 'Stability: ad(342m/s)   dt_dyn  < S *', &
+                                   1/(umax*max_normDinv*lambda_max*ra),'s'
        if (nu>0) then
 !          if (hypervis_order==1) then
 !              write(iulog,'(a,f10.2,a)') 'Stability: viscosity dt < S *',1/(((ra*max_normDinv)**2)*lambda_vis),'s'
@@ -644,10 +660,14 @@ contains
              write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity  dt < S *", 1/(nu_div*normDinv_hypervis),'s'
 !          endif
        endif
-       if(nu_top>0) then
-          write(iulog,'(a,f10.2,a)') 'Del2 sponge viscosity CFL: dt < S*', &
-                                  1.0_r8/(4*nu_top*((ra*max_normDinv)**2)*lambda_vis*maxval(nu_scale_top(:))),'s'
-       end if
+       do k=1,nlev
+          if (nu_scale_top(k)>1.0_r8) then
+             if(nu_top>0) then
+                write(iulog,'(a,i2,f10.2,a)') 'Del2 sponge viscosity CFL: dt < S*', k, &
+                     1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis*nu_scale_top(k)),'s'
+             end if
+          end if
+       end do
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
                                   nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)
