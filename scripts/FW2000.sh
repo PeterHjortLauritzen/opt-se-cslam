@@ -1,10 +1,11 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT "P93300042"
+setenv PBS_ACCOUNT "P93300642"
 # P03010039
 # P93300042
 # P03010083
 # P93300075
 # P05010048
+# P93300642
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
@@ -50,10 +51,10 @@ else
   set climateRun="True"
   set pecount="450"
   set NTHRDS="1"
-  set stopoption="ndays"
-  set steps="1"
+  set stopoption="nsteps"
+  set steps="5"
 endif
-set caze=climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+set caze=test_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
@@ -100,8 +101,8 @@ if ($climateRun == "True") then
   echo "se_statefreq       = 244"        >> user_nl_cam
 if ($cset == "FHS94") then
 else
-  echo "fincl0            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
-  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma''  ">> user_nl_cam
+  echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
+  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
 #  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
 endif
   echo "avgflag_pertape(1) = 'A'"                                                    >> user_nl_cam
@@ -173,8 +174,9 @@ endif
 
 if ($cset == "FW2000") then
   echo "se_nsplit          = 10"   >> user_nl_cam
+  echo "se_nu_top              =  1e6" >> user_nl_cam
   if ($res == "ne30pg3_ne30pg3_mg17") then
-    echo "ncdata = '$inic/waccm_cslam_FW2000_1day.cam.i.0001-01-02-00000.nc'" >> user_nl_cam
+    echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
   else
     echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
   endif
