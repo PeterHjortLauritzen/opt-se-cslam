@@ -663,8 +663,8 @@ contains
        do k=1,nlev
           if (nu_scale_top(k)>1.0_r8) then
              if(nu_top>0) then
-                write(iulog,'(a,i2,f10.2,a)') 'Del2 sponge viscosity CFL: dt < S*', k, &
-                     1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis*nu_scale_top(k)),'s'
+                write(iulog,'(a,f10.2,a,i2)') 'Del2 sponge viscosity CFL: dt < S*',&
+                     1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis*nu_scale_top(k)),'s, level ',k
              end if
           end if
        end do
