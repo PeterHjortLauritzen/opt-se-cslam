@@ -96,11 +96,19 @@ if ($energyConsistency == "True") then
   echo "se_qsize_condensate_loading = 1" >>user_nl_cam
   echo "se_lcp_moist = .false." >>user_nl_cam
 endif
+#
+#  ERROR: 
+# setup_interpolation_and_define_vector_complements: No meridional match for UTGW
+# ORO
+#
+echo "fincl2 = 'PS'" >> user_nl_cam #to avoid errors
+echo "fincl8 = 'PS'" >> user_nl_cam #to avoid errors
 
 if ($climateRun == "True") then
   echo "se_statefreq       = 244"        >> user_nl_cam
 if ($cset == "FHS94") then
 else
+  echo "empty_htapes       = .true."   >> user_nl_cam
   echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
   echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
 #  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
@@ -166,7 +174,6 @@ else
   echo "empty_htapes       = .true."   >> user_nl_cam
   echo "fincl1             = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',  "   >> user_nl_cam
   echo "                     'PTTEND','OMEGAT','CLDTOT','TMQ','T','U','V','Q'" >> user_nl_cam
-  echo "fincl2             = 'PS'"   >> user_nl_cam
   echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
   echo "nhtfrq             = -24,-24 " >> user_nl_cam
   echo "interpolate_output = .true.,.true." >> user_nl_cam
