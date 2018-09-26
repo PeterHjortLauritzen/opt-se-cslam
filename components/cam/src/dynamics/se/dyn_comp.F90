@@ -694,7 +694,7 @@ subroutine dyn_init(dyn_in, dyn_out)
        press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
        ptop  = hvcoord%hyai(1)*hvcoord%ps0
        nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-       nu_scale_top(k) = MAX(nu_scale_top(k),1.0_r8)
+!       nu_scale_top(k) = MAX(nu_scale_top(k),1.0_r8)
        if (masterproc) then
          if (nu_scale_top(k)>1.0_r8) write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
        end if
