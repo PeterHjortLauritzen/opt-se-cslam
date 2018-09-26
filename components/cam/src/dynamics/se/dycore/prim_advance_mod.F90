@@ -459,7 +459,7 @@ contains
     !
     use dimensions_mod, only: np, np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_on_plevs,nu_scale_top
-    use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top
+    use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top, hypervis_scaling
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
@@ -508,7 +508,7 @@ contains
     real (kind=r8)                     :: laplace_fluxes(nc,nc,4)
     real (kind=r8)                     :: tempflux(nc,nc,4)
     real (kind=r8)                     :: rhypervis_subcycle
-    
+    real (kind=r8)                     :: nu_ratio1
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
     call t_startf('advance_hypervis_dp')
 
@@ -593,27 +593,29 @@ contains
           if (nu_top>0 .and. nu_scale_top(k)>1.0_r8) then
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
-!    if(hypervis_scaling /= 0) then
-!      ! we have a problem with the tensor in that we cant seperate
-!      ! div and curl components.  So we do, with tensor V:
-!      ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
-!      nu_ratio1=nu_scaling_top(k)
-!    else
-!      nu_ratio1=sqrt(nu_scaling_top(k))
-!    endif
-
-
-              
-              call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.)
+              ! increased second-order divergence damping
+              nu_ratio1=1.0_r8
+!              if(hypervis_scaling /= 0) then
+!                 nu_ratio1=2.0_r8!max(nu_scale_top(k),1.0_r8)
+!              else
+!                 nu_ratio1=sqrt(2.0_r8)!max(sqrt(nu_scale_top(k),1.0_r8)
+!              endif
+              call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
+                   nu_ratio=nu_ratio1)
            
               !OMP_COLLAPSE_SIMD
               !DIR_VECTOR_ALIGNED
               do j=1,np
                  do i=1,np
-                    ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
-                    dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
-                    vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
-                    vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
+                    ttens(i,j,k,ie)   = (nu_scale_top(k)*nu_top*lap_t(i,j)  )
+                    dptens(i,j,k,ie)  = (nu_scale_top(k)*nu_top*lap_dp(i,j) )
+                    vtens(i,j,1,k,ie) = (nu_scale_top(k)*nu_top*lap_v(i,j,1))
+                    vtens(i,j,2,k,ie) = (nu_scale_top(k)*nu_top*lap_v(i,j,2))
+
+!                    ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
+!                    dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
+!                    vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
+!                    vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
                  enddo
               enddo
            else
