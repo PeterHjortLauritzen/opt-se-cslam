@@ -614,7 +614,8 @@ contains
           umax = 600.0_r8
        end if
        ugw = 342.0_r8 !max gravity wave speed
-       write(iulog,'(a,f,a,f6.1,a)') 'Model top is ',ptop,'Pa => max wind for stability analysis = ',umax,'m/s'
+       write(iulog,'(a,f10.8,a,f6.1,a)') 'Model top is ',ptop,&
+            'Pa => max wind for stability analysis = ',umax,'m/s'
        if (rk_stage_user>0) then
           write(iulog,'(a,f10.2,a)') 'SSP preservation RKSSP euler step dt  < S *', &
                min_gw/(umax*max_normDinv*ra),'s'
