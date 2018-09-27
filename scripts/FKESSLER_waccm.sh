@@ -1,5 +1,5 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT P93300642
+setenv PBS_ACCOUNT "P93300642"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
@@ -15,7 +15,7 @@ set NTHRDS="1"
 set res=ne30pg3_ne30pg3_mg17 #cslam
 #setenv res ne30_ne30_mg17        #no cslam
 set stopoption="nsteps"
-set steps="5"
+set steps="7"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
@@ -56,7 +56,7 @@ else
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="900"
+  set pecount="450"
   set compiler="intel"  
 endif
 
@@ -115,7 +115,7 @@ cat >> $scratch/$USER/$caze/SourceMods/src.cam/dctest_baro_kessler.xml <<EOF
 </namelist_defaults>
 EOF
 endif
-
+echo "inithist    = '6-HOURLY'"   >> user_nl_cam #xxx
 echo "se_statefreq       = 244"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
@@ -123,12 +123,12 @@ echo "interpolate_output = .true.,.true." >> user_nl_cam
 #
 # 70 layer IC file
 #
-echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
+echo "ncdata = '$inic/waccm.i.spinup.nc'"   >> user_nl_cam
 
-echo "se_statefreq       = 244"       >> user_nl_cam
+#echo "se_statefreq       = 244"       >> user_nl_cam
 echo "se_nsplit          = 10"        >> user_nl_cam   #WACCM mod
 echo "se_large_Courant_incr=.false."  >> user_nl_cam   #WACCM mod
-echo "inithist           = 'DAILY'"   >> user_nl_cam
+#echo "inithist           = 'DAILY'"   >> user_nl_cam
 echo "se_hypervis_subcycle = 1"       >> user_nl_cam
 echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 
