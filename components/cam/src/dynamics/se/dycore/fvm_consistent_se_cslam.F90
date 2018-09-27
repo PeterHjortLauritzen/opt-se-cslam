@@ -55,10 +55,12 @@ contains
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
+    real(KIND=r8) :: recons_weights(4,irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     real (kind=r8) :: inv_dp_area(nc,nc), ps_se(nc,nc)
 
     logical :: llimiter(ntrac)
     integer :: i,j,k,ie,itr,ntmp
+    integer :: ir 
 
     llimiter = .true.
 
@@ -97,11 +99,17 @@ contains
     call t_stopf('fvm:orthogonal_swept_areas')
 
     do ie=nets,nete
+      do ir=1,irecons_tracer-1
+         recons_weights(1,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,1,1-nhe:nc+nhe,1-nhe:nc+nhe)
+         recons_weights(2,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,2,1-nhe:nc+nhe,1-nhe:nc+nhe)
+         recons_weights(3,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,3,1-nhe:nc+nhe,1-nhe:nc+nhe)
+         recons_weights(4,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,4,1-nhe:nc+nhe,1-nhe:nc+nhe)
+      enddo
       fvm(ie)%c(:,:,:,:,np1_fvm)    = 0.0_r8!to avoid problems when uninitialized variables are set to NaN
       fvm(ie)%dp_fvm(:,:,:,np1_fvm) = 0.0_r8!to avoid problems when uninitialized variables are set to NaN      
       do k=1,nlev
         call t_startf('fvm:tracers_reconstruct')
-        call reconstruction(fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,k,1:ntrac,n0_fvm),&
+        call reconstruction(fvm(ie)%c(:,:,:,:,n0_fvm),nlev,k,&
              ctracer(:,:,:,:),irecons_tracer,llimiter,ntrac,&
              nc,nhe,nhr,nhc,nht,ns,nhr+(nhe-1),&
              fvm(ie)%jx_min,fvm(ie)%jx_max,fvm(ie)%jy_min,fvm(ie)%jy_max,&
@@ -109,7 +117,7 @@ contains
              fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
-             fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart&
+             recons_weights,fvm(ie)%vtx_cart&
              )
         call t_stopf('fvm:tracers_reconstruct')
         call t_startf('fvm:swept_flux')

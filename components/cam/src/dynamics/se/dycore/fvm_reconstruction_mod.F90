@@ -34,7 +34,7 @@ contains
   ! OUTPUT:recons   ...  has the reconstruction coefficients (5) for the 3rd order    !
   !                      reconstruction: dx, dy, dx^2, dy^2, dxdy                     !
   !-----------------------------------------------------------------------------------!
-  subroutine reconstruction(fcube,recons,irecons,llimiter,ntrac_in,&
+  subroutine reconstruction(fcube,nlev_in,k_in,recons,irecons,llimiter,ntrac_in,&
        nc,nhe,nhr,nhc,nht,ns,nh,&
        jx_min,jx_max,jy_min,jy_max,&
        cubeboundary,halo_interp_weight,ibase,&
@@ -48,8 +48,9 @@ contains
     ! dimension(1-nhc:nc+nhc, 1-nhc:nc+nhc)
     !
     integer, intent(in) :: irecons
+    integer, intent(in) :: nlev_in, k_in
     integer, intent(in) :: ntrac_in,nc,nhe,nhr,nhc,nht,ns,nh,cubeboundary
-    real (kind=r8), dimension(1-nhc:nc+nhc,1-nhc:nc+nhc,ntrac_in),         intent(inout) :: fcube
+    real (kind=r8), dimension(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev_in,ntrac_in),         intent(inout) :: fcube
     real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac_in), intent(out)   :: recons
     integer, intent(in) :: jx_min(3), jx_max(3), jy_min(3), jy_max(3)
     integer              , intent(in):: ibase(1-nh:nc+nh,1:nhr,2)
@@ -59,7 +60,7 @@ contains
     real (kind=r8), intent(in):: recons_metrics_integral(3,1-nhe:nc+nhe,1-nhe:nc+nhe)
     integer              , intent(in):: rot_matrix(2,2,1-nhc:nc+nhc,1-nhc:nc+nhc)
     real (kind=r8), intent(in):: centroid_stretch(7,1-nhe:nc+nhe,1-nhe:nc+nhe)
-    real (kind=r8), intent(in):: vertex_recons_weights(1:irecons-1,4,1-nhe:nc+nhe,1-nhe:nc+nhe)
+    real (kind=r8), intent(in):: vertex_recons_weights(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     real (kind=r8), intent(in):: vtx_cart(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)
 
     logical, intent(in) :: llimiter(ntrac_in)
@@ -83,7 +84,7 @@ contains
       do itr=1,ntrac_in
 !        f=-9e9_r8
         call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
-             fcube(:,:,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1),f(:,:,2:3))
+             fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1),f(:,:,2:3))
         if (irecons>1) call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
              rot_matrix,centroid_stretch,nc,nht,nhe,nhc)
       end do
@@ -92,7 +93,7 @@ contains
 !        f=-9e9_r8!to avoid floating point exception for uninitialized variables
 !                 !in non-existent cells (corners of cube)
         call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
-             fcube(:,:,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1))
+             fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1))
         if (irecons>1) call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
              rot_matrix,centroid_stretch,nc,nht,nhe,nhc)
       end do
@@ -110,27 +111,27 @@ contains
           select case(cubeboundary)
           case (nwest)
             do h=1,nhe+1
-              fcube(0,nc+h  ,itr) = fcube(1-h,nc  ,itr)
-              fcube(1-h,nc+1,itr) = fcube(1  ,nc+h,itr)
+              fcube(0,nc+h  ,k_in,itr) = fcube(1-h,nc  ,k_in,itr)
+              fcube(1-h,nc+1,k_in,itr) = fcube(1  ,nc+h,k_in,itr)
             end do
           case (swest)
             do h=1,nhe+1
-              fcube(1-h,0,itr) = fcube(1,1-h,itr)
-              fcube(0,1-h,itr) = fcube(1-h,1,itr)
+              fcube(1-h,0,k_in,itr) = fcube(1,1-h,k_in,itr)
+              fcube(0,1-h,k_in,itr) = fcube(1-h,1,k_in,itr)
             end do
           case (seast)
             do h=1,nhe+1
-              fcube(nc+h,0  ,itr) = fcube(nc,1-h,itr)
-              fcube(nc+1,1-h,itr) = fcube(nc+h,1,itr)
+              fcube(nc+h,0  ,k_in,itr) = fcube(nc,1-h,k_in,itr)
+              fcube(nc+1,1-h,k_in,itr) = fcube(nc+h,1,k_in,itr)
             end do
           case (neast)
             do h=1,nhe+1
-              fcube(nc+h,nc+1,itr) = fcube(nc,nc+h,itr)
-              fcube(nc+1,nc+h,itr) = fcube(nc+h,nc,itr)
+              fcube(nc+h,nc+1,k_in,itr) = fcube(nc,nc+h,k_in,itr)
+              fcube(nc+1,nc+h,k_in,itr) = fcube(nc+h,nc,k_in,itr)
             end do
           end select
         end if
-        call slope_limiter(nhe,nc,nhc,fcube(:,:,itr),jx,jy,irecons,recons(:,:,:,itr),&
+        call slope_limiter(nhe,nc,nhc,fcube(:,:,k_in,itr),jx,jy,irecons,recons(:,:,:,itr),&
              spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              recons_metrics,vertex_recons_weights,vtx_cart )
 !        call slope_limiter(fvm,fcube(:,:,itr),jx,jy,irecons,recons(:,:,:,itr))
@@ -144,7 +145,7 @@ contains
       do in=1,3
         do j=jy(1,in),jy(2,in)
           do i=jx(1,in),jx(2,in)
-            recons(1,i,j,1:ntrac_in) = fcube(i,j,1:ntrac_in)
+            recons(1,i,j,1:ntrac_in) = fcube(i,j,k_in,1:ntrac_in)
           end do
         end do
       end do
@@ -154,7 +155,7 @@ contains
       do in=1,3
         do j=jy(1,in),jy(2,in)
           do i=jx(1,in),jx(2,in)
-            recons(1,i,j,1:ntrac_in)  = fcube(i,j,1:ntrac_in) &
+            recons(1,i,j,1:ntrac_in)  = fcube(i,j,k_in,1:ntrac_in) &
                  - recons(2,i,j,1:ntrac_in)*spherecentroid(1,i,j) &
                  - recons(3,i,j,1:ntrac_in)*spherecentroid(2,i,j)
             recons(2,i,j,1:ntrac_in) = recons(2,i,j,1:ntrac_in)
@@ -171,7 +172,7 @@ contains
             do i=jx(1,in),jx(2,in)
 !                recons(1,i,j,itr)  = fcube(i,j,itr) !hack first-order
 !                recons(2:6,i,j,itr)  = 0.0_r8       !hack first-order
-              recons(1,i,j,itr)  = fcube(i,j,itr) &
+              recons(1,i,j,itr)  = fcube(i,j,k_in,itr) &
                    - recons(2,i,j,itr)*spherecentroid(1,i,j) &
                    - recons(3,i,j,itr)*spherecentroid(2,i,j) &
                    + recons(4,i,j,itr)*recons_metrics_integral(1,i,j) &
@@ -318,7 +319,7 @@ contains
     integer,               dimension(2,3)                             , intent(in) :: jx,jy
     real (kind=r8), dimension(irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)    , intent(in) :: spherecentroid
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)            , intent(in) :: recons_metrics
-    real (kind=r8), dimension(1:irecons-1,4,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(in) :: vertex_recons_weights
+    real (kind=r8), dimension(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe), intent(in) :: vertex_recons_weights
     real (kind=r8), dimension(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)          , intent(in) :: vtx_cart
 
     real (kind=r8):: minval_patch,maxval_patch
@@ -331,6 +332,7 @@ contains
     integer       :: itmp1,itmp2,i,j,in,vertex,n
 
 !    real (kind=r8), dimension(-1:5) :: diff_value
+    real (kind=r8), dimension(-1:1) :: minval_array, maxval_array
     real (kind=r8), parameter :: threshold = 1.0E-40_r8
     select case (irecons)
       !
@@ -348,17 +350,21 @@ contains
              !rck combined min/max and unrolled inner loop
              !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
              !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-             minval_patch = fcube(i-1,j-1)
-             maxval_patch = fcube(i-1,j-1)
-             do itmp2=j-1,j+1
-                minval_patch = min(minval_patch,fcube(i-1,itmp2),fcube(i,itmp2),fcube(i+1,itmp2))
-                maxval_patch = max(maxval_patch,fcube(i-1,itmp2),fcube(i,itmp2),fcube(i+1,itmp2))
-             enddo
+!DIR$ SIMD
+                do itmp2=-1,+1
+                   itmp1 = j+itmp2
+                   minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
+                   maxval_array(itmp2) = max(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
+                enddo
+                minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
+                maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
+
              min_phi=1.0_r8
              !rck restructured loop
+!DIR$ SIMD
             do vertex=1,4
               extrema_value(vertex) = &
-                   SUM(recons(2:irecons,i,j)*vertex_recons_weights(1:irecons-1,vertex,i,j))+fcube(i,j)
+                   SUM(recons(2:irecons,i,j)*vertex_recons_weights(vertex,1:irecons-1,i,j))+fcube(i,j)
               call slopelimiter_val(extrema_value(vertex), fcube(i,j),minval_patch, maxval_patch, min_phi)
             end do
            max_val = MAXVAL(extrema_value(1:4))
@@ -392,28 +398,34 @@ contains
                 !rck combined min/max and unrolled inner loop
                 !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                 !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-                minval_patch = fcube(i-1,j-1)
-                maxval_patch = fcube(i-1,j-1)
-                do itmp2=j-1,j+1
-                   minval_patch = min(minval_patch,fcube(i-1,itmp2),fcube(i,itmp2),fcube(i+1,itmp2))
-                   maxval_patch = max(maxval_patch,fcube(i-1,itmp2),fcube(i,itmp2),fcube(i+1,itmp2))
+!DIR$ SIMD
+                do itmp2=-1,+1
+                   itmp1 = j+itmp2
+                   minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
+                   maxval_array(itmp2) = max(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
                 enddo
+                minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
+                maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
+
                 min_phi=1.0_r8
                 !rck restructured loop
 
                 extrema_value(1:4) = fcube(i,j)
+!DIR$ SIMD
                 do vertex=1,4
                   do itmp1=1,irecons-1
                     extrema_value(vertex) = extrema_value(vertex) + &
-                         recons(itmp1+1,i,j)*vertex_recons_weights(itmp1,vertex,i,j)
+                         recons(itmp1+1,i,j)*vertex_recons_weights(vertex,itmp1,i,j)
                   enddo
                 enddo
                 extrema_value(5:13) = extrema_value(1)
                 !
                 ! coordinate bounds (could be pre-computed!)
                 !
-                xminmax(1) = MINVAL(vtx_cart(:,1,i,j)); xminmax(2) = MAXVAL(vtx_cart(:,1,i,j));
-                yminmax(1) = MINVAL(vtx_cart(:,2,i,j)); yminmax(2) = MAXVAL(vtx_cart(:,2,i,j));
+                xminmax(1) = min(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                xminmax(2) = max(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                yminmax(1) = min(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                yminmax(2) = max(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
 
                 ! Check if the quadratic is minimized within the element
                 ! Extrema in the interior of the element (there might be just one candidate)
@@ -571,7 +583,6 @@ END SUBROUTINE recons_val_cart
     real (kind=r8), intent(inout) :: min_phi
     real (kind=r8) :: phi
 
-    phi= 0.0_r8
     ! Check against the minimum bound on the reconstruction
     if (value - cell_value > 1.0e-12_r8 * value) then
       phi = (local_max - cell_value) / (value - cell_value)
