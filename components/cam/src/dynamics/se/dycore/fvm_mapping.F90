@@ -1372,7 +1372,7 @@ contains
     use fvm_reconstruction_mod, only: reconstruction
     type(fvm_struct), intent(in)           :: fvm
     integer,          intent(in)           :: num_trac
-    real (kind=r8),   intent(inout)        :: field_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,num_trac)
+    real (kind=r8),   intent(inout)        :: field_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,1,num_trac)
     real (kind=r8),   intent(out)          :: recons_phys(irecons_tracer,1:fv_nphys,1:fv_nphys,num_trac)
     logical,          intent(in)           :: llimiter(num_trac)
 
@@ -1385,7 +1385,7 @@ contains
     jx_min_local(3) = 0            ; jx_max_local(3) = -1
     jy_min_local(3) = 0            ; jy_max_local(3) = -1
 
-    call reconstruction(field_phys,recons_phys,irecons_tracer,llimiter,num_trac,&
+    call reconstruction(field_phys,1,1,recons_phys,irecons_tracer,llimiter,num_trac,&
        fv_nphys,0,nhr_phys,nhc_phys,nhr_phys,ns_phys,nhr_phys,&
        jx_min_local,jx_max_local,jy_min_local,jy_max_local,&
        fvm%cubeboundary,fvm%halo_interp_weight_physgrid(1:ns_phys,1-nhr_phys:fv_nphys+nhr_phys,1:nhr_phys,:),&
@@ -1406,7 +1406,7 @@ contains
     type(fvm_struct), intent(in)   :: fvm
     integer,          intent(in)   :: num_trac
     logical,          intent(in)   :: llimiter(num_trac)
-    real (kind=r8),   intent(inout):: field_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,num_trac)
+    real (kind=r8),   intent(inout):: field_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1,num_trac)
     real (kind=r8),   intent(out)  :: recons_fvm(irecons_tracer,nc,nc,num_trac)
     integer                        :: jx_min_local(3), jx_max_local(3), jy_min_local(3), jy_max_local(3)
 
@@ -1417,7 +1417,7 @@ contains
     jx_min_local(3) = 0            ; jx_max_local(3) = -1
     jy_min_local(3) = 0            ; jy_max_local(3) = -1
 
-    call reconstruction(field_fvm,recons_fvm,irecons_tracer,&
+    call reconstruction(field_fvm,1,1,recons_fvm,irecons_tracer,&
          llimiter,num_trac,nc,0,nhr,nhc,nhr,ns,nhr,&
          jx_min_local,jx_max_local,jy_min_local,jy_max_local,&
          fvm%cubeboundary,fvm%halo_interp_weight(1:ns,1-nhr:nc+nhr,1:nhr,:),fvm%ibase(1-nhr:nc+nhr,1:nhr,:),&
