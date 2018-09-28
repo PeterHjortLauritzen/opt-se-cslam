@@ -583,7 +583,7 @@ contains
             enddo
           enddo
         endif
-        !$omp parallel do num_threads(vert_num_threads) private(lap_t,lap_dp,lap_v,laplace_fluxes,nu_scale_top,ptop,press)
+        !$omp parallel do num_threads(vert_num_threads) private(lap_t,lap_dp,lap_v,laplace_fluxes,nu_scale_top)
         do k=kbeg,kend
            ! advace in time.
            ! note: DSS commutes with time stepping, so we can time advance and then DSS.
