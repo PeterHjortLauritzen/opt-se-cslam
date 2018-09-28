@@ -1,3 +1,4 @@
+!xxx #define phl_thread
 module prim_advance_mod
   use shr_kind_mod,   only: r8=>shr_kind_r8
   use edgetype_mod,   only: EdgeBuffer_t
@@ -489,8 +490,17 @@ contains
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dptens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dptens_ref,dp3d_ref
+#ifdef phl_thread
+     real (kind=r8), dimension(0:np+1,0:np+1,nlev,nets:nete):: corners
+     real (kind=r8), dimension(2,2,2,nets:nete)             :: cflux
+     real (kind=r8)                     :: temp(np,np,nlev,nets:nete)
+     real (kind=r8)                     :: tempflux(nc,nc,4,nets:nete)
+#else
     real (kind=r8), dimension(0:np+1,0:np+1,nlev)          :: corners
     real (kind=r8), dimension(2,2,2)                       :: cflux
+    real (kind=r8)                     :: temp      (np,np,nlev)
+    real (kind=r8)                     :: tempflux(nc,nc,4)
+#endif
     real (kind=r8), dimension(nc,nc,4,nlev,nets:nete)      :: dpflux
     real (kind=r8), dimension(np,np,nlev)                  :: nabla4_pk,pk,inv_dpk
     type (EdgeDescriptor_t)                                :: desc    
@@ -504,9 +514,7 @@ contains
     real (kind=r8), dimension(np,np)   :: lap_t,lap_dp
     real (kind=r8), dimension(np,np,2) :: lap_v
     real (kind=r8)                     :: v1,v2,dt,heating
-    real (kind=r8)                     :: temp      (np,np,nlev)
     real (kind=r8)                     :: laplace_fluxes(nc,nc,4)
-    real (kind=r8)                     :: tempflux(nc,nc,4)
     real (kind=r8)                     :: rhypervis_subcycle
     real (kind=r8)                     :: nu_ratio1
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
@@ -687,9 +695,15 @@ contains
         
         if (ntrac>0) then
           do k=kbeg,kend
+#ifdef phl_thread
+            temp(:,:,k,ie) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
+            corners(0:np+1,0:np+1,k,ie) = 0.0_r8
+            corners(1:np  ,1:np  ,k,ie) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
+#else
             temp(:,:,k) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
             corners(0:np+1,0:np+1,k) = 0.0_r8
             corners(1:np  ,1:np  ,k) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
+#endif
           enddo
         endif
         kptr = kbeg - 1 + 3*nlev
@@ -699,6 +713,28 @@ contains
           desc = elem(ie)%desc
           
           kptr = kbeg - 1 + 3*nlev
+#ifdef phl_thread
+          call edgeDGVunpack(edge3,corners(:,:,kbeg:kend,ie),kblk,kptr,ie)
+          do k=kbeg,kend
+            corners(:,:,k,ie) = corners(:,:,k,ie)/dt !note: array size is 0:np+1
+            do j=1,np
+              do i=1,np
+                temp(i,j,k,ie) =  (elem(ie)%rspheremp(i,j)*elem(ie)%state%dp3d(i,j,k,nt) - temp(i,j,k,ie))/dt
+!                temp(i,j,k) =  temp(i,j,k)/dt
+              enddo
+            enddo
+            call distribute_flux_at_corners(cflux(:,:,:,ie), corners(:,:,k,ie), elem(ie)%desc%getmapP)
+
+            cflux(1,1,:,ie)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:,ie)
+            cflux(2,1,:,ie)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:,ie)
+            cflux(1,2,:,ie)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:,ie)
+            cflux(2,2,:,ie)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:,ie)
+            
+            call subcell_dss_fluxes(temp(:,:,k,ie), np, nc, elem(ie)%metdet,cflux(:,:,:,ie),tempflux(:,:,:,ie))
+            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                 rhypervis_subcycle*eta_ave_w*tempflux(:,:,:,ie)
+          end do
+#else
           call edgeDGVunpack(edge3,corners(:,:,kbeg:kend),kblk,kptr,ie)
           do k=kbeg,kend
             corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
@@ -722,6 +758,7 @@ contains
             elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                  rhypervis_subcycle*eta_ave_w*tempflux
           end do
+#endif
         endif
         
         ! apply inverse mass matrix, accumulate tendencies
