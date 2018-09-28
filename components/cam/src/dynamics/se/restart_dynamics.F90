@@ -53,7 +53,7 @@ use edge_mod,         only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuff
 use edgetype_mod,     only: EdgeBuffer_t
 use bndry_mod,        only: bndry_exchange
 
-use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+use fvm_control_volume_mod, only: fvm_struct
 
 implicit none
 private
@@ -242,7 +242,7 @@ subroutine write_restart_dynamics(File, dyn_out)
             ii = 1
             do j = 1, nc
                do i = 1, nc
-                  buf3d(ii,k,ie) = fvm(ie)%dp_fvm(i,j,k,n0_fvm)
+                  buf3d(ii,k,ie) = fvm(ie)%dp_fvm(i,j,k)
                   ii = ii + 1
                end do
             end do
@@ -257,7 +257,7 @@ subroutine write_restart_dynamics(File, dyn_out)
                ii = 1
                do j = 1, nc
                   do i = 1, nc
-                     buf3d(ii,k,ie) = fvm(ie)%c(i,j,k,m,n0_fvm)
+                     buf3d(ii,k,ie) = fvm(ie)%c(i,j,k,m)
                      ii = ii + 1
                   end do
                end do
@@ -657,7 +657,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
             ii = 1
             do j = 1, nc
                do i = 1, nc
-                  fvm(ie)%dp_fvm(i,j,k,n0_fvm) = var3d_fvm(ii,k,ie)
+                  fvm(ie)%dp_fvm(i,j,k) = var3d_fvm(ii,k,ie)
                   ii = ii + 1
                end do
             end do
@@ -674,7 +674,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
                ii = 1
                do j = 1, nc
                   do i = 1, nc
-                     fvm(ie)%c(i,j,k,m,n0_fvm) = var3d_fvm(ii,k,ie)
+                     fvm(ie)%c(i,j,k,m) = var3d_fvm(ii,k,ie)
                      ii = ii + 1
                   end do
                end do
@@ -686,7 +686,7 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
       do ie = 1, nelemd
          do j = 1, nc
             do i = 1, nc
-               fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:,n0_fvm)) +  ptop_ref
+               fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  ptop_ref
             end do
          end do
       end do

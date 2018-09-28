@@ -927,7 +927,7 @@ contains
   end subroutine advance_hypervis_scalar
 
 
-  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,n_fvm,nets,nete)
+  subroutine vertical_remap(hybrid,elem,fvm,hvcoord,dt,np1,np1_qdp,nets,nete)
     ! This routine is called at the end of the vertically Lagrangian
     ! dynamics step to compute the vertical flux needed to get back
     ! to reference eta levels
@@ -952,7 +952,6 @@ contains
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
-    integer,          intent(in)    :: n_fvm
     !
     real (kind=r8) :: cdp(1:nc,1:nc,nlev,ntrac)
     real (kind=r8) :: dpc(nc,nc,nlev),dpc_star(nc,nc,nlev)
@@ -1119,17 +1118,17 @@ contains
             do k=1,nlev
               dpc(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
                    (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
-              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac,n_fvm)*fvm(ie)%dp_fvm(i,j,k,n_fvm)
+              cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac)*fvm(ie)%dp_fvm(i,j,k)
             end do
           end do
         end do
-        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
+        dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)
         call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
         do k=1,nlev
           do j=1,nc
             do i=1,nc
-              fvm(ie)%dp_fvm(i,j,k,n_fvm)=dpc(i,j,k)
-              fvm(ie)%c(i,j,k,1:ntrac,n_fvm)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
+              fvm(ie)%dp_fvm(i,j,k)=dpc(i,j,k)
+              fvm(ie)%c(i,j,k,1:ntrac)=cdp(i,j,k,1:ntrac)/dpc(i,j,k)
             end do
           end do
         end do

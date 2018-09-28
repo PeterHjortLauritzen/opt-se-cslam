@@ -39,7 +39,7 @@ use hybrid_mod,             only: hybrid_t
 use dimensions_mod,         only: nelemd, nlev, np, npsq, ntrac, nc, fv_nphys, &
                                   qsize
 use element_mod,            only: element_t, elem_state_t
-use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+use fvm_control_volume_mod, only: fvm_struct
 use time_mod,               only: nsplit
 use edge_mod,               only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,           only: EdgeBuffer_t
@@ -868,7 +868,7 @@ subroutine dyn_run(dyn_state)
                do j = 1, nc
                   do i = 1, nc
                      dyn_state%fvm(ie)%fc(i,j,k,m) = dyn_state%fvm(ie)%fc(i,j,k,m)* &
-                        rec2dt!*dyn_state%fvm(ie)%dp_fvm(i,j,k,n0_fvm)
+                        rec2dt!*dyn_state%fvm(ie)%dp_fvm(i,j,k)
                   end do
                end do
             end do
@@ -914,7 +914,7 @@ subroutine dyn_run(dyn_state)
    end if
 
    call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
-   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,n0_fvm, 'dBF')
+   call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
    ! output vars on CSLAM fvm grid
@@ -1505,12 +1505,9 @@ subroutine read_inidat(dyn_in)
          end if
          call dyn2fvm_mass_vars(elem(ie)%state%dp3d(:,:,:,1),elem(ie)%state%psdry(:,:),&
             qtmp(:,:,:,ie,1:lsize),&
-            dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:,1),dyn_in%fvm(ie)%psC(1:nc,1:nc),&
-            dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:lsize,1),&
+            dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:),dyn_in%fvm(ie)%psC(1:nc,1:nc),&
+            dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:lsize),&
             lsize,elem(ie)%metdet,dyn_in%fvm(ie)%inv_se_area_sphere(1:nc,1:nc))
-
-         dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:,2)    = dyn_in%fvm(ie)%dp_fvm(1:nc,1:nc,:,1)
-         dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:ntrac,2) = dyn_in%fvm(ie)%c(1:nc,1:nc,:,1:ntrac,1)
       end do
 
       if (analytic_ic_active()) then
@@ -1559,8 +1556,7 @@ subroutine read_inidat(dyn_in)
                indx = 1
                do j = 1, nc
                   do i = 1, nc
-                     dyn_in%fvm(ie)%c(i,j,:,m_cnst,1) = dbuf4(indx, :, ie, m_cnst)
-                     dyn_in%fvm(ie)%c(i,j,:,m_cnst,2) = dbuf4(indx, :, ie, m_cnst)
+                     dyn_in%fvm(ie)%c(i,j,:,m_cnst) = dbuf4(indx, :, ie, m_cnst)
                      indx = indx + 1
                   end do
                end do
@@ -2120,13 +2116,13 @@ subroutine write_dyn_vars(dyn_out)
 
    if (ntrac > 0) then
       do ie = 1, nelemd
-         call outfld('dp_fvm', RESHAPE(dyn_out%fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm), &
+         call outfld('dp_fvm', RESHAPE(dyn_out%fvm(ie)%dp_fvm(1:nc,1:nc,:), &
                                        (/nc*nc,nlev/)), nc*nc, ie)
          call outfld('PSDRY_fvm', RESHAPE(dyn_out%fvm(ie)%psc(1:nc,1:nc), &
                                           (/nc*nc/)), nc*nc, ie)
          do m = 1, ntrac
             tfname = trim(cnst_name(m))//'_fvm'
-            call outfld(tfname, RESHAPE(dyn_out%fvm(ie)%c(1:nc,1:nc,:,m,n0_fvm), &
+            call outfld(tfname, RESHAPE(dyn_out%fvm(ie)%c(1:nc,1:nc,:,m), &
                                         (/nc*nc,nlev/)), nc*nc, ie)
 
             tfname = 'F'//trim(cnst_name(m))//'_fvm'

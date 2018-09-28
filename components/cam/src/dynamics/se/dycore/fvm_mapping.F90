@@ -20,7 +20,6 @@ contains
     use dimensions_mod,         only: np, nc,nlev
     use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc
     use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx
-    use fvm_control_volume_mod, only: n0_fvm
     use hybrid_mod,             only: hybrid_t
     use cam_abortutils,         only: endrun
 
@@ -96,7 +95,7 @@ contains
 !#ifdef just_map_q
 !           do m_cnst=1,ntrac
 !             call phys2fvm_scalar(ie,fvm(ie),fld_phys(:,:,k,4+m_cnst,ie),fvm(ie)%fc(:,:,k,m_cnst))
-!             fvm(ie)%fc(:,:,k,m_cnst) = fvm(ie)%fc(:,:,k,m_cnst)*fvm(ie)%dp_fvm(1:nc,1:nc,k,n0_fvm)
+!             fvm(ie)%fc(:,:,k,m_cnst) = fvm(ie)%fc(:,:,k,m_cnst)*fvm(ie)%dp_fvm(1:nc,1:nc,k)
 !           end do
 !#else
            call phys2fvm(ie,k,fvm(ie),fld_phys(:,:,k,4,ie),&
@@ -114,8 +113,8 @@ contains
          !
          ! compute cslam updated Q value         
          do m_cnst=1,qsize_condensate_loading
-           fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst),n0_fvm)+&
-                fvm(ie)%fc(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm)
+           fld_fvm(1:nc,1:nc,:,m_cnst,ie) = fvm(ie)%c(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))+&
+                fvm(ie)%fc(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:)
          enddo
        end do
        llimiter(1:nflds) = .false.
@@ -159,7 +158,7 @@ contains
          do m_cnst=1,qsize_condensate_loading
            do k=1,nlev
              fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst+3,ie) = &
-                  fvm(ie)%c(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst),n0_fvm)+&
+                  fvm(ie)%c(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst))+&
                   fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst))
            end do
          end do
@@ -182,7 +181,7 @@ contains
                 qgll(:,:,:,m_cnst,ie)
          end do
          do m_cnst = 1,ntrac
-           fvm(ie)%fc(1:nc,1:nc,:,m_cnst) = fvm(ie)%fc_phys(1:nc,1:nc,:,m_cnst)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm)
+           fvm(ie)%fc(1:nc,1:nc,:,m_cnst) = fvm(ie)%fc_phys(1:nc,1:nc,:,m_cnst)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
          end do
        end do
      end if
@@ -953,7 +952,6 @@ contains
 
   subroutine phys2fvm(ie,k,fvm,dp_phys,fq_phys,fqdp_fvm,num_trac)
     use dimensions_mod, only: nhc_phys,fv_nphys,nc,nhc
-    use fvm_control_volume_mod, only: n0_fvm
 
     integer              , intent(in)           :: ie,k
     type(fvm_struct)     , intent(inout)        :: fvm
@@ -985,15 +983,15 @@ contains
     do m_cnst=1,num_trac
       fqdp_fvm(:,:,m_cnst) = 0.0_r8
       call get_q_overlap(ie,k,fvm,max_overlap,air_mass_overlap,&
-           fvm%c(1-nhc:nc+nhc,1-nhc:nc+nhc,k,m_cnst,n0_fvm),q_overlap,num_overlap,1,&
+           fvm%c(1-nhc:nc+nhc,1-nhc:nc+nhc,k,m_cnst),q_overlap,num_overlap,1,&
            dp_phys(1:fv_nphys,1:fv_nphys),q_phys)
 !      call get_fq_overlap(ie,fvm,fvm%dp_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,k),&
       call get_fq_overlap(ie,fvm,dp_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys),&
            fq_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,m_cnst),max_overlap,&
            phys_air_mass_overlap,fq_phys_overlap,1)
 
-      min_patch = MINVAL(fvm%c(0:nc+1,0:nc+1,k,m_cnst,n0_fvm))
-      max_patch = MAXVAL(fvm%c(0:nc+1,0:nc+1,k,m_cnst,n0_fvm))
+      min_patch = MINVAL(fvm%c(0:nc+1,0:nc+1,k,m_cnst))
+      max_patch = MAXVAL(fvm%c(0:nc+1,0:nc+1,k,m_cnst))
       do jy=1,fv_nphys
         do jx=1,fv_nphys
           num = num_overlap(jx,jy)
@@ -1082,7 +1080,6 @@ contains
 
   subroutine get_dp_overlap(ie,k,fvm,max_overlap,air_mass_overlap,num_overlap,overlap_idx,overlap_area)
     use dimensions_mod, only: nc,nhr,nhc,fv_nphys
-    use fvm_control_volume_mod, only: n0_fvm
     !
     ! weights must be initialized in fvm2phys_init before using these functions
     !
@@ -1104,7 +1101,7 @@ contains
     logical                              :: llimiter(1)
     integer                              :: h,jx,jy,jdx,jdy,idx
     llimiter=.false.
-    call get_fvm_recons(fvm,fvm%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,k,n0_fvm),recons,1,llimiter)
+    call get_fvm_recons(fvm,fvm%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,k),recons,1,llimiter)
 
     num_overlap(:,:) = 0
     do h=1,jall_fvm2phys(ie)
@@ -1116,13 +1113,12 @@ contains
        overlap_area(idx,jx,jy)  = weights_all_fvm2phys(h,1,ie)
        air_mass_overlap(idx,jx,jy) = SUM(weights_all_fvm2phys(h,:,ie)*recons(:,jdx,jdy))
 !#ifdef PCoM
-!       air_mass_overlap(idx,jx,jy) = fvm%dp_fvm(jdx,jdy,k,n0_fvm)*weights_all_fvm2phys(h,1,ie)!PCoM
+!       air_mass_overlap(idx,jx,jy) = fvm%dp_fvm(jdx,jdy,k)*weights_all_fvm2phys(h,1,ie)!PCoM
 !#endif
     end do
   end subroutine get_dp_overlap
 
   subroutine get_q_overlap(ie,k,fvm,max_overlap,air_mass_overlap,q_fvm,q_overlap,num_overlap,num_trac,dp_phys,q_phys)
-    use fvm_control_volume_mod, only: n0_fvm
     use dimensions_mod, only: nc,nhr,nhc,fv_nphys
     !
     ! weights must be initialized in fvm2phys_init before using these functions
@@ -1163,7 +1159,7 @@ contains
        num_overlap(jx,jy) = num_overlap(jx,jy)+1
        idx = num_overlap(jx,jy)
 
-       dp_fvm_tmp = fvm%dp_fvm(jdx,jdy,k,n0_fvm)
+       dp_fvm_tmp = fvm%dp_fvm(jdx,jdy,k)
        dp_tmp = air_mass_overlap(idx,jx,jy)-dp_fvm_tmp*weights_all_fvm2phys(h,1,ie)
        do m_cnst=1,num_trac
          tmp = dp_fvm_tmp*SUM(weights_all_fvm2phys(h,:,ie)*recons_q(:,jdx,jdy,m_cnst))+q_fvm(jdx,jdy,m_cnst)*dp_tmp

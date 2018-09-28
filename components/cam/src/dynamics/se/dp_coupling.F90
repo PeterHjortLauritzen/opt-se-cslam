@@ -53,7 +53,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    use dyn_comp,               only: frontgf_idx, frontga_idx
    use phys_control,           only: use_gw_front, use_gw_front_igw
    use hycoef,                 only: hyai, ps0
-   use fvm_control_volume_mod, only: n0_fvm
    use fvm_mapping,            only: dyn2phys_vector, dyn2phys_all_vars
    use time_mod,               only: timelevel_qdp
    use control_mod,            only: qsplit
@@ -156,8 +155,8 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
                elem(ie)%state%T(:,:,:,tl_f),                                   &
                elem(ie)%derived%omega(:,:,:),                                  &
                ! fvm state
-               dyn_out%fvm(ie)%dp_fvm(:,:,:,n0_fvm),                           &
-               dyn_out%fvm(ie)%c(:,:,:,1:ntrac,n0_fvm),                        &
+               dyn_out%fvm(ie)%dp_fvm(:,:,:),                           &
+               dyn_out%fvm(ie)%c(:,:,:,1:ntrac),                        &
                pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
                !
                hyai(1)*ps0,                                                    &

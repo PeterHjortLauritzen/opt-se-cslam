@@ -269,7 +269,7 @@ contains
   end subroutine test_mapping_output_mapped_tendencies
 
   subroutine test_mapping_overwrite_dyn_state(elem,fvm)
-    use fvm_control_volume_mod, only: fvm_struct,n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     use constituents,           only: cnst_name
     use dimensions_mod,         only: nc,nhc
     use hybrid_mod,             only: get_loop_ranges, hybrid_t,config_thread_region
@@ -332,7 +332,7 @@ contains
     !
     ! do boundary exchange (this call should be indentical to call in prim_driver)
     !
-!    call fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)!xxx nhr chould be a function of interp_method
+!    call fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,nhc,1,nlev)!xxx nhr chould be a function of interp_method
 #endif
   end subroutine test_mapping_overwrite_dyn_state
 

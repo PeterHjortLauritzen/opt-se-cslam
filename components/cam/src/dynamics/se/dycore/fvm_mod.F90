@@ -35,7 +35,7 @@ module fvm_mod
 
 contains
 
-  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,tnp0,ndepth,kmin,kmax)
+  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
     use dimensions_mod, only: nc, ntrac
     implicit none
@@ -45,7 +45,7 @@ contains
 
     type (edgeBuffer_t)                      :: cellghostbuf
 
-    integer,intent(in)                        :: nets,nete,tnp0,ndepth,kmin,kmax
+    integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
     integer                                   :: ie,i1,i2,num_levels
     !
     !
@@ -58,8 +58,8 @@ contains
     call t_stopf('FVM:initbuf')
     call t_startf('FVM:pack')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0)   ,num_levels*ntrac,num_levels,ie)
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
+       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:)   ,num_levels*ntrac,num_levels,ie)
     end do
     call t_stopf('FVM:pack')
     call t_startf('FVM:Communication')
@@ -68,8 +68,8 @@ contains
     !-----------------------------------------------------------------------------------!                        
     call t_startf('FVM:Unpack')
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0),   num_levels*ntrac,num_levels,ie)
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
+       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   num_levels*ntrac,num_levels,ie)
     enddo
     call t_stopf('FVM:Unpack')
     call t_startf('FVM:freebuf')
@@ -77,7 +77,7 @@ contains
     call t_stopf('FVM:freebuf')
   end subroutine fill_halo_fvm_noprealloc
 
-subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,ndepth,kmin,kmax)
+subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
     use dimensions_mod, only: nc, ntrac
     implicit none
@@ -87,7 +87,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     type (hybrid_t),intent(in)                :: hybrid
 
 
-    integer,intent(in)                        :: nets,nete,tnp0,ndepth,kmin,kmax
+    integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
     integer                                   :: ie,i1,i2,num_levels
     !
     !
@@ -98,8 +98,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     num_levels = kmax-kmin+1
     call t_startf('FVM:pack')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0) ,num_levels*ntrac,num_levels,ie)
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
+       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:) ,num_levels*ntrac,num_levels,ie)
     end do
     call t_stopf('FVM:pack')
     call t_startf('FVM:Communication')
@@ -108,8 +108,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     !-----------------------------------------------------------------------------------!                        
     call t_startf('FVM:Unpack')
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax,tnp0),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:,tnp0), num_levels*ntrac,num_levels,ie)
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
+       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:), num_levels*ntrac,num_levels,ie)
     enddo
     call t_stopf('FVM:Unpack')
 
@@ -240,17 +240,13 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     use cam_logfile,            only: iulog
     use control_mod,            only: tracer_transport_type, rsplit
     use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-    use fvm_control_volume_mod, only: n0_fvm, np1_fvm, fvm_supercycling
+    use fvm_control_volume_mod, only: fvm_supercycling
     use dimensions_mod,         only: qsize, qsize_d
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
 
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
-    !
-    ! initialize fvm time-levels
-    !
-    n0_fvm  = 1
-    np1_fvm = 2
+
     !
     if (ntrac>0) then
       if (par%masterproc) then 
@@ -379,7 +375,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
   
   ! initialization that can be done in threaded regions
   subroutine fvm_init2(elem,fvm,hybrid,nets,nete)
-    use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary,n0_fvm,np1_fvm
+    use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
     use hycoef,                 only: hyai, hybi, ps0
@@ -399,9 +395,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       end do
     end do
 
-    n0_fvm  = 1 !in case no cslam but physgrid
-    np1_fvm = 2
-    
     call compute_ghost_corner_orientation(hybrid,elem,nets,nete)
     ! run some tests:
     !    call test_ghost(hybrid,elem,nets,nete)
@@ -436,7 +429,6 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
     use dimensions_mod  ,       only: fv_nphys
     use dimensions_mod,         only: nlev, nc, nhe, nlev, ntrac, ntrac_d,nhc
     use coordinate_systems_mod, only: cartesian2D_t,cartesian3D_t
-    use fvm_control_volume_mod, only: n0_fvm
     use coordinate_systems_mod, only: cubedsphere2cart, cart2cubedsphere
     implicit none
     type (element_t) ,intent(inout)  :: elem(:)
@@ -458,7 +450,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,tnp0,nd
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)
+      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,nhc,1,nlev)
     end if
 
 

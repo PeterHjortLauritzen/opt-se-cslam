@@ -25,10 +25,10 @@ module fvm_control_volume_mod
 
   type, public :: fvm_struct
     ! fvm tracer mixing ratio: (kg/kg)
-    real (kind=r8) :: c(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac_d,2)
+    real (kind=r8) :: c(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,ntrac_d)
     real (kind=r8) :: se_flux(1-nhe:nc+nhe,1-nhe:nc+nhe,4,nlev) 
 
-    real (kind=r8) :: dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev,2)
+    real (kind=r8) :: dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev)
     real (kind=r8) :: dp_ref(nlev)
     real (kind=r8) :: dp_ref_inverse(nlev)
     real (kind=r8) :: psc(nc,nc)
@@ -162,7 +162,6 @@ module fvm_control_volume_mod
   
   real (kind=r8),parameter, public   :: bignum = 1.0D20
 
-  integer, public            :: n0_fvm, np1_fvm !fvm time-levels
   integer, parameter, public :: fvm_supercycling = 3
 
 contains

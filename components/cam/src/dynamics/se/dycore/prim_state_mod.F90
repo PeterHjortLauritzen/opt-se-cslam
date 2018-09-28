@@ -19,7 +19,6 @@ module prim_state_mod
 CONTAINS
 
   subroutine prim_printstate(elem, tl,hybrid,nets,nete, fvm)
-    use fvm_control_volume_mod, only: n0_fvm
     use dimensions_mod,         only: ntrac
     use constituents,           only: cnst_name
     use dimensions_mod,         only: qsize_condensate_loading,qsize_condensate_loading_idx_gll
@@ -63,12 +62,12 @@ CONTAINS
     ! moist surface pressure
     if (ntrac>0) then
       do ie=nets,nete
-        moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm),DIM=3)
+        moist_ps_fvm(:,:,ie)=SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         do q=1,qsize_condensate_loading
           m_cnst = qsize_condensate_loading_idx(q)
           do k=1,nlev
             moist_ps_fvm(:,:,ie) = moist_ps_fvm(:,:,ie)+&
-                 fvm(ie)%dp_fvm(1:nc,1:nc,k,n0_fvm)*fvm(ie)%c(1:nc,1:nc,k,m_cnst,n0_fvm)
+                 fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%c(1:nc,1:nc,k,m_cnst)
           end do
         end do
       enddo
@@ -128,8 +127,8 @@ CONTAINS
       max_local(ie,4)  = MAXVAL(elem(ie)%derived%Omega(:,:,:))
 
       if (ntrac>0) then
-        min_local(ie,5) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm),DIM=3))
-        max_local(ie,5) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm),DIM=3))
+        min_local(ie,5) = MINVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
+        max_local(ie,5) = MAXVAL(SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3))
         min_local(ie,6) = MINVAL(moist_ps_fvm(:,:,ie))
         max_local(ie,6) = MINVAL(moist_ps_fvm(:,:,ie))
         min_local(ie,7)  = MINVAL(elem(ie)%state%psdry(:,:))
@@ -138,8 +137,8 @@ CONTAINS
         max_local(ie,8)  = MAXVAL(moist_ps(:,:,ie))      
         do q=1,statediag_numtrac
           varname(nm+q)         = TRIM(cnst_name(q))
-          min_local(ie,nm+q) = MINVAL(fvm(ie)%c(1:nc,1:nc,:,q,n0_fvm))
-          max_local(ie,nm+q) = MAXVAL(fvm(ie)%c(1:nc,1:nc,:,q,n0_fvm))
+          min_local(ie,nm+q) = MINVAL(fvm(ie)%c(1:nc,1:nc,:,q))
+          max_local(ie,nm+q) = MAXVAL(fvm(ie)%c(1:nc,1:nc,:,q))
         end do
       else
         min_local(ie,5)  = MINVAL(elem(ie)%state%psdry(:,:))
@@ -196,10 +195,10 @@ CONTAINS
     if (ntrac>0) then
       do ie=nets,nete
         do q=1,statediag_numtrac
-          tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%c(1:nc,1:nc,:,q,n0_fvm)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm),DIM=3)
+          tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%c(1:nc,1:nc,:,q)*fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         end do
         q=statediag_numtrac+1
-        tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:,n0_fvm),DIM=3)
+        tmp_fvm(:,:,q,ie) = SUM(fvm(ie)%dp_fvm(1:nc,1:nc,:),DIM=3)
         q=statediag_numtrac+2
         tmp_fvm(:,:,q,ie) = moist_ps_fvm(:,:,ie)
       end do

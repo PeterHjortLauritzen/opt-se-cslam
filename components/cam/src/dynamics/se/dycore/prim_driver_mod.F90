@@ -32,7 +32,7 @@ contains
     use control_mod,            only: runtype, &
          topology, rsplit, qsplit, rk_stage_user,         &
          nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q
-    use fvm_control_volume_mod, only: fvm_supercycling,n0_fvm
+    use fvm_control_volume_mod, only: fvm_supercycling
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: test_global_integral, print_cfl
@@ -102,7 +102,7 @@ contains
       !
       ! need to fill halo for dp_coupling for fvm2phys mapping
       !
-      call fill_halo_fvm(ghostBufQnhc,elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc,elem,fvm,hybrid,nets,nete,nhc,1,nlev)
     end if
     !$OMP BARRIER
     if (hybrid%ithr==0) then
@@ -193,7 +193,6 @@ contains
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate
     use prim_advection_mod,     only: vertical_remap, deriv
-    use fvm_control_volume_mod, only: n0_fvm
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc
@@ -238,7 +237,7 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,n0_fvm,'dAF')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,nets,nete,nsubstep)
 
 
@@ -260,10 +259,10 @@ contains
     call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
     ! note: time level update for fvm tracers takes place in fvm_mod
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,n0_fvm,'dAD')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
 
     call t_startf('vertical_remap')
-    call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,n0_fvm,nets,nete)
+    call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
 
 
@@ -271,7 +270,7 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     ! time step is complete.
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,n0_fvm,'dAR')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
     if (nsubstep==nsplit) &
          call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
@@ -309,7 +308,7 @@ contains
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(ghostBufQnhc, elem,fvm,hybrid,nets,nete,n0_fvm,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc, elem,fvm,hybrid,nets,nete,nhc,1,nlev)
     end if
 
   end subroutine prim_run_subcycle

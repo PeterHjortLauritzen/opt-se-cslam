@@ -61,7 +61,7 @@ contains
     use dimensions_mod,    only: qsize_condensate_loading,qsize_condensate_loading_idx_gll
     use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
     use physconst,         only: cpair
-    use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     
     implicit none
     
@@ -309,7 +309,7 @@ contains
     use element_mod,            only: element_t
     use time_mod,               only: nsplit
     use control_mod,            only: ftype
-    use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
@@ -417,16 +417,16 @@ contains
           do k = 1, nlev
             do j = 1, nc
               do i = 1, nc
-                tmp = dt_local_tracer_fvm*fvm(ie)%fc(i,j,k,q)/fvm(ie)%dp_fvm(i,j,k,n0_fvm)
+                tmp = dt_local_tracer_fvm*fvm(ie)%fc(i,j,k,q)/fvm(ie)%dp_fvm(i,j,k)
                 v1 = tmp
-                if (fvm(ie)%c(i,j,k,q,n0_fvm) + v1 < 0 .and. v1<0) then
-                  if (fvm(ie)%c(i,j,k,q,n0_fvm) < 0 ) then
+                if (fvm(ie)%c(i,j,k,q) + v1 < 0 .and. v1<0) then
+                  if (fvm(ie)%c(i,j,k,q) < 0 ) then
                     v1 = 0  ! C already negative, dont make it more so
                   else
-                    v1 = -fvm(ie)%c(i,j,k,q,n0_fvm)
+                    v1 = -fvm(ie)%c(i,j,k,q)
                   end if
                 end if
-                fvm(ie)%c(i,j,k,q,n0_fvm) = fvm(ie)%c(i,j,k,q,n0_fvm)+ v1
+                fvm(ie)%c(i,j,k,q) = fvm(ie)%c(i,j,k,q)+ v1
                 ftmp_fvm(i,j,k,q,ie) = tmp-v1 !Only used for diagnostics!
               end do
             end do
@@ -441,8 +441,8 @@ contains
     else
       call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
     end if
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,n0_fvm,'dBD')
-    if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,n0_fvm,'p2d')
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'dBD')
+    if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (ntrac>0) deallocate(ftmp_fvm)
   end subroutine applyCAMforcing
 
@@ -469,7 +469,7 @@ contains
     use bndry_mod,      only: bndry_exchange
     use viscosity_mod,  only: biharmonic_wk_dp3d
     use hybvcoord_mod,  only: hvcoord_t
-    use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     
     type (hybrid_t)    , intent(in)   :: hybrid
     type (element_t)   , intent(inout), target :: elem(:)
@@ -527,7 +527,7 @@ contains
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     do ic=1,hypervis_subcycle
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,n0_fvm,'dBH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
       
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
       if (hypervis_on_plevs.and.nu_p>0) then
@@ -761,7 +761,7 @@ contains
         enddo
       end do
       
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,n0_fvm,'dCH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dCH')
       do ie=nets,nete
         !$omp parallel do num_threads(vert_num_threads), private(k,i,j,v1,v2,heating)
         do k=kbeg,kend
@@ -779,7 +779,7 @@ contains
         enddo
       enddo
       
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,n0_fvm,'dAH')
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
     enddo
 
     call t_stopf('advance_hypervis_dp')
@@ -1318,7 +1318,7 @@ contains
    end subroutine distribute_flux_at_corners
 
 
-  subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,n_fvm,outfld_name_suffix)
+  subroutine calc_tot_energy_dynamics(elem,fvm,nets,nete,tl,tl_qdp,outfld_name_suffix)
     use dimensions_mod,         only: npsq,nlev,np,lcp_moist,nc,ntrac
     use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_cp
     use dimensions_mod,         only: qsize_condensate_loading_idx_gll
@@ -1327,12 +1327,12 @@ contains
     use cam_history,            only: outfld, hist_fld_active
     use constituents,           only: cnst_get_ind
     use hycoef,                 only: hyai, ps0
-    use fvm_control_volume_mod, only: fvm_struct, n0_fvm
+    use fvm_control_volume_mod, only: fvm_struct
     !------------------------------Arguments--------------------------------
     
     type (element_t) , intent(in) :: elem(:)
     type(fvm_struct) , intent(in) :: fvm(:)
-    integer          , intent(in) :: tl, tl_qdp,nets,nete,n_fvm
+    integer          , intent(in) :: tl, tl_qdp,nets,nete
     character*(*)    , intent(in) :: outfld_name_suffix ! suffix for "outfld" names
     
     !---------------------------Local storage-------------------------------
@@ -1442,19 +1442,19 @@ contains
         !
         if (ntrac>0) then
           if (ixwv>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixwv,n_fvm)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
+            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixwv)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
             call util_function(cdp_fvm,nc,nlev,name_out3,ie)
           end if
           if (ixcldliq>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldliq,n_fvm)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
+            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldliq)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
             call util_function(cdp_fvm,nc,nlev,name_out4,ie)
           end if
           if (ixcldice>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldice,n_fvm)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm) 
+            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixcldice)*fvm(ie)%dp_fvm(1:nc,1:nc,:) 
             call util_function(cdp_fvm,nc,nlev,name_out5,ie)
           end if
           if (ixtt>0) then
-            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt,n_fvm)*fvm(ie)%dp_fvm(1:nc,1:nc,:,n_fvm)
+            cdp_fvm = fvm(ie)%c(1:nc,1:nc,:,ixtt)*fvm(ie)%dp_fvm(1:nc,1:nc,:)
             call util_function(cdp_fvm,nc,nlev,name_out6,ie)                        
           end if
         else
