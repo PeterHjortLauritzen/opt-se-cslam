@@ -69,7 +69,6 @@ module dimensions_mod
   integer, parameter, public :: ubc = nc+nhc
   logical, public            :: large_Courant_incr
 
-
   integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
   integer, public :: fvm_supercycling    
   integer, public :: fvm_supercycling_jet
