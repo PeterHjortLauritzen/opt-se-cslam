@@ -1,5 +1,5 @@
-#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
-#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
+!#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
+!#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
 module fvm_mapping
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: irecons_tracer
