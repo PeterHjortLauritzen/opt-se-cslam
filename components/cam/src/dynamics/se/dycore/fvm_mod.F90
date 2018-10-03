@@ -394,7 +394,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
-    use dimensions_mod,         only: nhc_phys, fv_nphys
+    use dimensions_mod,         only: nhc_phys, fv_nphys, qsize_condensate_loading
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
@@ -438,9 +438,13 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
     call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc)
     call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
-
+    !
+    ! preallocate buffers for physics-dynamics coupling
+    !
     if (fv_nphys.ne.nc) then
-      call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys)
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys)
+    else
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys)
     end if
     
     if (fvm_supercycling.ne.fvm_supercycling_jet) then
