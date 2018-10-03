@@ -113,6 +113,8 @@ subroutine dyn_readnl(NLFileName)
    use dimensions_mod, only: qsize_d, ne, npart
    use dimensions_mod, only: qsize_condensate_loading, lcp_moist
    use dimensions_mod, only: hypervis_on_plevs,large_Courant_incr
+   use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
+   use dimensions_mod, only: kmin_jet, kmax_jet
    use params_mod,     only: SFCURVE
    use parallel_mod,   only: initmpi
    use thread_mod,     only: initomp, max_num_threads
@@ -158,6 +160,10 @@ subroutine dyn_readnl(NLFileName)
    logical                      :: se_lcp_moist
    logical                      :: se_write_restart_unstruct
    logical                      :: se_large_Courant_incr
+   integer                      :: se_fvm_supercycling
+   integer                      :: se_fvm_supercycling_jet
+   integer                      :: se_kmin_jet
+   integer                      :: se_kmax_jet
 
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
@@ -198,7 +204,11 @@ subroutine dyn_readnl(NLFileName)
       se_hypervis_on_plevs,        &
       se_lcp_moist,                &
       se_write_restart_unstruct,   &
-      se_large_Courant_incr
+      se_large_Courant_incr,       &
+      se_fvm_supercycling,         &
+      se_fvm_supercycling_jet,     &
+      se_kmin_jet,                 &
+      se_kmax_jet      
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -267,6 +277,10 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_lcp_moist, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_write_restart_unstruct, 1, mpi_logical, masterprocid, mpicom, ierr)
    call MPI_bcast(se_large_Courant_incr, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_fvm_supercycling, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_fvm_supercycling_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -353,7 +367,11 @@ subroutine dyn_readnl(NLFileName)
    hypervis_on_plevs        = se_hypervis_on_plevs
    lcp_moist                = se_lcp_moist
    large_Courant_incr       = se_large_Courant_incr
-
+   fvm_supercycling         = se_fvm_supercycling
+   fvm_supercycling_jet     = se_fvm_supercycling_jet
+   kmin_jet                 = se_kmin_jet
+   kmax_jet                 = se_kmax_jet   
+   
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -408,6 +426,9 @@ subroutine dyn_readnl(NLFileName)
 
    write_restart_unstruct = se_write_restart_unstruct
 
+   if (se_kmin_jet<0            ) kmin_jet             = 1
+   if (se_kmax_jet<0            ) kmax_jet             = nlev
+   
    if (masterproc) then
       write(iulog, '(a,i0)') 'dyn_readnl: se_ftype               = ',ftype
       write(iulog, '(a,i0)') 'dyn_readnl: se_statediag_numtrac   = ',statediag_numtrac
@@ -438,6 +459,10 @@ subroutine dyn_readnl(NLFileName)
          write(iulog, *) 'FYI: hypervis_on_plevs=T and nu_p=0'
       end if
       write(iulog, '(a,l4)') 'dyn_readnl: lcp_moist = ',lcp_moist
+      write(iulog, '(a,i0)') 'dyn_readnl: se_fvm_supercycling     = ',fvm_supercycling
+      write(iulog, '(a,i0)') 'dyn_readnl: se_fvm_supercycling_jet = ',fvm_supercycling_jet
+      write(iulog, '(a,i0)') 'dyn_readnl: se_kmin_jet             = ',kmin_jet
+      write(iulog, '(a,i0)') 'dyn_readnl: se_kmax_jet             = ',kmax_jet
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
@@ -694,12 +719,10 @@ subroutine dyn_init(dyn_in, dyn_out)
        press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
        ptop  = hvcoord%hyai(1)*hvcoord%ps0
        nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-!       nu_scale_top(k) = MAX(nu_scale_top(k),1.0_r8)
        if (masterproc) then
          if (nu_scale_top(k)>1.0_r8) write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
        end if
       end do
-
 !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
       hybrid = config_thread_region(par,'horizontal')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)

@@ -70,8 +70,10 @@ module dimensions_mod
   logical, public            :: large_Courant_incr
 
 
-  integer, parameter, public :: kmin_jet=1,kmax_jet=PLEV !min and max level index for the jet
-
+  integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
+  integer, public :: fvm_supercycling    
+  integer, public :: fvm_supercycling_jet
+  
   real(r8), public :: nu_scale_top(PLEV)!scaling of viscosity in sopnge layer (initialized in dyn_comp)
 
   integer,  public :: nhc_phys 

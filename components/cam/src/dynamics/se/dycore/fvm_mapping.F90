@@ -1,5 +1,5 @@
-!#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
-!#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
+#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
+#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
 module fvm_mapping
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: irecons_tracer
@@ -242,9 +242,10 @@ contains
     use dimensions_mod, only: nhc_phys, fv_nphys
     use hybrid_mod    , only: hybrid_t
     use bndry_mod     , only: ghost_exchange
-    use edge_mod      , only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
+!    use edge_mod      , only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
+    use edge_mod      , only: ghostpack, ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-
+    use fvm_mod       , only: ghostBufPG
 
     integer              , intent(in)    :: nets,nete,num_lev,num_flds
     real (kind=r8), intent(inout) :: fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,num_lev,num_flds, &
@@ -262,17 +263,16 @@ contains
     !*********************************************
     !
     call t_startf('fvm:fill_halo_phys')
-    call t_startf('fvm:fill_halo_phys:initbuffer')
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_lev*num_flds,nhc_phys,fv_nphys)
-    call t_stopf('fvm:fill_halo_phys:initbuffer')
+!    call t_startf('fvm:fill_halo_phys:initbuffer')
+!    call initghostbuffer(hybrid%par,ghotBufPG,elem,num_lev*num_flds,nhc_phys,fv_nphys)
+!    call t_stopf('fvm:fill_halo_phys:initbuffer')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
+       call ghostpack(ghostBufPG, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,ghostBufPG)
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
+       call ghostunpack(ghostBufPG, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
-    call freeghostbuffer(cellghostbuf)
     !
     call t_stopf('fvm:fill_halo_phys')
   end subroutine fill_halo_phys
@@ -906,11 +906,11 @@ contains
        jy  = weights_lgr_index_all_fvm2phys(h,2,ie)
        jdx = weights_eul_index_all_fvm2phys(h,1,ie)
        jdy = weights_eul_index_all_fvm2phys(h,2,ie)
-!#ifdef PCoM
-!       dp_phys(jx,jy) = dp_phys(jx,jy) + weights_all_fvm2phys(h,1,ie)*dp_fvm(jdx,jdy,1)
-!#else
+#ifdef PCoM
+       dp_phys(jx,jy) = dp_phys(jx,jy) + weights_all_fvm2phys(h,1,ie)*dp_fvm(jdx,jdy,1)
+#else
        dp_phys(jx,jy) = dp_phys(jx,jy) + SUM(weights_all_fvm2phys(h,:,ie)*recons(:,jdx,jdy,1))
-!#endif
+#endif
     end do
 
     llimiter_q=.true.
@@ -930,14 +930,14 @@ contains
        recons_tmp(1) = recons(1,jdx,jdy,1)-dp_fvm(jdx,jdy,1)
        dp_tmp = SUM(weights_all_fvm2phys(h,:,ie)*recons_tmp(:))!does not need to be recomputed for each tracer
        do m_cnst=1,num_trac
-!#ifdef PCoM
-!         q_phys(jx,jy,m_cnst) = q_phys(jx,jy,m_cnst) + &
-!              weights_all_fvm2phys(h,1,ie)*q_fvm(jdx,jdy,m_cnst)*dp_fvm(jdx,jdy,1)
-!#else
+#ifdef PCoM
+         q_phys(jx,jy,m_cnst) = q_phys(jx,jy,m_cnst) + &
+              weights_all_fvm2phys(h,1,ie)*q_fvm(jdx,jdy,m_cnst)*dp_fvm(jdx,jdy,1)
+#else
          q_phys(jx,jy,m_cnst) = q_phys(jx,jy,m_cnst) + &
               dp_fvm(jdx,jdy,1)*SUM(weights_all_fvm2phys(h,:,ie)*recons_q(:,jdx,jdy,m_cnst))+&
               q_fvm(jdx,jdy,m_cnst) *dp_tmp
-!#endif
+#endif
        end do
     end do
     !
@@ -1005,7 +1005,7 @@ contains
           do h=1,num
             jdx = overlap_idx(1,h,jx,jy); jdy = overlap_idx(2,h,jx,jy)
             q_prev = q_overlap(h,jx,jy)   
-!#ifndef skip_high_order_fq_map
+#ifndef skip_high_order_fq_map
             q_overlap(h,jx,jy) = q_overlap(h,jx,jy)+fq_phys_overlap(h,jx,jy)
             if (fq_phys_overlap(h,jx,jy)<0.0_r8) then
               q_overlap(h,jx,jy) = MAX(q_overlap(h,jx,jy),phys_cdp_min(jx,jy))            
@@ -1015,7 +1015,7 @@ contains
             mass_forcing = (q_overlap(h,jx,jy)-q_prev)*air_mass_overlap(h,jx,jy)
             mass_forcing_phys = mass_forcing_phys + mass_forcing
             fqdp_fvm(jdx,jdy,m_cnst) = fqdp_fvm(jdx,jdy,m_cnst)+mass_forcing 
-!#endif
+#endif
             !
             ! prepare for mass fixing algorithm
             !       
@@ -1112,9 +1112,9 @@ contains
        overlap_idx(1,idx,jx,jy) = jdx; overlap_idx(2,idx,jx,jy) = jdy;
        overlap_area(idx,jx,jy)  = weights_all_fvm2phys(h,1,ie)
        air_mass_overlap(idx,jx,jy) = SUM(weights_all_fvm2phys(h,:,ie)*recons(:,jdx,jdy))
-!#ifdef PCoM
-!       air_mass_overlap(idx,jx,jy) = fvm%dp_fvm(jdx,jdy,k)*weights_all_fvm2phys(h,1,ie)!PCoM
-!#endif
+#ifdef PCoM
+       air_mass_overlap(idx,jx,jy) = fvm%dp_fvm(jdx,jdy,k)*weights_all_fvm2phys(h,1,ie)!PCoM
+#endif
     end do
   end subroutine get_dp_overlap
 
@@ -1163,9 +1163,9 @@ contains
        dp_tmp = air_mass_overlap(idx,jx,jy)-dp_fvm_tmp*weights_all_fvm2phys(h,1,ie)
        do m_cnst=1,num_trac
          tmp = dp_fvm_tmp*SUM(weights_all_fvm2phys(h,:,ie)*recons_q(:,jdx,jdy,m_cnst))+q_fvm(jdx,jdy,m_cnst)*dp_tmp
-!#ifdef PCoM
-!         tmp = dp_fvm_tmp*weights_all_fvm2phys(h,1,ie)*q_fvm(jdx,jdy,m_cnst)
-!#endif
+#ifdef PCoM
+         tmp = dp_fvm_tmp*weights_all_fvm2phys(h,1,ie)*q_fvm(jdx,jdy,m_cnst)
+#endif
          q_overlap(idx,jx,jy,m_cnst) = tmp/air_mass_overlap(idx,jx,jy)
          q_phys(jx,jy,m_cnst) = q_phys(jx,jy,m_cnst)+tmp
        end do
@@ -1216,11 +1216,11 @@ contains
        jy  = weights_lgr_index_all_phys2fvm(h,2,ie)
        jdx = weights_eul_index_all_phys2fvm(h,1,ie)
        jdy = weights_eul_index_all_phys2fvm(h,2,ie)
-!#ifdef PCoM
-!       dp_fvm(jx,jy) = dp_fvm(jx,jy) + weights_all_phys2fvm(h,1,ie)*dp_phys(jdx,jdy,1)
-!#else
+#ifdef PCoM
+       dp_fvm(jx,jy) = dp_fvm(jx,jy) + weights_all_phys2fvm(h,1,ie)*dp_phys(jdx,jdy,1)
+#else
        dp_fvm(jx,jy) = dp_fvm(jx,jy) + SUM(weights_all_phys2fvm(h,:,ie)*recons(:,jdx,jdy,1))
-!#endif
+#endif
     end do
 
     llimiter_q=.true.
@@ -1240,14 +1240,14 @@ contains
        recons_tmp(1) = recons(1,jdx,jdy,1)-dp_phys(jdx,jdy,1)
        dp_tmp = SUM(weights_all_phys2fvm(h,:,ie)*recons_tmp(:))
        do m_cnst=1,num_trac
-!#ifdef PCoM
-!         dp_q_fvm(jx,jy,m_cnst) = dp_q_fvm(jx,jy,m_cnst) + &
-!              dp_phys(jdx,jdy,1)*weights_all_phys2fvm(h,1,ie)*q_phys(jdx,jdy,m_cnst)
-!#else
+#ifdef PCoM
+         dp_q_fvm(jx,jy,m_cnst) = dp_q_fvm(jx,jy,m_cnst) + &
+              dp_phys(jdx,jdy,1)*weights_all_phys2fvm(h,1,ie)*q_phys(jdx,jdy,m_cnst)
+#else
          dp_q_fvm(jx,jy,m_cnst) = dp_q_fvm(jx,jy,m_cnst) + &
               dp_phys(jdx,jdy,1)*SUM(weights_all_phys2fvm(h,:,ie)*recons_q(:,jdx,jdy,m_cnst))+&
               q_phys(jdx,jdy,m_cnst) *dp_tmp
-!#endif
+#endif
        end do
     end do
     !
@@ -1292,11 +1292,11 @@ contains
 
        num_overlap(jx,jy) = num_overlap(jx,jy)+1
        idx = num_overlap(jx,jy)
-!#ifdef PCoM
-!       phys_air_mass_overlap(idx,jx,jy) = weights_all_fvm2phys(h,1,ie)*dp_phys(jx,jy,1)
-!#else
+#ifdef PCoM
+       phys_air_mass_overlap(idx,jx,jy) = weights_all_fvm2phys(h,1,ie)*dp_phys(jx,jy,1)
+#else
        phys_air_mass_overlap(idx,jx,jy) = SUM(weights_all_fvm2phys(h,:,ie)*recons(:,jx,jy,1))
-!#endif
+#endif
     end do
 
     llimiter_q=.true.
@@ -1315,13 +1315,13 @@ contains
        dp_phys_tmp = dp_phys(jx,jy,1)
        dp_tmp = phys_air_mass_overlap(idx,jx,jy)-dp_phys_tmp*weights_all_fvm2phys(h,1,ie)
        do m_cnst=1,num_trac
-!#ifdef PCoM
-!         fq_phys_overlap(idx,jx,jy,m_cnst) = dp_phys_tmp*weights_all_fvm2phys(h,1,ie)*fq_phys(jx,jy,m_cnst)
-!#else
+#ifdef PCoM
+         fq_phys_overlap(idx,jx,jy,m_cnst) = dp_phys_tmp*weights_all_fvm2phys(h,1,ie)*fq_phys(jx,jy,m_cnst)
+#else
          fq_phys_overlap(idx,jx,jy,m_cnst) = &
               (dp_phys_tmp*SUM(weights_all_fvm2phys(h,:,ie)*recons_q(:,jx,jy,m_cnst))+&
               fq_phys(jx,jy,m_cnst)*dp_tmp)/phys_air_mass_overlap(idx,jx,jy)
-!#endif
+#endif
        end do
      end do
   end subroutine get_fq_overlap
