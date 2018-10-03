@@ -122,9 +122,10 @@ contains
   ! fvm driver
   !
   subroutine Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-        dt,tl,nets,nete)
+        dt,tl,nets,nete,ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     use fvm_consistent_se_cslam, only: run_consistent_se_cslam
     use control_mod,             only: tracer_transport_type,TRACERTRANSPORT_CONSISTENT_SE_FVM
+    use edgetype_mod,            only: edgebuffer_t    
     implicit none
     type (element_t), intent(inout)   :: elem(:)
     type (fvm_struct), intent(inout)  :: fvm(:)
@@ -133,7 +134,8 @@ contains
     type (TimeLevel_t)                :: tl
 
     real(kind=r8) , intent(in) :: dt
-    integer,intent(in)                :: nets,nete
+    integer,intent(in)                :: nets,nete,kmin,kmax
+    type (EdgeBuffer_t), intent(inout):: ghostbufQnhc,ghostBufQ1, ghostBufFlux
 
     call t_barrierf('sync_prim_advec_tracers_fvm', hybrid%par%comm)
     call t_startf('prim_advec_tracers_fvm')
@@ -145,7 +147,8 @@ contains
     !
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) then
-       call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord)
+      call run_consistent_se_cslam(elem,fvm,hybrid,dt,tl,nets,nete,hvcoord,&
+           ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     else
       call endrun('Bad tracer_transport_type in Prim_Advec_Tracers_fvm')
     end if

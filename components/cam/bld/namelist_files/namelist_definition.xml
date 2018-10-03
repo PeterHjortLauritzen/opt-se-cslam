@@ -6224,6 +6224,27 @@ Default: TRUE
        group="dyn_se_inparm" valid_values="" >
   If TRUE the CSLAM algorithm will work for Courant number larger than 1 with
   a low-order increment for tracer mass more than one grid cell width away
+</entry>
+
+<entry id="se_fvm_supercycling" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Number of CSLAM time-steps relative to SE time-steps
+</entry>
+
+<entry id="se_fvm_supercycling_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+  Number of CSLAM time-steps relative to SE time-steps in the jet region
+  specified by kmin_jet and kmax_jet
+</entry>
+
+<entry id="se_kmin_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+   Min level index where CSLAM runs with se_fvm_supercycling_jet
+</entry>
+
+<entry id="se_kmax_jet" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+   Max level index where CSLAM runs with se_fvm_supercycling_jet
 </entry>  
 
 

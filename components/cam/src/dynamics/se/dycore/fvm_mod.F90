@@ -24,6 +24,8 @@ module fvm_mod
   
   type (EdgeBuffer_t)                         :: edgeveloc
   type (EdgeBuffer_t), public  :: ghostBufQnhc, ghostBufQ1, ghostBufFlux
+  type (EdgeBuffer_t), public  :: ghostBufQnhcJet, ghostBufFluxJet
+  type (EdgeBuffer_t), public  :: ghostBufPG
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -240,10 +242,10 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use cam_logfile,            only: iulog
     use control_mod,            only: tracer_transport_type, rsplit
     use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-    use fvm_control_volume_mod, only: fvm_supercycling
     use dimensions_mod,         only: qsize, qsize_d
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
-
+    
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
 
@@ -268,12 +270,21 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       if (ntrac>ntrac_d) &
            call endrun("PARAMETER ERROR for fvm: ntrac > ntrac_d")
 
-            if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
+      if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
         if (par%masterproc) then
           write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
           write(iulog,*)'with this choice of rsplit =',rsplit
           write(iulog,*)'rsplit must be a multiple of fvm_supercycling=',fvm_supercycling
           call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling<>0")
+        end if
+      endif
+
+      if (qsize>0.and.mod(rsplit,fvm_supercycling_jet).ne.0) then
+        if (par%masterproc) then
+          write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
+          write(iulog,*)'with this choice of rsplit =',rsplit
+          write(iulog,*)'rsplit must be a multiple of fvm_supercycling_jet=',fvm_supercycling_jet
+          call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling_jet<>0")
         end if
       endif
       
@@ -365,8 +376,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "element nhe has to be 1, only this is available now! STOP!"
       endif
       call endrun("stopping")
-    end if
-    
+    end if   
   end subroutine fvm_init1
   
   
@@ -378,13 +388,16 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
+    use dimensions_mod,         only: nhc_phys, fv_nphys
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
+    use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
     
     type (fvm_struct) :: fvm(:)
     type (element_t)  :: elem(:)
     type (hybrid_t)   :: hybrid
-    integer           :: ie,nets,nete,k
+    integer           :: ie,nets,nete,k,klev
     real(kind=r8)     :: one(np,np)
 
     one = 1.0_r8
@@ -419,6 +432,19 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
     call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc)
     call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
+
+    if (fv_nphys.ne.nc) then
+      call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys)
+    end if
+    
+    if (fvm_supercycling.ne.fvm_supercycling_jet) then
+      !
+      ! buffers for running different fvm time-steps in the jet region
+      !
+      klev = kmax_jet-kmin_jet+1
+      call initghostbuffer(hybrid%par,ghostBufQnhcJet,elem,klev*(ntrac+1),nhc,nc)
+      call initghostbuffer(hybrid%par,ghostBufFluxJet,elem,4*klev,nhe,nc)
+    end if
 
   end subroutine fvm_init2
 
