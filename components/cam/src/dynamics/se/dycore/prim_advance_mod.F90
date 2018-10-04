@@ -518,7 +518,6 @@ contains
     real (kind=r8)                     :: rhypervis_subcycle
     real (kind=r8)                     :: nu_ratio1
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
-    call t_startf('advance_hypervis_dp')
 
     if (hypervis_on_plevs.and.nu_p>0)&
          call calc_dp3d_reference(elem,edge3p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
