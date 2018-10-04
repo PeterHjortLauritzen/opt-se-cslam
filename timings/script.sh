@@ -1,12 +1,22 @@
 #! /bin/bash
-opt="seDycoreOverview"
-#files=("0.model_timing_stats  " "B.model_timing_stats  " "C.model_timing_stats     ")
+#opt="Overview"
+#opt="seDycoreOverview"
+opt="cslam"
+#files=("FV.model_timing_stats"  "nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats")
 files=("nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "model_timing_stats  " "A.model_timing_stats  ")
 #
 # general overview: physics, dynamics, coupling, I/O
 #
 if [ $opt == "Overview" ]; then
-names=("CPL:ATM_RUN" "a:phys_run1" "a:phys_run2" "\"a:dyn_run\"" "a:d_p_coupling" "a:p_d_coupling" "wshist" "cam_write_restart" "cam_run4_wrapup")
+names=("CPL:ATM_RUN      " 
+       "a:phys_run1      " 
+       "a:phys_run2      " 
+       "\"a:dyn_run\"    " 
+       "a:d_p_coupling   " 
+       "a:p_d_coupling   " 
+       "wshist           " 
+       "cam_write_restart" 
+       "cam_run4_wrapup  ")
 fi
 #
 # SE dycore breakdown
