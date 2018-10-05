@@ -1,9 +1,9 @@
 #! /bin/bash
 #opt="Overview"
-#opt="seDycoreOverview"
-opt="cslam"
+opt="seDycoreOverview"
+#opt="cslam"
 #files=("FV.model_timing_stats"  "nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats")
-files=("nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "model_timing_stats  " "A.model_timing_stats  ")
+files=("nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4_cisl_opt_only.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype2.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4.model_timing_stats"  "nsplit4_rsplit6_qsplit1_superc6_superc-jet6_LCI_tsteptype4.model_timing_stats" "FV.model_timing_stats  ")
 #
 # general overview: physics, dynamics, coupling, I/O
 #
