@@ -109,9 +109,7 @@ contains
     !                 (K&G 2nd order method has CFL=4. tiny CFL improvement not worth 2nd order)
     !
 
-#ifdef _OPENMP
     call omp_set_nested(.true.)
-#endif
 
     ! default weights for computing mean dynamics fluxes
     eta_ave_w = 1_r8/qsplit
@@ -297,9 +295,7 @@ contains
     end do
     tevolve=tevolve+dt
 
-#ifdef _OPENMP
     call omp_set_nested(.false.)
-#endif
 
     call t_stopf('prim_advance_exp')
   end subroutine prim_advance_exp
