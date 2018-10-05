@@ -13,6 +13,7 @@ module fvm_mod
   use edge_mod,               only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
   use edgetype_mod,           only: edgebuffer_t
   use bndry_mod,              only: ghost_exchange
+  use thread_mod,             only: horz_num_threads
 
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -416,9 +417,9 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     enddo
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
-    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc)
-    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
+    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
 
   end subroutine fvm_init2
 

@@ -462,10 +462,10 @@ contains
       call t_startf('prim_advec_tracers_remap')
       region_num_threads = tracer_num_threads
       call omp_set_nested(.true.)
-!JMD      !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-!JMD     hybridnew = config_thread_region(hybrid,'tracer')
-      call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybrid,dt_q,tl,nets,nete)
-!JMD      !$OMP END PARALLEL
+      !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
+      hybridnew = config_thread_region(hybrid,'tracer')
+      call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
+      !$OMP END PARALLEL
       call omp_set_nested(.false.)
       call t_stopf('prim_advec_tracers_remap')
     end if

@@ -14,7 +14,7 @@ module prim_advance_mod
   
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
 
-  type (EdgeBuffer_t) :: edge3p1
+  type (EdgeBuffer_t) :: edge3p1,edgeOmega
   real (kind=r8), allocatable :: ur_weights(:)
   
 contains
@@ -34,8 +34,9 @@ contains
     else
       call initEdgeBuffer(par,edge3p1,elem,4*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     end if
+    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=1)
     
-    allocate(ur_weights(qsplit))
+    if(.not. allocated(ur_weights)) allocate(ur_weights(qsplit))
     ur_weights(:)=0.0_r8
     
     if(mod(qsplit,2).NE.0)then
@@ -125,7 +126,7 @@ contains
       
       do ie=nets,nete
         ! subcycling code uses a mean flux to advect tracers
- !$omp parallel do num_threads (vert_num_threads) private(dp)
+ !$omp parallel do num_threads (vert_num_threads) private(k,dp)
         do k=1,nlev
           dp(:,:) = elem(ie)%state%dp3d(:,:,k,tl%n0)
           
@@ -374,13 +375,13 @@ contains
       elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
            dt_local*elem(ie)%derived%FM(:,:,:,:)
       
-#if (defined COLUMN_OPENMP)
-    !$omp parallel do private(q,k,i,j,v1)
-#endif
       !
       ! tracers
       !
       if (qsize>0.and.dt_local_tracer>0) then
+#if (defined COLUMN_OPENMP)
+    !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
+#endif
         do q=1,qsize
           do k=1,nlev
             do j=1,np
@@ -587,7 +588,7 @@ contains
             enddo
           enddo
         endif
-        !$omp parallel do num_threads(vert_num_threads) private(lap_t,lap_dp,lap_v,laplace_fluxes,nu_scale_top)
+        !$omp parallel do num_threads(vert_num_threads) private(lap_t,lap_dp,lap_v,laplace_fluxes,nu_ratio1,i,j,k)
         do k=kbeg,kend
            ! advace in time.
            ! note: DSS commutes with time stepping, so we can time advance and then DSS.
@@ -758,7 +759,7 @@ contains
         endif
         
         ! apply inverse mass matrix, accumulate tendencies
-        !$omp parallel do num_threads(vert_num_threads)
+        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
         do k=kbeg,kend
           !OMP_COLLAPSE_SIMD
           !DIR_VECTOR_ALIGNED
@@ -1010,10 +1011,6 @@ contains
        enddo
        
        ! compute T_v for timelevel n0
-#if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j)
-#endif
-       !
        ! ====================================================
        ! Compute Hydrostatic equation, modelled after CCM-3
        ! ====================================================
@@ -1021,11 +1018,11 @@ contains
        ! ====================================================
        ! Compute omega_full
        ! ====================================================
-#if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i,ckk,term)
-#endif
        ckk         = 0.5_r8
        suml(:,:  ) = 0
+#if (defined COLUMN_OPENMP)
+!$omp parallel do num_threads(vert_num_threads) private(k,j,i,ckk,term)
+#endif
        do k=1,nlev
         !OMP_COLLAPSE_SIMD 
         !DIR_VECTOR_ALIGNED
@@ -1042,7 +1039,7 @@ contains
          end do
        end do       
 #if (defined COLUMN_OPENMP)
-     !$omp parallel do private(k)
+     !$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev  !  Loop index added (AAM)
          elem(ie)%derived%omega(:,:,k) = &
@@ -1052,7 +1049,7 @@ contains
        ! Compute phi + kinetic energy term: 10*nv*nv Flops
        ! ==============================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,i,j,v1,v2,E,Ephi,vtemp,vgrad_T,gpterm,glnps1,glnps2)
+!$omp parallel do num_threads(vert_num_threads) private(k,i,j,v1,v2,E,Ephi,vtemp,vgrad_T,gpterm,glnps1,glnps2)
 #endif
        vertloop: do k=1,nlev
         !OMP_COLLAPSE_SIMD 
@@ -1155,7 +1152,7 @@ contains
        ! apply mass matrix
        ! =========================================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev
          !OMP_COLLAPSE_SIMD 
@@ -1255,7 +1252,7 @@ contains
        ! ====================================================
        
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev
          !OMP_COLLAPSE_SIMD 
@@ -1275,11 +1272,6 @@ contains
        enddo
      end do
 
-#ifdef DEBUGOMP
-#if (defined HORIZ_OPENMP)
-!$OMP BARRIER
-#endif
-#endif
      call t_stopf('compute_and_apply_rhs')
      call t_adj_detailf(-1)
    end subroutine compute_and_apply_rhs
@@ -1651,10 +1643,10 @@ contains
      real (kind=r8) :: divdp_full(np,np,nlev),vdp_full(np,np,2)
      real(kind=r8)  :: Otens(np,np  ,nlev,nets:nete), dt_hyper, sum_water(np,np,nlev)
 
-     type (EdgeBuffer_t) :: edgeOmega
+     ! type (EdgeBuffer_t) :: edgeOmega
      logical, parameter  :: del4omega = .true.
 
-     call initEdgeBuffer(hybrid%par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+     !call initEdgeBuffer(hybrid%par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
      do ie=nets,nete
         sum_water(:,:,:) = 1.0_r8
         do nq=1,qsize_condensate_loading
@@ -1741,7 +1733,7 @@ contains
          end do
        end do
      end if
-     call FreeEdgeBuffer(edgeOmega)
+     !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
 
   subroutine calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)

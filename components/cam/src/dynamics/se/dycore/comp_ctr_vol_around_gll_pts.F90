@@ -443,7 +443,7 @@ call pio_write_darray(file, grid_corner_lon_id, iodesc, gwork, status)
       allocate(cvlist(ie)%face_no(nv_max,np,np))
     end do
 
-    call initedgebuffer(par,edge1,elem,3,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initedgebuffer(par,edge1,elem,3,bndry_type=HME_BNDRY_P2P, nthreads=1)
     call initGhostBuffer3D(ghost_buf,3,np+1,1)
   end subroutine InitControlVolumesData
 

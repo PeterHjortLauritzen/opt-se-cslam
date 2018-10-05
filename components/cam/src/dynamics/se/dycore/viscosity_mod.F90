@@ -105,7 +105,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   endif
   
   do ie=nets,nete    
-!$omp parallel do num_threads(vert_num_threads) private(tmp)
+!$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp=elem(ie)%state%T(:,:,k,nt) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ttens(:,:,k,ie),var_coef=var_coef1)
@@ -140,7 +140,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     end if    
   enddo
   
-  call bndry_exchange(hybrid,edge3)
+  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_dp3d')
   
   do ie=nets,nete
 !CLEAN    rspheremv     => elem(ie)%rspheremp(:,:)
@@ -171,7 +171,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     endif
     
     ! apply inverse mass matrix, then apply laplace again
-!$omp parallel do num_threads(vert_num_threads) private(v,tmp,tmp2)
+    !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2)
     do k=kbeg,kend
 !CLEAN      tmp(:,:)=rspheremv(:,:)*ttens(:,:,k,ie)
       tmp(:,:)=elem(ie)%rspheremp(:,:)*ttens(:,:,k,ie)
@@ -228,7 +228,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
   
   do ie=nets,nete
     
-!$omp parallel do num_threads(vert_num_threads) private(tmp)
+    !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp=elem(ie)%derived%omega(:,:,k) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ptens(:,:,k,ie),var_coef=var_coef1)
@@ -238,7 +238,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
     call edgeVpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
   enddo
   
-  call bndry_exchange(hybrid,edge3)
+  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_omega')
   
   do ie=nets,nete
     rspheremv     => elem(ie)%rspheremp(:,:)
@@ -247,7 +247,7 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
     call edgeVunpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     ! apply inverse mass matrix, then apply laplace again
-!$omp parallel do num_threads(vert_num_threads) private(v,tmp,tmp2)
+    !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp(:,:)=rspheremv(:,:)*ptens(:,:,k,ie)
       call laplace_sphere_wk(tmp,deriv,elem(ie),ptens(:,:,k,ie),var_coef=.true.)
@@ -338,7 +338,7 @@ integer :: k,i,j,ie,ic,kptr,nthread_save
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       zeta(:,:,k,ie)=zeta(:,:,k,ie)*elem(ie)%spheremp(:,:)
@@ -346,12 +346,12 @@ do ie=nets,nete
    kptr=0
    call edgeVpack(edge1, zeta(1,1,1,ie),nlev,kptr,ie)
 enddo
-call bndry_exchange(hybrid,edge1)
+call bndry_exchange(hybrid,edge1,location='make_C0')
 do ie=nets,nete
    kptr=0
    call edgeVunpack(edge1, zeta(1,1,1,ie),nlev,kptr, ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       zeta(:,:,k,ie)=zeta(:,:,k,ie)*elem(ie)%rspheremp(:,:)
@@ -404,7 +404,7 @@ real (kind=r8), dimension(np,np,nlev,nets:nete) :: v1
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       v(:,:,1,k,ie)=v(:,:,1,k,ie)*elem(ie)%spheremp(:,:)
@@ -413,12 +413,12 @@ do ie=nets,nete
    kptr=0
    call edgeVpack(edge2, v(1,1,1,1,ie),2*nlev,kptr,ie)
 enddo
-call bndry_exchange(hybrid,edge2)
+call bndry_exchange(hybrid,edge2,location='make_C0_vector')
 do ie=nets,nete
    kptr=0
    call edgeVunpack(edge2, v(1,1,1,1,ie),2*nlev,kptr,ie)
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
    do k=1,nlev
       v(:,:,1,k,ie)=v(:,:,1,k,ie)*elem(ie)%rspheremp(:,:)
@@ -590,7 +590,7 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
 do k=1,nlev
    call vorticity_sphere(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),zeta(:,:,k,ie))
@@ -625,7 +625,7 @@ call derivinit(deriv)
 
 do ie=nets,nete
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k)
+!$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
 do k=1,nlev
    call divergence_sphere(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),zeta(:,:,k,ie))
