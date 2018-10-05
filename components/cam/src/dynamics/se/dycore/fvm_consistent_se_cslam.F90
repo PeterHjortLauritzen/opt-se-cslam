@@ -78,7 +78,7 @@ contains
     call t_stopf('fvm:before_Qnhc')
 
     call t_startf('fvm:ghost_exchange:Qnhc')
-    call ghost_exchange(hybrid,ghostbufQnhc)
+    call ghost_exchange(hybrid,ghostbufQnhc,location='ghostbufQnhc')
     call t_stopf('fvm:ghost_exchange:Qnhc')
 
     call t_startf('fvm:orthogonal_swept_areas')
@@ -91,7 +91,7 @@ contains
       end do
       call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
     end do
-    call ghost_exchange(hybrid,ghostBufFlux)
+    call ghost_exchange(hybrid,ghostBufFlux,location='ghostBufFlux')
     do ie=nets,nete
       call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
       do k=1,nlev

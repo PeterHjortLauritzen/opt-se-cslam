@@ -669,7 +669,7 @@ subroutine neighbor_minmax(hybrid,edgeMinMax,nets,nete,min_neigh,max_neigh)
       enddo
    enddo
    
-   call bndry_exchange(hybrid,edgeMinMax)
+   call bndry_exchange(hybrid,edgeMinMax,location='neighbor_minmax')
 
    do ie=nets,nete
       do q=qbeg,qend
@@ -713,7 +713,7 @@ subroutine neighbor_minmax_start(hybrid,edgeMinMax,nets,nete,min_neigh,max_neigh
       enddo
    enddo
 
-   call bndry_exchange_start(hybrid,edgeMinMax)
+   call bndry_exchange_start(hybrid,edgeMinMax,location='neighbor_minmax_start')
 
 end subroutine neighbor_minmax_start
 
@@ -733,7 +733,7 @@ subroutine neighbor_minmax_finish(hybrid,edgeMinMax,nets,nete,min_neigh,max_neig
    kblk = kend - kbeg + 1   ! calculate size of the block of vertical levels
    qblk = qend - qbeg + 1   ! calculate size of the block of tracers
 
-   call bndry_exchange_finish(hybrid,edgeMinMax)
+   call bndry_exchange_finish(hybrid,edgeMinMax,location='neighbor_minmax_finish')
 
    do ie=nets,nete
       do q=qbeg, qend

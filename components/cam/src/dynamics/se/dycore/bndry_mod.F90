@@ -781,7 +781,7 @@ contains
      kptr=0
      call ghostpack(ghostbuf_cv, cin(:,:,:,ie),nlev,kptr,ie)
   end do
-  call ghost_exchange(hybrid,ghostbuf_cv)
+  call ghost_exchange(hybrid,ghostbuf_cv,location='compute_ghost_corner_orientation')
   do ie=nets,nete
      kptr=0
      call ghostunpack(ghostbuf_cv, cout(:,:,:,ie),nlev,kptr,ie)

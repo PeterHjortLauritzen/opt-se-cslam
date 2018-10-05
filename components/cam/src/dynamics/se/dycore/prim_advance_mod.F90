@@ -1208,7 +1208,7 @@ contains
      ! Insert communications here: for shared memory, just a single
      ! sync is required
      ! =============================================================
-     call bndry_exchange(hybrid,edge3p1)
+     call bndry_exchange(hybrid,edge3p1,location='edge3p1')
      do ie=nets,nete
        ! ===========================================================
        ! Unpack the edges for vgrad_T and v tendencies...
@@ -1709,7 +1709,7 @@ contains
        kptr=0
        call edgeVpack(edgeOmega, elem(ie)%derived%omega(:,:,:),nlev,kptr, ie)
      end do
-     call bndry_exchange(hybrid,edgeOmega)
+     call bndry_exchange(hybrid,edgeOmega,location='compute_omega #1')
      do ie=nets,nete
        kptr=0
        call edgeVunpack(edgeOmega, elem(ie)%derived%omega(:,:,:),nlev,kptr, ie)
@@ -1732,7 +1732,7 @@ contains
            kptr=0
            call edgeVpack(edgeOmega,Otens(:,:,:,ie) ,nlev,kptr, ie)
          end do
-         call bndry_exchange(hybrid,edgeOmega)
+         call bndry_exchange(hybrid,edgeOmega,location='compute_omega #2')
          do ie=nets,nete
            kptr=0
            call edgeVunpack(edgeOmega, Otens(:,:,:,ie),nlev,kptr, ie)
@@ -1865,7 +1865,7 @@ contains
       call edgeVpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
     end do ! ie=nets,nete
 
-    call bndry_exchange(hybrid,edge3)
+    call bndry_exchange(hybrid,edge3,location='calc_dp3d_reference')
 
     do ie=nets,nete
       kptr = 0
