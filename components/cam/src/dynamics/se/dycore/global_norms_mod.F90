@@ -508,7 +508,7 @@ contains
             zeta(:,:,ie) = elem(ie)%variable_hyperviscosity(:,:)*elem(ie)%spheremp(:,:)
             call edgeVpack(edgebuf,zeta(1,1,ie),1,0,ie)
         end do
-        call bndry_exchange(hybrid,edgebuf)
+        call bndry_exchange(hybrid,edgebuf,location='print_cfl #1')
         do ie=nets,nete
             call edgeVunpack(edgebuf,zeta(1,1,ie),1,0,ie)
             elem(ie)%variable_hyperviscosity(:,:) = zeta(:,:,ie)*elem(ie)%rspheremp(:,:)
@@ -562,7 +562,7 @@ contains
       call edgeVpack(edgebuf,zeta(1,1,ie),1,0,ie)
     end do
 
-    call bndry_exchange(hybrid,edgebuf)
+    call bndry_exchange(hybrid,edgebuf,location='print_cfl #2')
     do ie=nets,nete
       call edgeVunpack(edgebuf,zeta(1,1,ie),1,0,ie)
           elem(ie)%tensorVisc(:,:,rowind,colind) = zeta(:,:,ie)*elem(ie)%rspheremp(:,:)

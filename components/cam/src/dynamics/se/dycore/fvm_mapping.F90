@@ -220,7 +220,7 @@ contains
        call ghostpack(ghostBufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
 !    call ghost_exchange(hybrid,cellghostbuf)
-    call ghost_exchange(hybrid,ghostbufQnhc)
+    call ghost_exchange(hybrid,ghostbufQnhc,location='fvm2dyn')
     do ie=nets,nete
 !       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
        call ghostunpack(ghostbufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
@@ -268,7 +268,7 @@ contains
     do ie=nets,nete
        call ghostpack(cellghostbuf, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_phys')
     do ie=nets,nete
        call ghostunpack(cellghostbuf, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
