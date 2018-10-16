@@ -246,6 +246,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
     use dimensions_mod,         only: large_Courant_incr
+    use dimensions_mod,         only: kmin_jet,kmax_jet
     
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
@@ -269,6 +270,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       !
       ! PARAMETER ERROR CHECKING
       !
+      if (kmin_jet>kmax_jet) &
+           call endrun("PARAMETER ERROR for fvm: kmin_jet must be < kmax_jet")
       if (ntrac>ntrac_d) &
            call endrun("PARAMETER ERROR for fvm: ntrac > ntrac_d")
 
@@ -436,7 +439,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
     call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc)
+    klev = kmax_jet-kmin_jet+1
+    call initghostbuffer(hybrid%par,ghostBufQ1,elem,klev*(ntrac+1),1,nc)
     call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
     !
     ! preallocate buffers for physics-dynamics coupling

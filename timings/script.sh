@@ -2,8 +2,10 @@
 #opt="Overview"
 opt="seDycoreOverview"
 #opt="cslam"
-#files=("FV.model_timing_stats"  "nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats")
-files=("nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4_cisl_opt_only.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype2.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4.model_timing_stats"  "nsplit4_rsplit6_qsplit1_superc6_superc-jet6_LCI_tsteptype4.model_timing_stats" "FV.model_timing_stats  ")
+files=("FV.model_timing_stats"  "nsplit4_rsplit3_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "2" "3")
+#files=("nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4_cisl_opt_only.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc3_superc-jet3_tsteptype2.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4.model_timing_stats"  "nsplit4_rsplit6_qsplit1_superc6_superc-jet6_LCI_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats" "FV.model_timing_stats  ")
+#files=("nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4.model_timing_stats"  "nsplit4_rsplit6_qsplit1_superc6_superc-jet6_LCI_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats_new nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats_selective_zero" "1")
+files=("nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4.model_timing_stats"  "nsplit4_rsplit6_qsplit1_superc6_superc-jet6_LCI_tsteptype4.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats_new" "nsplit4_rsplit6_qsplit1_superc6_superc-jet3_kmin32_tsteptype4_PCoMlev123.model_timing_stats_selective_zero" "1" "2")
 #
 # general overview: physics, dynamics, coupling, I/O
 #

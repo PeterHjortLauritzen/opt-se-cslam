@@ -41,7 +41,7 @@ contains
     use bndry_mod             , only: ghost_exchange
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
-    use dimensions_mod        , only: large_Courant_incr
+    use dimensions_mod        , only: large_Courant_incr,irecons_tracer_lev
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -124,11 +124,12 @@ contains
              fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
-             recons_weights,fvm(ie)%vtx_cart&
+             recons_weights,fvm(ie)%vtx_cart,&
+             irecons_tracer_lev(k)&
              )
         call t_stopf('fvm:tracers_reconstruct')
         call t_startf('fvm:swept_flux')
-        call swept_flux(elem(ie),fvm(ie),k,ctracer)
+        call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k))
         call t_stopf('fvm:swept_flux')
       end do
     end do
@@ -203,13 +204,13 @@ contains
     call t_stopf('fvm:end_of_reconstruct_subroutine')
   end subroutine run_consistent_se_cslam
 
-  subroutine swept_flux(elem,fvm,ilev,ctracer)
+  subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual)
     use fvm_analytic_mod      , only: get_high_order_weights_over_areas
     use dimensions_mod, only : kmin_jet,kmax_jet
     implicit none
     type (element_t) , intent(in)   :: elem
     type (fvm_struct), intent(inout):: fvm
-    integer          , intent(in) :: ilev
+    integer          , intent(in) :: ilev, irecons_tracer_actual
     real (kind=r8), intent(inout) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
 
     integer, parameter :: num_area=5, num_sides=4, imin= 0, imax=nc+1
@@ -258,7 +259,7 @@ contains
     fvm%dp_fvm(1:nc,1:nc,ilev) = fvm%dp_fvm(1:nc,1:nc,ilev)*fvm%area_sphere
     do itr=1,ntrac
       fvm%c(1:nc,1:nc,ilev,itr) = fvm%c(1:nc,1:nc,ilev,itr)*fvm%dp_fvm(1:nc,1:nc,ilev)
-      do iw=1,irecons_tracer
+      do iw=1,irecons_tracer_actual
         ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)=ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)*&
              dp(1-nhe:nc+nhe,1-nhe:nc+nhe)
       end do
@@ -523,7 +524,7 @@ contains
                 ii=idx(1,iarea,i,j,iside); jj=idx(2,iarea,i,j,iside)
                 flux=flux+weights(1,iarea)*dp(ii,jj)
                 do itr=1,ntrac
-                  do iw=1,irecons_tracer
+                  do iw=1,irecons_tracer_actual
                     flux_tracer(itr) = flux_tracer(itr)+weights(iw,iarea)*ctracer(iw,ii,jj,itr)
                   end do
                 end do
