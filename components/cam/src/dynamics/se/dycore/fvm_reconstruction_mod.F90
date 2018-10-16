@@ -1,4 +1,4 @@
-!MODULE FVM_RECONSTRUCTION_MOD--------------------------------------CE-for FVM!
+  !MODULE FVM_RECONSTRUCTION_MOD--------------------------------------CE-for FVM!
   ! AUTHOR: CHRISTOPH ERATH, 17.October 2011                                  !
   ! This module contains everything  to do (ONLY) a CUBIC (3rd order) reconstruction  !
   !                                                                           !
@@ -41,8 +41,8 @@ contains
        spherecentroid,&
        recons_metrics,recons_metrics_integral,&
        rot_matrix,centroid_stretch,&
-       vertex_recons_weights,vtx_cart&
-       )
+       vertex_recons_weights,vtx_cart,&
+       irecons_actual_in)
     implicit none
     !
     ! dimension(1-nhc:nc+nhc, 1-nhc:nc+nhc)
@@ -50,7 +50,7 @@ contains
     integer, intent(in) :: irecons
     integer, intent(in) :: nlev_in, k_in
     integer, intent(in) :: ntrac_in,nc,nhe,nhr,nhc,nht,ns,nh,cubeboundary
-    real (kind=r8), dimension(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev_in,ntrac_in),         intent(inout) :: fcube
+    real (kind=r8), dimension(1-nhc:nc+nhc,1-nhc:nc+nhc,nlev_in,ntrac_in), intent(inout) :: fcube
     real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac_in), intent(out)   :: recons
     integer, intent(in) :: jx_min(3), jx_max(3), jy_min(3), jy_max(3)
     integer              , intent(in):: ibase(1-nh:nc+nh,1:nhr,2)
@@ -63,12 +63,22 @@ contains
     real (kind=r8), intent(in):: vertex_recons_weights(4,1:irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     real (kind=r8), intent(in):: vtx_cart(4,2,1-nhc:nc+nhc,1-nhc:nc+nhc)
 
-    logical, intent(in) :: llimiter(ntrac_in)
+    logical,           intent(in) :: llimiter(ntrac_in)
+    integer, optional, intent(in) :: irecons_actual_in
+
+    integer                       :: irecons_actual
 
     real (kind=r8), dimension(1-nht:nc+nht,1-nht:nc+nht,3) :: f
 
     integer :: i,j,in,h,itr
     integer,               dimension(2,3)                              :: jx,jy
+
+    if (present(irecons_actual_in)) then 
+       irecons_actual = irecons_actual_in
+    else
+       irecons_actual = irecons
+    end if
+    
 
     jx(1,1)=jx_min(1); jx(2,1)=jx_max(1)-1
     jx(1,2)=jx_min(2); jx(2,2)=jx_max(2)-1
@@ -78,74 +88,77 @@ contains
     jy(1,2)=jy_min(2); jy(2,2)=jy_max(2)-1
     jy(1,3)=jy_min(3); jy(2,3)=jy_max(3)-1
 
-    call t_startf('FVM:reconstruction:part#1')
-    recons=0.0_r8
-    if (nhe>0) then
-      do itr=1,ntrac_in
-!        f=-9e9_r8
-        call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
-             fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1),f(:,:,2:3))
-        if (irecons>1) call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
-             rot_matrix,centroid_stretch,nc,nht,nhe,nhc)
-      end do
-    else
-      do itr=1,ntrac_in
-!        f=-9e9_r8!to avoid floating point exception for uninitialized variables
-!                 !in non-existent cells (corners of cube)
-        call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
-             fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1))
-        if (irecons>1) call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
-             rot_matrix,centroid_stretch,nc,nht,nhe,nhc)
-      end do
+    !
+    ! Initialize recons
+    !    
+    call zero_non_existent_ghost_cell(recons,irecons,cubeboundary,nc,nhe,ntrac_in)
+    if (irecons_actual>1) then
+       call t_startf('FVM:reconstruction:part#1')
+       if (nhe>0) then
+          do itr=1,ntrac_in
+             !        f=-9e9_r8
+             call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
+                  fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1),f(:,:,2:3))             
+             call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
+                  rot_matrix,centroid_stretch,nc,nht,nhe,nhc,irecons_actual)
+          end do
+       else
+          do itr=1,ntrac_in
+             !        f=-9e9_r8!to avoid floating point exception for uninitialized variables
+             !                 !in non-existent cells (corners of cube)
+             call extend_panel_interpolate(nc,nhc,nhr,nht,ns,nh,&
+                  fcube(:,:,k_in,itr),cubeboundary,halo_interp_weight,ibase,f(:,:,1))
+             call get_gradients(f(:,:,:),jx,jy,irecons,recons(:,:,:,itr),&
+                  rot_matrix,centroid_stretch,nc,nht,nhe,nhc,irecons_actual)
+          end do
+       end if
+       call t_stopf('FVM:reconstruction:part#1')
+       call t_startf('FVM:reconstruction:part#2')       
+       !
+       ! fill in non-existent (in physical space) corner values to simplify
+       ! logic in limiter code (min/max operation)
+       !
+       do itr=1,ntrac_in
+          if (llimiter(itr)) then
+             if (cubeboundary>4) then
+                select case(cubeboundary)
+                case (nwest)
+                   do h=1,nhe+1
+                      fcube(0,nc+h  ,k_in,itr) = fcube(1-h,nc  ,k_in,itr)
+                      fcube(1-h,nc+1,k_in,itr) = fcube(1  ,nc+h,k_in,itr)
+                   end do
+                case (swest)
+                   do h=1,nhe+1
+                      fcube(1-h,0,k_in,itr) = fcube(1,1-h,k_in,itr)
+                      fcube(0,1-h,k_in,itr) = fcube(1-h,1,k_in,itr)
+                   end do
+                case (seast)
+                   do h=1,nhe+1
+                      fcube(nc+h,0  ,k_in,itr) = fcube(nc,1-h,k_in,itr)
+                      fcube(nc+1,1-h,k_in,itr) = fcube(nc+h,1,k_in,itr)
+                   end do
+                case (neast)
+                   do h=1,nhe+1
+                      fcube(nc+h,nc+1,k_in,itr) = fcube(nc,nc+h,k_in,itr)
+                      fcube(nc+1,nc+h,k_in,itr) = fcube(nc+h,nc,k_in,itr)
+                   end do
+                end select
+             end if
+             call slope_limiter(nhe,nc,nhc,fcube(:,:,k_in,itr),jx,jy,irecons,recons(:,:,:,itr),&
+                  spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
+                  recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual)
+          end if
+       end do
+       call t_stopf('FVM:reconstruction:part#2')
     end if
-    call t_stopf('FVM:reconstruction:part#1')
-    call t_startf('FVM:reconstruction:part#2')
-
-    !
-    ! fill in non-existent (in physical space) corner values to simplify
-    ! logic in limiter code (min/max operation)
-    !
-    do itr=1,ntrac_in
-      if (llimiter(itr)) then
-        if (cubeboundary>4) then
-          select case(cubeboundary)
-          case (nwest)
-            do h=1,nhe+1
-              fcube(0,nc+h  ,k_in,itr) = fcube(1-h,nc  ,k_in,itr)
-              fcube(1-h,nc+1,k_in,itr) = fcube(1  ,nc+h,k_in,itr)
-            end do
-          case (swest)
-            do h=1,nhe+1
-              fcube(1-h,0,k_in,itr) = fcube(1,1-h,k_in,itr)
-              fcube(0,1-h,k_in,itr) = fcube(1-h,1,k_in,itr)
-            end do
-          case (seast)
-            do h=1,nhe+1
-              fcube(nc+h,0  ,k_in,itr) = fcube(nc,1-h,k_in,itr)
-              fcube(nc+1,1-h,k_in,itr) = fcube(nc+h,1,k_in,itr)
-            end do
-          case (neast)
-            do h=1,nhe+1
-              fcube(nc+h,nc+1,k_in,itr) = fcube(nc,nc+h,k_in,itr)
-              fcube(nc+1,nc+h,k_in,itr) = fcube(nc+h,nc,k_in,itr)
-            end do
-          end select
-        end if
-        call slope_limiter(nhe,nc,nhc,fcube(:,:,k_in,itr),jx,jy,irecons,recons(:,:,:,itr),&
-             spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
-             recons_metrics,vertex_recons_weights,vtx_cart )
-!        call slope_limiter(fvm,fcube(:,:,itr),jx,jy,irecons,recons(:,:,:,itr))
-      end if
-    end do
-
-    call t_stopf('FVM:reconstruction:part#2')
     call t_startf('FVM:reconstruction:part#3')
-    select case (irecons)
+    select case (irecons_actual)
     case(1)
       do in=1,3
         do j=jy(1,in),jy(2,in)
           do i=jx(1,in),jx(2,in)
-            recons(1,i,j,1:ntrac_in) = fcube(i,j,k_in,1:ntrac_in)
+            recons(1,i,j,1:ntrac_in)         = fcube(i,j,k_in,1:ntrac_in)
+            recons(2:irecons,i,j,1:ntrac_in) = 0.0_r8
           end do
         end do
       end do
@@ -155,11 +168,12 @@ contains
       do in=1,3
         do j=jy(1,in),jy(2,in)
           do i=jx(1,in),jx(2,in)
-            recons(1,i,j,1:ntrac_in)  = fcube(i,j,k_in,1:ntrac_in) &
-                 - recons(2,i,j,1:ntrac_in)*spherecentroid(1,i,j) &
-                 - recons(3,i,j,1:ntrac_in)*spherecentroid(2,i,j)
-            recons(2,i,j,1:ntrac_in) = recons(2,i,j,1:ntrac_in)
-            recons(3,i,j,1:ntrac_in) = recons(3,i,j,1:ntrac_in)
+             recons(1,i,j,1:ntrac_in)         = fcube(i,j,k_in,1:ntrac_in) &
+                  - recons(2,i,j,1:ntrac_in)*spherecentroid(1,i,j) &
+                  - recons(3,i,j,1:ntrac_in)*spherecentroid(2,i,j)
+             recons(2,i,j,1:ntrac_in)         = recons(2,i,j,1:ntrac_in)
+             recons(3,i,j,1:ntrac_in)         = recons(3,i,j,1:ntrac_in)
+             recons(4:irecons,i,j,1:ntrac_in) = 0.0_r8
           end do
         end do
       end do
@@ -170,8 +184,6 @@ contains
         do in=1,3
           do j=jy(1,in),jy(2,in)
             do i=jx(1,in),jx(2,in)
-!                recons(1,i,j,itr)  = fcube(i,j,itr) !hack first-order
-!                recons(2:6,i,j,itr)  = 0.0_r8       !hack first-order
               recons(1,i,j,itr)  = fcube(i,j,k_in,itr) &
                    - recons(2,i,j,itr)*spherecentroid(1,i,j) &
                    - recons(3,i,j,itr)*spherecentroid(2,i,j) &
@@ -210,20 +222,22 @@ contains
   end subroutine reconstruction
   !END SUBROUTINE RECONSTRUCTION--------------------------------------------CE-for FVM!
 
-  subroutine get_gradients(f,jx,jy,irecons,gradient,rot_matrix,centroid_stretch,nc,nht,nhe,nhc)
+  subroutine get_gradients(f,jx,jy,irecons,gradient,rot_matrix,centroid_stretch,nc,nht,nhe,nhc,irecons_actual)
     implicit none
-    integer,                                                         intent(in)   :: irecons,nc,nht,nhe,nhc
+    integer,                                                         intent(in)   :: irecons,nc,nht,nhe,nhc,irecons_actual
     real (kind=r8), dimension(1-nht:nc+nht,1-nht:nc+nht,3),          intent(in)   :: f
     real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe),    intent(inout):: gradient
     integer,               dimension(2,3),                           intent(in)   :: jx,jy
     integer              , dimension(2,2,1-nhc:nc+nhc,1-nhc:nc+nhc), intent(in)   :: rot_matrix
     real (kind=r8), dimension(7,1-nhe:nc+nhe,1-nhe:nc+nhe),          intent(in)   :: centroid_stretch
 
-    integer :: i,j,in
-    real (kind=r8), dimension(2) :: g
-    real (kind=r8) :: sign
+    integer                     :: i,j,in
+    real (kind=r8), dimension(2):: g
+    real (kind=r8)              :: sign
+    character(len=128)          :: errormsg 
+    
 
-    select case (irecons)
+    select case (irecons_actual)
     case(3)
       in=1
       do j=jy(1,in),jy(2,in)
@@ -305,17 +319,18 @@ contains
         end do
       end do
     case default
-      call endrun('ERROR: irecons out of range in fvm_reconstruction_mod')
+       write(errormsg, *) irecons
+      call endrun('ERROR: irecons out of range in slope_limiter'//errormsg)
     end select
   end subroutine get_gradients
 
 
   subroutine slope_limiter(nhe,nc,nhc,fcube,jx,jy,irecons,recons,spherecentroid,recons_metrics,&
-       vertex_recons_weights,vtx_cart)
+       vertex_recons_weights,vtx_cart,irecons_actual)
     implicit none
-    integer                                                                  , intent(in) :: irecons,nhe,nc,nhc
-    real (kind=r8), dimension(1-nhc:, 1-nhc:),                      intent(inout)  :: fcube
-    real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe),     intent(inout):: recons
+    integer                                                           , intent(in) :: irecons,nhe,nc,nhc,irecons_actual
+    real (kind=r8), dimension(1-nhc:, 1-nhc:)                         , intent(in) :: fcube
+    real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe)      , intent(inout):: recons
     integer,               dimension(2,3)                             , intent(in) :: jx,jy
     real (kind=r8), dimension(irecons-1,1-nhe:nc+nhe,1-nhe:nc+nhe)    , intent(in) :: spherecentroid
     real (kind=r8), dimension(3,1-nhe:nc+nhe,1-nhe:nc+nhe)            , intent(in) :: recons_metrics
@@ -334,22 +349,18 @@ contains
 !    real (kind=r8), dimension(-1:5) :: diff_value
     real (kind=r8), dimension(-1:1) :: minval_array, maxval_array
     real (kind=r8), parameter :: threshold = 1.0E-40_r8
-    select case (irecons)
-      !
-      ! PLM limiter
-      !
-
+    character(len=128)        :: errormsg 
+    select case (irecons_actual)
+       !
+       ! PLM limiter
+       !
     case(3)
-      do in=1,3
-        do j=jy(1,in),jy(2,in)
-          do i=jx(1,in),jx(2,in)
-            !     do j=1-nhe,nc+nhe
-            !        do i=1-nhe,nc+nhe
-            !           if (mask(i,j)) then
-
-             !rck combined min/max and unrolled inner loop
-             !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
-             !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
+       do in=1,3
+          do j=jy(1,in),jy(2,in)
+             do i=jx(1,in),jx(2,in)
+                !rck combined min/max and unrolled inner loop
+                !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
+                !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
 !DIR$ SIMD
                 do itmp2=-1,+1
                    itmp1 = j+itmp2
@@ -358,36 +369,36 @@ contains
                 enddo
                 minval_patch = min(minval_array(-1),minval_array(0),minval_array(1))
                 maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
-
-             min_phi=1.0_r8
-             !rck restructured loop
-!DIR$ SIMD
-            do vertex=1,4
-              extrema_value(vertex) = &
-                   SUM(recons(2:irecons,i,j)*vertex_recons_weights(vertex,1:irecons-1,i,j))+fcube(i,j)
-              call slopelimiter_val(extrema_value(vertex), fcube(i,j),minval_patch, maxval_patch, min_phi)
-            end do
-           max_val = MAXVAL(extrema_value(1:4))
-           min_val = MINVAL(extrema_value(1:4))
-!            if (ABS(min_val-fcube(i,j))<1.0D-16.or.ABS(max_val-fcube(i,j))<1.0D-16) then
-!               min_phi=0.0_r8
-!            else
-               if (max_val>maxval_patch) then
-                  phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
-                  if (phi<min_phi) min_phi=phi
-               end if
-               if (min_val<minval_patch) then
-                  phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
-                  if (phi<min_phi) min_phi=phi
-               end if
-            ! Apply monotone limiter to all reconstruction coefficients
-            recons(2:irecons,i,j)=min_phi*recons(2:irecons,i,j)
+                
+                min_phi=1.0_r8
+                !rck restructured loop
+                !DIR$ SIMD
+                do vertex=1,4
+                   extrema_value(vertex) = &
+                        SUM(recons(2:3,i,j)*vertex_recons_weights(vertex,1:2,i,j))+fcube(i,j)
+                   call slopelimiter_val(extrema_value(vertex), fcube(i,j),minval_patch, maxval_patch, min_phi)
+                end do
+                max_val = MAXVAL(extrema_value(1:4))
+                min_val = MINVAL(extrema_value(1:4))
+                !            if (ABS(min_val-fcube(i,j))<1.0D-16.or.ABS(max_val-fcube(i,j))<1.0D-16) then
+                !               min_phi=0.0_r8
+                !            else
+                if (max_val>maxval_patch) then
+                   phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
+                   if (phi<min_phi) min_phi=phi
+                end if
+                if (min_val<minval_patch) then
+                   phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
+                   if (phi<min_phi) min_phi=phi
+                end if
+                ! Apply monotone limiter to all reconstruction coefficients
+                recons(2:3,i,j)=min_phi*recons(2:3,i,j)
+             end do
           end do
-        end do
-      end do
-      !
-      ! PPM limiter
-      !
+       end do
+       !
+       ! PPM limiter
+       !
     case(6)
        !
        ! default branch
@@ -520,7 +531,8 @@ contains
           end do
        end do
     case default
-      call endrun('ERROR: irecons out of range in fvm_reconstruction_mod')
+       write(errormsg, *) irecons
+      call endrun('ERROR: irecons out of range in slope_limiter'//errormsg)
     end select
 
   end subroutine slope_limiter
@@ -1759,4 +1771,43 @@ END SUBROUTINE recons_val_cart
        end if
      end if
    end subroutine extend_panel_interpolate
+   !
+   ! initialize non-existent ghost cells
+   !
+   subroutine zero_non_existent_ghost_cell(recons,irecons,cubeboundary,nc,nhe,ntrac_in)
+     use control_mod, only : north, south, east, west, neast, nwest, seast, swest
+
+     integer,          intent(in)  :: nc,nhe,cubeboundary,irecons,ntrac_in
+     real (kind=r8), dimension(irecons,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac_in), intent(out):: recons
+
+     integer :: i,j
+
+     if (cubeboundary>0) then
+        if (cubeboundary==nwest) then
+           do j=nc+1,nc+nhe
+              do i=1-nhe,0
+                 recons(:,i,j,:) = 0.0_r8
+              end do
+           end do
+        else if (cubeboundary==swest) then
+           do j=1-nhe,0
+              do i=1-nhe,0
+                 recons(:,i,j,:) = 0.0_r8
+              end do
+           end do
+        else if (cubeboundary==neast) then
+           do j=nc+1,nc+nhe
+              do i=nc+1,nc+nhe
+                 recons(:,i,j,:) = 0.0_r8
+              end do
+           end do
+        else if (cubeboundary==seast) then
+           do j=1-nhe,0
+              do i=nc+1,nc+nhe
+                 recons(:,i,j,:) = 0.0_r8
+              end do
+           end do
+        end if
+     end if
+   end subroutine zero_non_existent_ghost_cell
 end module fvm_reconstruction_mod

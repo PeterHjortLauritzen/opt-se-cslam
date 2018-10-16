@@ -549,6 +549,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
    use dimensions_mod,     only: qsize_condensate_loading_cp
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
+   use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
    use control_mod,        only: runtype
@@ -710,19 +711,48 @@ subroutine dyn_init(dyn_in, dyn_out)
       call clean_iodesc_list()
    end if
 
+
+   !
+   ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
+   !
+   if (masterproc) write(iulog,*) "sponge layer viscosity scaling factor"
+   do k=1,nlev
+      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+      ptop  = hvcoord%hyai(1)*hvcoord%ps0
+      nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+      !
+      ! reduce order of CSLAM tracer advection
+      !
+      if (ntrac>0) then
+         if (nu_scale_top(k).ge.2.0_r8) then
+            irecons_tracer_lev(k) = 1
+         else if (nu_scale_top(k).ge.1.0_r8) then
+            irecons_tracer_lev(k) = 3
+         else
+            irecons_tracer_lev(k) = irecons_tracer
+         end if
+      end if
+
+      if (masterproc) then
+         if (nu_scale_top(k)>1.0_r8) then
+            write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
+            if (ntrac>0) then
+               if (irecons_tracer_lev(k)==3) &
+                    write(iulog,*) "CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
+               if (irecons_tracer_lev(k)==1) &
+                    write(iulog,*) "CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+            end if
+         end if
+      end if
+   end do
+
+
+   !
+   ! reduce order of CSLAM in sponge to low order
+   !
+   do k=1,nlev
+   end do
    if (iam < par%nprocs) then
-     !
-     ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
-     !
-     if (masterproc) write(iulog,*) "sponge layer viscosity scaling factor"
-     do k=1,nlev
-       press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-       ptop  = hvcoord%hyai(1)*hvcoord%ps0
-       nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-       if (masterproc) then
-         if (nu_scale_top(k)>1.0_r8) write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
-       end if
-      end do
 !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
       hybrid = config_thread_region(par,'horizontal')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)

@@ -58,6 +58,7 @@ module dimensions_mod
   logical, public :: lprint!for debugging
   integer, parameter, public :: ngpc=3          !number of Gausspoints for the fvm integral approximation   !phl change from 4
   integer, parameter, public :: irecons_tracer=6!=1 is PCoM, =3 is PLM, =6 is PPM for tracer reconstruction
+  integer,            public :: irecons_tracer_lev(PLEV)
   integer, parameter, public :: nhe=1           !Max. Courant number
   integer, parameter, public :: nhr=2           !halo width needed for reconstruction - phl
   integer, parameter, public :: nht=nhe+nhr     !total halo width where reconstruction is needed (nht<=nc) - phl

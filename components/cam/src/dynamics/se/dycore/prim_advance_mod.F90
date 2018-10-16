@@ -817,8 +817,6 @@ contains
       
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
     enddo
-
-    call t_stopf('advance_hypervis_dp')
    end subroutine advance_hypervis_dp
    
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&
