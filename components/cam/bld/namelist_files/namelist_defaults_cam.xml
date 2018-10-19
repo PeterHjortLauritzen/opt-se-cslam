@@ -1756,20 +1756,12 @@
 <se_hypervis_on_plevs> .true.  </se_hypervis_on_plevs>
 <se_lcp_moist> .true.  </se_lcp_moist>
 <se_large_Courant_incr> .true.  </se_large_Courant_incr>
-<se_large_Courant_incr dyn="se" waccm_phys="1">.false.</se_large_Courant_incr>
-
-<se_fvm_supercycling>3</se_fvm_supercycling>
-<se_fvm_supercycling_jet>3</se_fvm_supercycling_jet>
-<se_kmin_jet>-1</se_kmin_jet>
-<se_kmax_jet>-1</se_kmax_jet>
 
 <se_hypervis_power> 3.322 </se_hypervis_power>
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" > 3.2 </se_hypervis_scaling>
 
-<se_hypervis_subcycle>                   3 </se_hypervis_subcycle>
-<se_hypervis_subcycle hgrid="ne5np4" >   1 </se_hypervis_subcycle>
-<se_hypervis_subcycle dyn="se" waccm_phys="1">  1 </se_hypervis_subcycle>
+<se_hypervis_subcycle>                   1 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"> 4 </se_hypervis_subcycle>
 
@@ -1785,28 +1777,31 @@
 <se_nsplit>                   2 </se_nsplit>
 <se_nsplit hgrid="ne16np4" >  1 </se_nsplit>
 
-<se_nsplit hgrid="ne5np4"   waccm_phys="1">  5  </se_nsplit>
-<se_nsplit hgrid="ne16np4"  waccm_phys="1">  5  </se_nsplit>
-<se_nsplit hgrid="ne30np4"  waccm_phys="1">  10 </se_nsplit>
-<se_nsplit hgrid="ne60np4"  waccm_phys="1">  20 </se_nsplit>
-<se_nsplit hgrid="ne120np4" waccm_phys="1">  20 </se_nsplit>
-<se_nsplit hgrid="ne240np4" waccm_phys="1">  25 </se_nsplit>
+<se_nsplit hgrid="ne5np4"   waccm_phys="1">  2  </se_nsplit>
+<se_nsplit hgrid="ne16np4"  waccm_phys="1">  2  </se_nsplit>
+<se_nsplit hgrid="ne30np4"  waccm_phys="1">  5  </se_nsplit>
+<se_nsplit hgrid="ne60np4"  waccm_phys="1"> 10  </se_nsplit>
+<se_nsplit hgrid="ne120np4"  waccm_phys="1">20  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4CONUS.ne30x8"> 5 </se_nsplit>
 
 <se_nu>-1</se_nu>
 <se_nu se_refined_mesh="1" hypervis_type="tensor" > 8.0e-8 </se_nu>
 <se_nu se_refined_mesh="1" hypervis_type="scalar" > 1.0e13 </se_nu>
+<se_nu waccm_phys="1" hgrid="ne30np4">1E15</se_nu>
 
 <se_nu_div> -1 </se_nu_div>
+<se_nu_div waccm_phys="1" hgrid="ne30np4">2E15</se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="tensor" > 15.8e-8 </se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_div>
+
 
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="tensor" > 8.0e-8 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_p>
 
 <se_nu_top> 2.5e5 </se_nu_top>
+<se_nu_top waccm_phys="1"> 1.0e6 </se_nu_top>
 <se_nu_top hgrid="ne240np4"> 1.0e5 </se_nu_top>
 <se_nu_top se_refined_mesh="1"> 2.0e5 </se_nu_top>
 
@@ -1824,7 +1819,18 @@
 <se_refined_mesh hgrid="ne0np4CONUS.ne30x8" > .true. </se_refined_mesh>
 <se_refined_mesh hgrid="ne0np4TESTONLY.ne5x4" > .true. </se_refined_mesh>
 
-<se_rsplit >                  3 </se_rsplit>
+<se_rsplit >                3 </se_rsplit>
+<se_rsplit waccm_phys="1">  6 </se_rsplit>
+
+<se_fvm_supercycling                   >3</se_fvm_supercycling>
+<se_fvm_supercycling_jet               >3</se_fvm_supercycling_jet>
+<se_fvm_supercycling     waccm_phys="1">6</se_fvm_supercycling>
+<se_fvm_supercycling_jet waccm_phys="1">6</se_fvm_supercycling_jet>
+<se_kmin_jet>-1</se_kmin_jet>
+<se_kmax_jet>-1</se_kmax_jet>
+<se_kmin_jet waccm_phys="1">1 </se_kmin_jet>
+<se_kmax_jet waccm_phys="1">20</se_kmax_jet>
+
 
 <se_statediag_numtrac>3</se_statediag_numtrac>
 

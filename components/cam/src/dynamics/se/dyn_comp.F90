@@ -547,7 +547,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
    use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
-   use dimensions_mod,     only: qsize_condensate_loading_cp
+   use dimensions_mod,     only: qsize_condensate_loading_cp, ksponge_end
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
    use prim_driver_mod,    only: prim_init2
@@ -726,8 +726,10 @@ subroutine dyn_init(dyn_in, dyn_out)
       if (ntrac>0) then
          if (nu_scale_top(k).ge.2.0_r8) then
             irecons_tracer_lev(k) = 1
+            ksponge_end = k
          else if (nu_scale_top(k).ge.1.0_r8) then
             irecons_tracer_lev(k) = 3
+            ksponge_end = k
          else
             irecons_tracer_lev(k) = irecons_tracer
          end if

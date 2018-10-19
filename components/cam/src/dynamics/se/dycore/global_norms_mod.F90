@@ -635,7 +635,7 @@ contains
 
         S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
         S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
-        S_rk_tracer = 1.0_r8
+        S_rk_tracer = 2.0_r8
         !
         ! estimate max winds
         !

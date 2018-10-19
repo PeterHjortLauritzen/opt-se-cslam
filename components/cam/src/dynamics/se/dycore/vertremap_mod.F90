@@ -632,6 +632,7 @@ end function compute_ppm_grids
 !This computes a limited parabolic interpolant using a net 5-cell stencil, but the stages of computation are broken up into 3 stages
 function compute_ppm( a , dx )    result(coefs)
   use control_mod, only: vert_remap_q_alg
+  use dimensions_mod, only: ksponge_end
   implicit none
   real(kind=r8), intent(in) :: a    (    -1:nlev+2)  !Cell-mean values
   real(kind=r8), intent(in) :: dx   (10,  0:nlev+1)  !grid spacings
@@ -641,7 +642,7 @@ function compute_ppm( a , dx )    result(coefs)
   real(kind=r8) :: da                                !Ditto
   ! Hold expressions based on the grid (which are cumbersome).
   real(kind=r8) :: al, ar                            !Left and right interface values for cell-local limiting
-  integer :: j
+  integer :: j,k
   integer :: indB, indE
 
   ! Stage 1: Compute dma for each cell, allowing a 1-cell ghost stencil below and above the domain
@@ -677,7 +678,7 @@ function compute_ppm( a , dx )    result(coefs)
     indB = 3
     indE = nlev-2
   else
-    indB = 3
+    indB = ksponge_end
     indE = nlev
   endif
   do j = indB , indE
@@ -698,8 +699,11 @@ function compute_ppm( a , dx )    result(coefs)
   !If we're not using a mirrored boundary condition, then make the two cells bordering the top and bottom
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
-  coefs(0,1:2) = a(1:2)  !always reduce to PCoM at model top
-  coefs(1:2,1:2) = 0._r8 !always reduce to PCoM at model top
+
+  do k=1,ksponge_end
+     coefs(0,k)   = a(k)  !always reduce to PCoM in sponge layers
+     coefs(1:2,k) = 0._r8 !always reduce to PCoM in sponge layers
+  end do
   if (vert_remap_q_alg == 2) then
     coefs(0,nlev-1:nlev) = a(nlev-1:nlev)
     coefs(1:2,nlev-1:nlev) = 0._R8

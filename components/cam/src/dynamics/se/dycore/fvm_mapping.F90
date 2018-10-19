@@ -59,7 +59,7 @@ contains
       allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
       allocate(fld_gll(np,np,nlev,3,nets:nete))
       allocate(llimiter(nflds))
-      fld_phys = -9.99E99_r8
+      fld_phys = -9.99E99_r8!xxx necessary?
 
       llimiter          = .false.
       do ie=nets,nete

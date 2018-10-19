@@ -75,6 +75,7 @@ module dimensions_mod
   integer, public :: fvm_supercycling_jet
   
   real(r8), public :: nu_scale_top(PLEV)!scaling of viscosity in sopnge layer (initialized in dyn_comp)
+  integer, public  :: ksponge_end       !sponge is active k=1,ksponge_end
 
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 

@@ -621,4 +621,5 @@ contains
       global_ave_ps_inic = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
       deallocate(tmp)
     end subroutine get_global_ave_surface_pressure
+
 end module prim_driver_mod
