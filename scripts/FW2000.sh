@@ -180,8 +180,6 @@ else
 endif
 
 if ($cset == "FW2000") then
-  echo "se_nsplit          = 10"   >> user_nl_cam
-  echo "se_nu_top              =  1e6" >> user_nl_cam
   if ($res == "ne30pg3_ne30pg3_mg17") then
     echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
   else
