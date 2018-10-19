@@ -51,8 +51,8 @@ else
   set walltime="00:45:00"
   set pecount="450"
   set NTHRDS="1"
-  set stopoption="ndays"
-  set steps="15"
+  set stopoption="nsteps"
+  set steps="5"
 endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
