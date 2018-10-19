@@ -320,7 +320,7 @@ contains
     real (kind=r8) :: dt_local_tracer_fvm
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
-    
+
     if (ntrac>0) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
 
     if (ftype==0) then
@@ -370,10 +370,10 @@ contains
     end if
 
     do ie=nets,nete
-      elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
-           dt_local*elem(ie)%derived%FT(:,:,:)
-      elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
-           dt_local*elem(ie)%derived%FM(:,:,:,:)
+       elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
+            dt_local*elem(ie)%derived%FT(:,:,:)
+       elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
+            dt_local*elem(ie)%derived%FM(:,:,:,:)
       
       !
       ! tracers
@@ -455,8 +455,8 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use dimensions_mod, only: np, np, nlev, nc, ntrac
-    use dimensions_mod, only: hypervis_on_plevs,nu_scale_top
+    use dimensions_mod, only: np, nlev, nc, ntrac
+    use dimensions_mod, only: hypervis_on_plevs,nu_scale_top,ksponge_end
     use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top, hypervis_scaling
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
@@ -515,7 +515,6 @@ contains
     real (kind=r8)                     :: rhypervis_subcycle
     real (kind=r8)                     :: nu_ratio1
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
-    call t_startf('advance_hypervis_dp')
 
     if (hypervis_on_plevs.and.nu_p>0)&
          call calc_dp3d_reference(elem,edge3p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
@@ -595,7 +594,7 @@ contains
            ! note: weak operators alreayd have mass matrix "included"
            
            ! biharmonic terms need a negative sign:
-          if (nu_top>0 .and. nu_scale_top(k)>1.0_r8) then
+          if (nu_top>0 .and. k.le.ksponge_end) then
               call laplace_sphere_wk(elem(ie)%state%T(:,:,k,nt),deriv,elem(ie),lap_t,var_coef=.false.)
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
               ! increased second-order divergence damping
@@ -815,8 +814,6 @@ contains
       
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAH')
     enddo
-
-    call t_stopf('advance_hypervis_dp')
    end subroutine advance_hypervis_dp
    
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&

@@ -25,6 +25,8 @@ module fvm_mod
   
   type (EdgeBuffer_t)                         :: edgeveloc
   type (EdgeBuffer_t), public  :: ghostBufQnhc, ghostBufQ1, ghostBufFlux
+  type (EdgeBuffer_t), public  :: ghostBufQnhcJet, ghostBufFluxJet
+  type (EdgeBuffer_t), public  :: ghostBufPG
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -241,13 +243,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use cam_logfile,            only: iulog
     use control_mod,            only: tracer_transport_type, rsplit
     use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-    use fvm_control_volume_mod, only: fvm_supercycling
     use dimensions_mod,         only: qsize, qsize_d
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
     use dimensions_mod,         only: nc,nhe, nhc, nlev,ntrac, ntrac_d,ns, nhr
-
+    use dimensions_mod,         only: large_Courant_incr
+    use dimensions_mod,         only: kmin_jet,kmax_jet
+    
     type (parallel_t) :: par
     type (element_t),intent(inout)            :: elem(:)
-
     !
     if (ntrac>0) then
       if (par%masterproc) then 
@@ -265,89 +268,106 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
           write(iulog,*) "  "
         end if
       end if
-
+      !
+      ! PARAMETER ERROR CHECKING
+      !
+      if (kmin_jet>kmax_jet) &
+           call endrun("PARAMETER ERROR for fvm: kmin_jet must be < kmax_jet")
       if (ntrac>ntrac_d) &
            call endrun("PARAMETER ERROR for fvm: ntrac > ntrac_d")
 
-            if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
+      if (qsize>0.and.mod(rsplit,fvm_supercycling).ne.0) then
         if (par%masterproc) then
           write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
           write(iulog,*)'with this choice of rsplit =',rsplit
           write(iulog,*)'rsplit must be a multiple of fvm_supercycling=',fvm_supercycling
-          call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling<>0")
         end if
+        call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling)<>0")        
+      endif
+
+      if (qsize>0.and.mod(rsplit,fvm_supercycling_jet).ne.0) then
+        if (par%masterproc) then
+          write(iulog,*)'cannot supercycle fvm tracers with respect to se tracers'
+          write(iulog,*)'with this choice of rsplit =',rsplit
+          write(iulog,*)'rsplit must be a multiple of fvm_supercycling_jet=',fvm_supercycling_jet
+        end if
+        call endrun("PARAMETER ERROR for fvm: mod(rsplit,fvm_supercycling_jet)<>0")        
       endif
       
+      if (large_Courant_incr.and.(fvm_supercycling.ne.fvm_supercycling_jet)) then
+        if (par%masterproc) then
+          write(iulog,*)'Large Courant number increment requires no level dependent supercycling'
+          write(iulog,*)'i.e. fvm_supercycling must be equal to fvm_supercycling_jet'
+        end if
+        call endrun("PARAMETER ERROR for fvm: large_courant_incr requires fvm_supercycling=fvm_supercycling_jet")        
+      endif
       
       if (par%masterproc) then 
         write(iulog,*) "                                            "
         write(iulog,*) "Done Tracer transport scheme information    "
         write(iulog,*) "                                            "
       end if
-    end if
 
-      
-    if (par%masterproc) write(iulog,*) "fvm resolution is nc*nc in each element: nc = ",nc
-    if (par%masterproc) write(iulog,*)'ntrac,ntrac_d=',ntrac,ntrac_d      
-    if (par%masterproc) write(iulog,*)'qsize,qsize_d=',qsize,qsize_d
 
+      if (par%masterproc) write(iulog,*) "fvm resolution is nc*nc in each element: nc = ",nc
+      if (par%masterproc) write(iulog,*)'ntrac,ntrac_d=',ntrac,ntrac_d      
+      if (par%masterproc) write(iulog,*)'qsize,qsize_d=',qsize,qsize_d          
     
-    if (nc<3) then
-      if (par%masterproc) then 
-        write(iulog,*) "NUMBER OF CELLS ERROR for fvm: Number of cells parameter"
-        write(iulog,*) "parameter nc at least 3 (nc>=3), nc*nc cells per element. This is"
-        write(iulog,*) "needed for the cubic reconstruction, which is only implemented yet! STOP"
-      endif
-      call endrun("stopping")
-    end if
-    
-    if (par%masterproc) then
-      write(iulog,*) "  "
-      if (ns==1) then
-        write(iulog,*) "ns==1: using no interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note: this is not a recommended setting - large errors at panel edges!"
-      else if (ns==2) then
-        write(iulog,*) "ns==2: using linear interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
-        write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
-        
-      else if (ns==3) then
-        write(iulog,*) "ns==3: using quadratic interpolation for mapping cell averages values across edges"
-        write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
-        write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
-      else if (ns==4) then
-        write(iulog,*) "ns==4: using cubic interpolation for mapping cell averages values across edges"
-        write(iulog,*) "This is default CSLAM setting used in Lauritzen et al. (2010)"
-      else 
-        write(iulog,*) "Not a tested value for ns but it should work! You choose ns = ",ns
+      if (nc.ne.3) then
+        if (par%masterproc) then 
+          write(iulog,*) "Only nc==3 is supported for CSLAM"
+        endif
+        call endrun("PARAMETER ERRROR for fvm: only nc=3 supported for CSLAM")
       end if
       
-      !       if (ns.NE.3) then
-      !         write(*,*) "In fvm_reconstruction_mod function matmul_w has been hard-coded for ns=3 for performance"
-      !         write(*,*) "Revert to general code - outcommented above"
-      !         call endrun("stopping")
-      !       end if
-    end if
-    
-    if (MOD(ns,2)==0.and.nhr+(nhe-1)+ns/2>nc+nc) then
-      write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+ns/2+nhe-1
-      write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
-      call endrun("stopping")
-    end if
-    if (MOD(ns,2)==1.and.nhr+(ns-1)/2+(nhe-1)>nc+nc) then
-      write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+(ns-1)/2+nhe-1
-      write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
-      call endrun("stopping")
-    end if
-    
-    if (nc==3.and.ns.ne.3) then
       if (par%masterproc) then
-        write(iulog,*) "Recommended setting for nc=3 is ns=3 (linear interpolation in halo)"
-        write(iulog,*) "You choose ns=",ns
-        write(iulog,*) "Goto dimensions_mod to change value of ns"
-        write(iulog,*) "or outcomment call haltmop below (i.e. you know what you are doing!)"
-      endif
-      call endrun("stopping")
+        write(iulog,*) "  "
+        if (ns==1) then
+          write(iulog,*) "ns==1: using no interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note: this is not a recommended setting - large errors at panel edges!"
+        else if (ns==2) then
+          write(iulog,*) "ns==2: using linear interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
+          write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
+          
+        else if (ns==3) then
+          write(iulog,*) "ns==3: using quadratic interpolation for mapping cell averages values across edges"
+          write(iulog,*) "Note that ns=4 is default CSLAM setting used in Lauritzen et al. (2010)"
+          write(iulog,*) "so this option is slightly less accurate (but the stencil is smaller near panel edges!)"
+        else if (ns==4) then
+          write(iulog,*) "ns==4: using cubic interpolation for mapping cell averages values across edges"
+          write(iulog,*) "This is default CSLAM setting used in Lauritzen et al. (2010)"
+        else 
+          write(iulog,*) "Not a tested value for ns but it should work! You choose ns = ",ns
+        end if
+        
+        !       if (ns.NE.3) then
+        !         write(*,*) "In fvm_reconstruction_mod function matmul_w has been hard-coded for ns=3 for performance"
+        !         write(*,*) "Revert to general code - outcommented above"
+        !         call endrun("stopping")
+        !       end if
+      end if
+      
+      if (MOD(ns,2)==0.and.nhr+(nhe-1)+ns/2>nc+nc) then
+        write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+ns/2+nhe-1
+        write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
+        call endrun("stopping")
+      end if
+      if (MOD(ns,2)==1.and.nhr+(ns-1)/2+(nhe-1)>nc+nc) then
+        write(iulog,*) "to run this combination of ns and nhr you need to increase nc to ",nhr+(ns-1)/2+nhe-1
+        write(iulog,*) "You choose (ns,nhr,nc,nhe)=",ns,nhr,nc,nhe
+        call endrun("stopping")
+      end if
+      
+      if (nc==3.and.ns.ne.3) then
+        if (par%masterproc) then
+          write(iulog,*) "Recommended setting for nc=3 is ns=3 (linear interpolation in halo)"
+          write(iulog,*) "You choose ns=",ns
+          write(iulog,*) "Goto dimensions_mod to change value of ns"
+          write(iulog,*) "or outcomment call haltmop below (i.e. you know what you are doing!)"
+        endif
+        call endrun("stopping")
+      end if
     end if
     
     if (nc==4.and.ns.ne.4) then
@@ -366,8 +386,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         write(iulog,*) "element nhe has to be 1, only this is available now! STOP!"
       endif
       call endrun("stopping")
-    end if
-    
+    end if   
   end subroutine fvm_init1
   
   
@@ -379,13 +398,16 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     use fvm_control_volume_mod, only: fvm_mesh,fvm_set_cubeboundary
     use bndry_mod,              only: compute_ghost_corner_orientation
     use dimensions_mod,         only: nlev, nc, nhc, nhe, ntrac, ntrac_d, np
+    use dimensions_mod,         only: nhc_phys, fv_nphys, qsize_condensate_loading
+    use dimensions_mod,         only: fvm_supercycling, fvm_supercycling_jet
+    use dimensions_mod,         only: kmin_jet,kmax_jet
     use hycoef,                 only: hyai, hybi, ps0
     use derivative_mod,         only: subcell_integration
     
     type (fvm_struct) :: fvm(:)
     type (element_t)  :: elem(:)
     type (hybrid_t)   :: hybrid
-    integer           :: ie,nets,nete,k
+    integer           :: ie,nets,nete,k,klev
     real(kind=r8)     :: one(np,np)
 
     one = 1.0_r8
@@ -417,10 +439,28 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     enddo
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
-    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc,nthreads=horz_num_threads)
-    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
 
+    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    klev = kmax_jet-kmin_jet+1
+    call initghostbuffer(hybrid%par,ghostBufQ1,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
+    !
+    ! preallocate buffers for physics-dynamics coupling
+    !
+    if (fv_nphys.ne.nc) then
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=horz_num_threads)
+    else
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=horz_num_threads)
+    end if
+    
+    if (fvm_supercycling.ne.fvm_supercycling_jet) then
+      !
+      ! buffers for running different fvm time-steps in the jet region
+      !
+      klev = kmax_jet-kmin_jet+1
+      call initghostbuffer(hybrid%par,ghostBufQnhcJet,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+      call initghostbuffer(hybrid%par,ghostBufFluxJet,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
+    end if
   end subroutine fvm_init2
 
   

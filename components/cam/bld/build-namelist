@@ -3734,6 +3734,10 @@ if ($dyn =~ /se/) {
                   se_tstep_type
                   se_vert_num_threads
                   se_vert_remap_q_alg
+		  se_fvm_supercycling
+		  se_fvm_supercycling_jet
+		  se_kmin_jet
+		  se_kmax_jet
         );
 
     my %opts;

@@ -58,6 +58,7 @@ module dimensions_mod
   logical, public :: lprint!for debugging
   integer, parameter, public :: ngpc=3          !number of Gausspoints for the fvm integral approximation   !phl change from 4
   integer, parameter, public :: irecons_tracer=6!=1 is PCoM, =3 is PLM, =6 is PPM for tracer reconstruction
+  integer,            public :: irecons_tracer_lev(PLEV)
   integer, parameter, public :: nhe=1           !Max. Courant number
   integer, parameter, public :: nhr=2           !halo width needed for reconstruction - phl
   integer, parameter, public :: nht=nhe+nhr     !total halo width where reconstruction is needed (nht<=nc) - phl
@@ -69,10 +70,12 @@ module dimensions_mod
   integer, parameter, public :: ubc = nc+nhc
   logical, public            :: large_Courant_incr
 
-
-  integer, parameter, public :: kmin_jet=1,kmax_jet=PLEV !min and max level index for the jet
-
+  integer, public :: kmin_jet,kmax_jet !min and max level index for the jet
+  integer, public :: fvm_supercycling    
+  integer, public :: fvm_supercycling_jet
+  
   real(r8), public :: nu_scale_top(PLEV)!scaling of viscosity in sopnge layer (initialized in dyn_comp)
+  integer, public  :: ksponge_end       !sponge is active k=1,ksponge_end
 
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 

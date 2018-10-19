@@ -23,7 +23,7 @@ contains
 !=============================================================================!
 
   subroutine prim_init2(elem, fvm, hybrid, nets, nete, tl, hvcoord)
-    use dimensions_mod,         only: irecons_tracer
+    use dimensions_mod,         only: irecons_tracer, fvm_supercycling
     use dimensions_mod,         only: fv_nphys, ntrac, nc
     use cam_abortutils,         only: endrun
     use parallel_mod,           only: syncmp
@@ -32,7 +32,6 @@ contains
     use control_mod,            only: runtype, &
          topology, rsplit, qsplit, rk_stage_user,         &
          nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q
-    use fvm_control_volume_mod, only: fvm_supercycling
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: test_global_integral, print_cfl
@@ -339,9 +338,11 @@ contains
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
     use derivative_mod,         only: subcell_integration
-    use fvm_control_volume_mod, only: fvm_supercycling
     use hybrid_mod,             only: set_region_num_threads, config_thread_region
-    use dimensions_mod,         only: ntrac
+    use dimensions_mod,         only: ntrac,fvm_supercycling,fvm_supercycling_jet
+    use dimensions_mod,         only: kmin_jet, kmax_jet
+    use fvm_mod,                only: ghostBufQnhc,ghostBufQ1, ghostBufFlux
+    use fvm_mod,                only: ghostBufQnhcJet, ghostBufFluxJet
 #ifdef waccm_debug
   use cam_history, only: outfld
 #endif  
@@ -472,16 +473,34 @@ contains
     !
     ! only run fvm transport every fvm_supercycling rstep
     !
-    if (ntrac>0 .and. (mod(rstep,fvm_supercycling) == 0)) then
-       !
-       ! FVM transport
-       !
-      if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) &
-      call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-      dt_q,tl,nets,nete)
-      do ie=nets,nete
-        elem(ie)%sub_elem_mass_flux=0
-      end do
+    if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM.and.ntrac>0) then
+      !
+      ! FVM transport
+      !
+      if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then        
+        call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
+             dt_q,tl,nets,nete,ghostBufQnhc,ghostBufQ1, ghostBufFlux,1,nlev)
+        !
+        ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
+        ! surface pressure
+        !
+        do ie=nets,nete
+          call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,fvm(ie)%psc)
+          fvm(ie)%psc = fvm(ie)%psc*fvm(ie)%inv_se_area_sphere
+          !       do j=1,nc
+          !         do i=1,nc
+          !           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  hvcoord%hyai(1)*hvcoord%ps0
+          !         end do
+          !       end do
+        end do
+      else if ((mod(rstep,fvm_supercycling_jet) == 0)) then
+        !
+        ! shorter fvm time-step in jet region
+        !
+        call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
+             dt_q,tl,nets,nete,ghostBufQnhcJet,ghostBufQ1, ghostBufFluxJet,kmin_jet,kmax_jet)
+      end if
+        
 
       
 #ifdef waccm_debug
@@ -492,7 +511,7 @@ contains
 #endif
     endif
 
-  end subroutine prim_step
+   end subroutine prim_step
 
 
 !=======================================================================================================!
@@ -598,4 +617,5 @@ contains
       global_ave_ps_inic = global_integral(elem, tmp(:,:,nets:nete),hybrid,np,nets,nete)
       deallocate(tmp)
     end subroutine get_global_ave_surface_pressure
+
 end module prim_driver_mod

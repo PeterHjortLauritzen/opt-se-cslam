@@ -30,17 +30,18 @@ contains
   !
   !**************************************************************************************
   !
-  subroutine run_consistent_se_cslam(elem,fvm,hybrid,dt_fvm,tl,nets,nete,hvcoord)
+  subroutine run_consistent_se_cslam(elem,fvm,hybrid,dt_fvm,tl,nets,nete,hvcoord,&
+       ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
     ! ---------------------------------------------------------------------------------
-    use fvm_mod               , only:  fill_halo_fvm, ghostBufQnhc, ghostBufQ1, ghostBufFlux
+    use fvm_mod               , only: fill_halo_fvm
     use fvm_reconstruction_mod, only: reconstruction
     use fvm_analytic_mod      , only: gauss_points
-    use derivative_mod        , only: subcell_integration
     use edge_mod              , only: ghostpack, ghostunpack
+    use edgetype_mod          , only: edgebuffer_t    
     use bndry_mod             , only: ghost_exchange
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
-    use dimensions_mod        , only: large_Courant_incr
+    use dimensions_mod        , only: large_Courant_incr,irecons_tracer_lev
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -50,30 +51,33 @@ contains
     integer               , intent(in)    :: nets  ! starting thread element number (private)
     integer               , intent(in)    :: nete  ! ending thread element number   (private)
     real (kind=r8)        , intent(in)    :: dt_fvm
-
+    type (EdgeBuffer_t)   , intent(inout) :: ghostbufQnhc,ghostBufQ1, ghostBufFlux
+    integer               , intent(in)    :: kmin,kmax
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-    real(KIND=r8) :: recons_weights(4,irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
-    real (kind=r8) :: inv_dp_area(nc,nc), ps_se(nc,nc)
+    real (kind=r8) :: recons_weights(4,irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
+    real (kind=r8) :: inv_dp_area(nc,nc)
 
     logical :: llimiter(ntrac)
     integer :: i,j,k,ie,itr
-    integer :: ir 
+    integer :: ir
+    integer :: klev !total number of levels in which tracer transport is performed
 
     llimiter = .true.
 
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
+    klev = kmax-kmin+1
     call t_startf('fvm:before_Qnhc')
     do ie=nets,nete
-       do k=1,nlev
+       do k=kmin,kmax
           elem(ie)%sub_elem_mass_flux(:,:,:,k) = dt_fvm*elem(ie)%sub_elem_mass_flux(:,:,:,k)*fvm(ie)%dp_ref_inverse(k)
           fvm(ie)%dp_fvm(1:nc,1:nc,k)          =         fvm(ie)%dp_fvm (1:nc,1:nc,k)*fvm(ie)%dp_ref_inverse(k)
        end do
-       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev),nlev,      0,ie)
-       call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,1:ntrac)   ,nlev*ntrac,nlev,ie)
+       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   ,klev,      0   ,ie)
+       call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac),klev*ntrac,klev,ie)
     end do
     call t_stopf('fvm:before_Qnhc')
 
@@ -83,18 +87,20 @@ contains
 
     call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
-      fvm(ie)%se_flux    (1:nc,1:nc,:,:) = elem(ie)%sub_elem_mass_flux(:,:,:,:)
-      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev),nlev     ,0,ie)
-      call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,1:ntrac),   nlev*ntrac,nlev,ie)
-      do k=1,nlev
+      do k=kmin,kmax
+        fvm(ie)%se_flux    (1:nc,1:nc,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k)
+      end do
+      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   , klev      ,0   ,ie)
+      call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac), klev*ntrac,klev,ie)
+      do k=kmin,kmax
         call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k)
       end do
-      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
+      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
     end do
     call ghost_exchange(hybrid,ghostBufFlux,location='ghostBufFlux')
     do ie=nets,nete
-      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
-      do k=1,nlev
+      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
+      do k=kmin,kmax
         call ghost_flux_unpack(fvm(ie),k)
       end do
     enddo
@@ -108,7 +114,7 @@ contains
          recons_weights(3,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,3,1-nhe:nc+nhe,1-nhe:nc+nhe)
          recons_weights(4,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,4,1-nhe:nc+nhe,1-nhe:nc+nhe)
       enddo
-      do k=1,nlev
+      do k=kmin,kmax
         call t_startf('fvm:tracers_reconstruct')
         call reconstruction(fvm(ie)%c(:,:,:,:),nlev,k,&
              ctracer(:,:,:,:),irecons_tracer,llimiter,ntrac,&
@@ -118,11 +124,12 @@ contains
              fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
-             recons_weights,fvm(ie)%vtx_cart&
+             recons_weights,fvm(ie)%vtx_cart,&
+             irecons_tracer_lev(k)&
              )
         call t_stopf('fvm:tracers_reconstruct')
         call t_startf('fvm:swept_flux')
-        call swept_flux(elem(ie),fvm(ie),k,ctracer)
+        call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k))
         call t_stopf('fvm:swept_flux')
       end do
     end do
@@ -159,7 +166,7 @@ contains
       !
       ! convert to mixing ratio
       !
-      do k=1,nlev         
+      do k=kmin,kmax
         do j=1,nc
           do i=1,nc
             inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k)
@@ -181,37 +188,29 @@ contains
         !
         fvm(ie)%dp_fvm(1:nc,1:nc,k) = fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
       end do
-      !
-      ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
-      ! surface pressure
-      !
-      call subcell_integration(elem(ie)%state%psdry(:,:), np, nc, elem(ie)%metdet,ps_se)
-      fvm(ie)%psc = ps_se*fvm(ie)%inv_se_area_sphere
-      !       do j=1,nc
-      !         do i=1,nc
-      !           fvm(ie)%psc(i,j) = sum(fvm(ie)%dp_fvm(i,j,:)) +  hvcoord%hyai(1)*hvcoord%ps0
-      !         end do
-      !       end do
 #ifdef waccm_debug
-      do k=1,nlev
+      do k=kmin,kmax
         do j=1,nc
           do i=1,nc
             fvm(ie)%CSLAM_gamma(i,j,k,1) = MAXVAL(fvm(ie)%CSLAM_gamma(i,j,k,:))
           end do
         end do
       end do
-#endif      
+#endif
+      do k=kmin,kmax
+        elem(ie)%sub_elem_mass_flux(:,:,:,k)=0
+      end do
     end do
     call t_stopf('fvm:end_of_reconstruct_subroutine')
   end subroutine run_consistent_se_cslam
 
-  subroutine swept_flux(elem,fvm,ilev,ctracer)
+  subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual)
     use fvm_analytic_mod      , only: get_high_order_weights_over_areas
     use dimensions_mod, only : kmin_jet,kmax_jet
     implicit none
     type (element_t) , intent(in)   :: elem
     type (fvm_struct), intent(inout):: fvm
-    integer          , intent(in) :: ilev
+    integer          , intent(in) :: ilev, irecons_tracer_actual
     real (kind=r8), intent(inout) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
 
     integer, parameter :: num_area=5, num_sides=4, imin= 0, imax=nc+1
@@ -260,7 +259,7 @@ contains
     fvm%dp_fvm(1:nc,1:nc,ilev) = fvm%dp_fvm(1:nc,1:nc,ilev)*fvm%area_sphere
     do itr=1,ntrac
       fvm%c(1:nc,1:nc,ilev,itr) = fvm%c(1:nc,1:nc,ilev,itr)*fvm%dp_fvm(1:nc,1:nc,ilev)
-      do iw=1,irecons_tracer
+      do iw=1,irecons_tracer_actual
         ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)=ctracer(iw,1-nhe:nc+nhe,1-nhe:nc+nhe,itr)*&
              dp(1-nhe:nc+nhe,1-nhe:nc+nhe)
       end do
@@ -525,7 +524,7 @@ contains
                 ii=idx(1,iarea,i,j,iside); jj=idx(2,iarea,i,j,iside)
                 flux=flux+weights(1,iarea)*dp(ii,jj)
                 do itr=1,ntrac
-                  do iw=1,irecons_tracer
+                  do iw=1,irecons_tracer_actual
                     flux_tracer(itr) = flux_tracer(itr)+weights(iw,iarea)*ctracer(iw,ii,jj,itr)
                   end do
                 end do
@@ -537,6 +536,7 @@ contains
               write(iulog,*) "Increase jet region with kmin_jet and kmax_jet ",&
                    ilev,fvm%se_flux(i,j,iside,ilev),mass_flux_se(i,j,iside),flux,flowcase,&
                    kmin_jet,kmax_jet
+              call endrun('ERROR in CSLAM: local Courant number is > 1; Increase kmin_jet/kmax_jet?')
             end if
 
             fvm%dp_fvm(i  ,j  ,ilev        ) = fvm%dp_fvm(i  ,j  ,ilev        )-flux

@@ -160,9 +160,7 @@ module fvm_control_volume_mod
   public :: fvm_mesh, fvm_set_cubeboundary, allocate_physgrid_vars
 
   
-  real (kind=r8),parameter, public   :: bignum = 1.0D20
-
-  integer, parameter, public :: fvm_supercycling = 3
+  real (kind=r8),parameter, public   :: bignum = 1.0E20_r8
 
 contains
   subroutine fvm_set_cubeboundary(elem, fvm)
