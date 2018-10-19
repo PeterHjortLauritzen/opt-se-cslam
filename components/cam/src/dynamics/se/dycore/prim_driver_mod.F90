@@ -10,6 +10,7 @@ module prim_driver_mod
 
   use element_mod,            only: element_t, timelevels, allocate_element_desc
   use thread_mod ,            only: horz_num_threads, vert_num_threads, tracer_num_threads
+  use thread_mod ,            only: omp_set_nested
   use perf_mod,               only: t_startf, t_stopf
   use prim_init,              only: gp, fvm_corners, fvm_points
 

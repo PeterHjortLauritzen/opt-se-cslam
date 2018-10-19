@@ -6,7 +6,7 @@ module prim_advance_mod
   use cam_abortutils, only: endrun
   use parallel_mod,   only: parallel_t, HME_BNDRY_P2P!,HME_BNDRY_A2A
   use control_mod,    only: se_prescribed_wind_2d
-  use thread_mod ,    only: horz_num_threads, vert_num_threads
+  use thread_mod ,    only: horz_num_threads, vert_num_threads, omp_set_nested
 
   implicit none
   private
