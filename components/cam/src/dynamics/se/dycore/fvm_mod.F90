@@ -13,6 +13,7 @@ module fvm_mod
   use edge_mod,               only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
   use edgetype_mod,           only: edgebuffer_t
   use bndry_mod,              only: ghost_exchange
+  use thread_mod,             only: horz_num_threads
 
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -65,7 +66,7 @@ contains
     end do
     call t_stopf('FVM:pack')
     call t_startf('FVM:Communication')
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_noprealloc')
     call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
     call t_startf('FVM:Unpack')
@@ -105,7 +106,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     end do
     call t_stopf('FVM:pack')
     call t_startf('FVM:Communication')
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_prealloc')
     call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
     call t_startf('FVM:Unpack')
@@ -175,7 +176,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       do ie=nets,nete
         call ghostpack(cellghostbuf, fld(:,:,:,:,ie),numlev*num_flds,0,ie)
       end do
-      call ghost_exchange(hybrid,cellghostbuf)
+      call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_and_extend_panel')
       do ie=nets,nete
         call ghostunpack(cellghostbuf, fld(:,:,:,:,ie),numlev*num_flds,0,ie)
       end do
@@ -438,17 +439,18 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     enddo
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
-    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc)
+
+    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
     klev = kmax_jet-kmin_jet+1
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,klev*(ntrac+1),1,nc)
-    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc)
+    call initghostbuffer(hybrid%par,ghostBufQ1,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
     !
     ! preallocate buffers for physics-dynamics coupling
     !
     if (fv_nphys.ne.nc) then
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys)
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=horz_num_threads)
     else
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys)
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=horz_num_threads)
     end if
     
     if (fvm_supercycling.ne.fvm_supercycling_jet) then
@@ -456,10 +458,9 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       ! buffers for running different fvm time-steps in the jet region
       !
       klev = kmax_jet-kmin_jet+1
-      call initghostbuffer(hybrid%par,ghostBufQnhcJet,elem,klev*(ntrac+1),nhc,nc)
-      call initghostbuffer(hybrid%par,ghostBufFluxJet,elem,4*klev,nhe,nc)
+      call initghostbuffer(hybrid%par,ghostBufQnhcJet,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+      call initghostbuffer(hybrid%par,ghostBufFluxJet,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
     end if
-
   end subroutine fvm_init2
 
   
@@ -519,7 +520,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
         call ghostpack(cellghostbuf, fvm(ie)%spherecentroid(ixy,:,:) ,1,istart,ie)
       end do
     end do
-    call ghost_exchange(hybrid,cellghostbuf)
+    call ghost_exchange(hybrid,cellghostbuf,location='fvm_init3')
     do ie=nets,nete
       istart = 0
       call ghostunpack(cellghostbuf, fvm(ie)%norm_elem_coord(1,:,:),1,istart,ie)
@@ -737,7 +738,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
           call ghostpack(cellghostbuf, fvm(ie)%spherecentroid_physgrid(ixy,:,:) ,1,istart,ie)
         end do
       end do
-      call ghost_exchange(hybrid,cellghostbuf)
+      call ghost_exchange(hybrid,cellghostbuf,location='fvm_pg_init')
       do ie=nets,nete
         istart = 0
         call ghostunpack(cellghostbuf, fvm(ie)%norm_elem_coord_physgrid(1,:,:),1,istart,ie)

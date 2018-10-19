@@ -407,8 +407,8 @@ subroutine dyn_readnl(NLFileName)
    ! Set threading numbers to reasonable values
    if ((se_horz_num_threads == 0) .and. (se_vert_num_threads == 0) .and. (se_tracer_num_threads == 0)) then
       ! The user has not set any threading values, choose defaults
-      se_horz_num_threads = max_num_threads
-      se_vert_num_threads = 1
+      se_horz_num_threads = 1
+      se_vert_num_threads = max_num_threads
       se_tracer_num_threads = se_vert_num_threads
    end if
    if (se_horz_num_threads < 1) then
@@ -710,8 +710,6 @@ subroutine dyn_init(dyn_in, dyn_out)
       call read_inidat(dyn_in)
       call clean_iodesc_list()
    end if
-
-
    !
    ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
    !
@@ -747,8 +745,6 @@ subroutine dyn_init(dyn_in, dyn_out)
          end if
       end if
    end do
-
-
    !
    ! reduce order of CSLAM in sponge to low order
    !
@@ -756,10 +752,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    end do
    if (iam < par%nprocs) then
 !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
-      hybrid = config_thread_region(par,'horizontal')
+      !hybrid = config_thread_region(par,'horizontal')
+      hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
-!$OMP END PARALLEL
+!!$OMP END PARALLEL
 
       if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
    end if  ! iam < par%nprocs
@@ -2128,8 +2125,9 @@ subroutine map_phis_from_physgrid_to_gll(fvm,elem,phis_phys_tmp,phis_tmp,pmask)
    logical                          :: llimiter(1)
    !----------------------------------------------------------------------------
 
-!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
-   hybrid = config_thread_region(par,'horizontal')
+   !!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
+   !hybrid = config_thread_region(par,'horizontal')
+   hybrid = config_thread_region(par,'serial')
 
    call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
@@ -2156,7 +2154,7 @@ subroutine map_phis_from_physgrid_to_gll(fvm,elem,phis_phys_tmp,phis_tmp,pmask)
    end do
    deallocate(fld_phys)
    deallocate(fld_gll)
-!$OMP END PARALLEL
+   !!$OMP END PARALLEL
 end subroutine map_phis_from_physgrid_to_gll
 
 !========================================================================================

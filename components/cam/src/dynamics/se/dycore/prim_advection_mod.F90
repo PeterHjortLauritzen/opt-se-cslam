@@ -696,7 +696,7 @@ contains
     end if
   enddo
 
-  call bndry_exchange( hybrid , edgeAdvp1)
+  call bndry_exchange( hybrid , edgeAdvp1,location='edgeAdvp1')
 
   do ie = nets, nete
     ! only perform this operation on thread which owns the first tracer
@@ -909,7 +909,7 @@ contains
       enddo
     enddo
 
-    call bndry_exchange( hybrid , edgeAdv)
+    call bndry_exchange( hybrid , edgeAdv,location='advance_hypervis_scalar')
 
     do ie = nets, nete
       do q = qbeg, qend
