@@ -195,11 +195,11 @@ else
 endif
 
 if ($cset == "FW2000") then
-    if ($res == "ne30pg3_ne30pg3_mg17") then
-	echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
-    else
-	echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
-    endif
+  if ($res == "ne30pg3_ne30pg3_mg17") then
+    echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
+  else
+    echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
+  endif
 endif
 if ($cset == "FKESSLER") then
   echo "ncdata = '$inic/trunk-F2000climo-30yrs-C60topo.cam.i.0023-02-01-00000.nc'"   >> user_nl_cam
