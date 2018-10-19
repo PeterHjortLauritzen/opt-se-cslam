@@ -742,7 +742,7 @@ contains
     end subroutine print_cfl
 
   ! 
-  ============================
+  ! ============================
   ! global_maximum:
   !
   ! Find global maximum on sphere

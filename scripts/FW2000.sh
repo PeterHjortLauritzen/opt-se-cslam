@@ -9,18 +9,18 @@ setenv PBS_ACCOUNT "P93300642"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam"
+set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
-set res="ne30pg3_ne30pg3_mg17" #cslam
-#set res="ne30_ne30_mg17"        #no cslam
+#set res="ne30pg3_ne30pg3_mg17" #cslam
+set res="ne30_ne30_mg17"        #no cslam
 
 #set climateRun="True"
 set climateRun="False"
 #set energyConsistency="True"
 set energyConsistency="False"
-set test_tracers="True"
+set test_tracers="False"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
@@ -48,7 +48,7 @@ if ($climateRun == "True") then
   set stopoption="nmonths"
   set steps="13"
 else
-  set walltime="00:45:00"
+  set walltime="00:15:00"
   set pecount="450"
   set NTHRDS="1"
   set stopoption="nsteps"
