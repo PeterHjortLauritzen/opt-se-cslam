@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=nowaccm_debug_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -67,11 +67,11 @@ cd /glade/scratch/$USER/$caze
 #./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 #./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
 
-if ($test_tracers == "True") then
-    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug -nadv_tt=5"
-else
-    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
-endif
+#if ($test_tracers == "True") then
+#    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug -nadv_tt=5"
+#else
+#    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+#endif
 #./xmlchange DEBUG=TRUE #xxxx
 #
 ./xmlchange NTHRDS=$NTHRDS
