@@ -34,7 +34,6 @@ contains
          nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q
     use fvm_control_volume_mod, only: fvm_supercycling
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc
-    use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: test_global_integral, print_cfl
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
@@ -75,7 +74,7 @@ contains
     ! ==========================
     ! begin executable code
     ! ==========================
-    call prim_advance_init(hybrid%par,elem)
+    !call prim_advance_init(hybrid%par,elem)
 
     if (topology == "cube") then
        call test_global_integral(elem, hybrid,nets,nete)
@@ -193,7 +192,6 @@ contains
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate
     use prim_advection_mod,     only: vertical_remap, deriv
-    use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc
     use dimensions_mod,         only: ntrac,fv_nphys
@@ -335,9 +333,9 @@ contains
     use time_mod,               only: TimeLevel_t, timelevel_update
     use control_mod,            only: statefreq, qsplit, nu_p
     use control_mod,            only: TRACERTRANSPORT_CONSISTENT_SE_FVM, tracer_transport_type
-    use thread_mod,             only: omp_get_thread_num
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
+    use prim_state_mod,         only: prim_printstate
     use derivative_mod,         only: subcell_integration
     use fvm_control_volume_mod, only: fvm_supercycling
     use hybrid_mod,             only: set_region_num_threads, config_thread_region
@@ -394,8 +392,6 @@ contains
                  ! SE tracers only carry 2 timelevels
 
     call t_startf('prim_advance_exp')
-!    ithr   = 0 ! omp_get_thread_num()
-!    vybrid = hybrid_create(hybrid%par,ithr)
 
     call prim_advance_exp(elem, fvm, deriv, hvcoord,   &
          hybrid, dt, tl, nets, nete)
@@ -477,10 +473,9 @@ contains
        ! FVM transport
        !
       if (tracer_transport_type == TRACERTRANSPORT_CONSISTENT_SE_FVM) &
-      call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-      dt_q,tl,nets,nete)
+          call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,dt_q,tl,nets,nete)
       do ie=nets,nete
-        elem(ie)%sub_elem_mass_flux=0
+        elem(ie)%sub_elem_mass_flux=0.0_r8
       end do
 
       
@@ -586,8 +581,8 @@ contains
       type (hybrid_t)                     :: hybrid
       integer                             :: ie, nets, nete
 
-      !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
-      !JMD        hybrid = config_thread_region(par,'horizontal')
+      !!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
+      !!       hybrid = config_thread_region(par,'horizontal')
       hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
       allocate(tmp(np,np,nets:nete))

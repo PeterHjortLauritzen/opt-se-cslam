@@ -27,7 +27,7 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use thread_mod,     only: horz_num_threads
+use thread_mod,     only: horz_num_threads, max_num_threads
 use hybrid_mod,     only: config_thread_region, get_loop_ranges, hybrid_t
 use dimensions_mod, only: np, npsq, nelemd, nlev, nc, qsize, ntrac, fv_nphys
 
@@ -226,7 +226,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_startf('dpcopy')
    if (local_dp_map) then
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)
@@ -279,7 +279,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       end if
 
       if (iam < par%nprocs) then
-         !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
+         !!$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -331,7 +331,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
+      !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
       do lchnk = begchunk, endchunk
          ncols = phys_state(lchnk)%ncol
 
@@ -401,7 +401,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call derived_phys_dry(phys_state, phys_tend, pbuf2d)
    call t_stopf('derived_phys')
 
-!!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, ilyr, icol)
+!!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, ilyr, icol)
    do lchnk = begchunk, endchunk
       ncols=get_ncols_p(lchnk)
       if (pcols > ncols) then
@@ -473,7 +473,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
+      !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          call get_gcol_all_p(lchnk, pcols, pgcols)
@@ -515,7 +515,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       allocate(bbuffer(tsize*block_buf_nrecs))
       allocate(cbuffer(tsize*chunk_buf_nrecs))
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
+      !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
 
@@ -562,7 +562,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             allocate(bpter(npsq,0:pver))
          end if
 
-         !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
+         !!$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -616,20 +616,21 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             end do
          end do
 
-         !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
-         !JMD        hybrid = config_thread_region(par,'horizontal')
+         call t_startf('phys2dyn')
+         !!$OMP PARALLEL NUM_THREADS(horz_num_threads) DEFAULT(SHARED) PRIVATE(hybrid,nets,nete)
+         !hybrid = config_thread_region(par,'horizontal')
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
 
          ! high-order mapping of ft and fm (and fq if no cslam) using fvm technology
-         call t_startf('phys2dyn')
          call phys2dyn_forcings_fvm(elem, dyn_in%fvm, hybrid,nets,nete,ntrac==0, tl_f, tl_qdp)
+         !!$OMP END PARALLEL
          call t_stopf('phys2dyn')
       else
 
          call t_startf('putUniquePoints')
 
-         !!$omp parallel do num_threads(horz_num_threads) private(ie,ncols)
+         !!$omp parallel do num_threads(max_num_threads) private(ie,ncols)
          do ie = 1, nelemd
             ncols = elem(ie)%idxP%NumUniquePts
             call putUniquePoints(elem(ie)%idxP, nlev, T_tmp(1:ncols,:,ie),       &
@@ -653,7 +654,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    ! so do a simple sum (boundary exchange with no weights).
    ! For physics grid, we interpolated into all points, so do weighted average.
 
-   call t_startf('bndry_exchange')
+!   call t_startf('bndry_exchange')
 
    do ie = 1, nelemd
       if (fv_nphys > 0) then
@@ -712,7 +713,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          end do
       end if
    end do
-   call t_stopf('bndry_exchange')
+!   call t_stopf('bndry_exchange')
 
    if (iam < par%nprocs .and. fv_nphys > 0) then
       call test_mapping_output_mapped_tendencies(dyn_in%fvm(1:nelemd), elem(1:nelemd), &
@@ -759,7 +760,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    ! Evaluate derived quantities
 
-   !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncol, k, i, m , zvirv, pbuf_chnk, factor_array)
+   !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncol, k, i, m , zvirv, pbuf_chnk, factor_array)
    do lchnk = begchunk,endchunk
 
       ncol = get_ncols_p(lchnk)

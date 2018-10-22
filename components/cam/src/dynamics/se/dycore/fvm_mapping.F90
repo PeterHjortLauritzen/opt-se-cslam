@@ -166,6 +166,8 @@ contains
        !
        ! do mapping
        !
+       call PrintHybrid(hybrid,'phys2dyn_forcings_fvm')
+       print *,'phys2dyn_forcings_fvm(): before call to phys2dyn'
        call phys2dyn(hybrid,elem,fld_phys,fld_gll,nets,nete,nlev,nflds,fvm,llimiter,2)
        do ie=nets,nete
          elem(ie)%derived%fT(:,:,:)   = fld_gll(:,:,:,1,ie)
@@ -194,7 +196,7 @@ contains
     use bndry_mod     , only: ghost_exchange
     use edge_mod      , only: initghostbuffer, freeghostbuffer,ghostpack,ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-    use fvm_mod       , only: ghostBufQnhc
+    use fvm_mod       , only: ghostBufQnhc_nothr
 
     integer              , intent(in)    :: nets,nete,num_flds,numlev
     real (kind=r8), intent(inout) :: fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,numlev,num_flds,nets:nete)
@@ -204,7 +206,7 @@ contains
     type(fvm_struct)     , intent(in)    :: fvm(nets:nete)
     logical              , intent(in)    :: llimiter(num_flds)
     integer               :: ie, iwidth
-!    type (edgeBuffer_t)   :: cellghostbuf
+    type (edgeBuffer_t)   :: cellghostbuf
     !
     !*********************************************
     !
@@ -212,20 +214,20 @@ contains
     !
     !*********************************************
     !
-!    call t_startf('fvm2dyn:initbuffer')
-!    call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhc,nc)
-!    call t_stopf('fvm2dyn:initbuffer')
+    call t_startf('fvm2dyn:initbuffer')
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhc,nc,nthreads=1)
+    call t_stopf('fvm2dyn:initbuffer')
     do ie=nets,nete
-!       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostpack(ghostBufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+!       call ghostpack(ghostBufQnhc_nothr, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
-!    call ghost_exchange(hybrid,cellghostbuf)
-    call ghost_exchange(hybrid,ghostbufQnhc,location='fvm2dyn')
+    call ghost_exchange(hybrid,cellghostbuf)
+!    call ghost_exchange(hybrid,ghostbufQnhc_nothr,location='fvm2dyn')
     do ie=nets,nete
-!       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostunpack(ghostbufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+!       call ghostunpack(ghostbufQnhc_nothr, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
-!    call freeghostbuffer(cellghostbuf)
+    call freeghostbuffer(cellghostbuf)
      !
     ! mapping
     !
@@ -263,7 +265,7 @@ contains
     !
     call t_startf('fvm:fill_halo_phys')
     call t_startf('fvm:fill_halo_phys:initbuffer')
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_lev*num_flds,nhc_phys,fv_nphys)
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_lev*num_flds,nhc_phys,fv_nphys,nthreads=1)
     call t_stopf('fvm:fill_halo_phys:initbuffer')
     do ie=nets,nete
        call ghostpack(cellghostbuf, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)

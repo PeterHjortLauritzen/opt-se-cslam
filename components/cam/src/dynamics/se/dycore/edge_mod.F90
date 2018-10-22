@@ -241,7 +241,13 @@ contains
     integer :: CardinalLen, OrdinalLen
     character(len=80)                 :: errorstring
     character(len=80), parameter      :: subname='initedgeBuffer'
+    integer :: ntmp
 
+
+    ntmp = omp_get_num_threads()
+    if (ntmp>1) then 
+      print *,'initEdgeBuffer: WARNING initEdgeBuffer is being called in a thread region'
+    endif
     if(present(bndry_type)) then 
       if ( MPI_VERSION >= 3 ) then
         edge%bndry_type = bndry_type
@@ -474,7 +480,8 @@ contains
              nlen = max_num_threads
           end if
        else
-          nlen = 1
+          nlen = 1   ! going back and forth on this one
+          !nlen = max_num_threads
        end if
     end if
     call gbarrier_init(edge%gbarrier, nlen)

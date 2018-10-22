@@ -25,6 +25,7 @@ module fvm_mod
   
   type (EdgeBuffer_t)                         :: edgeveloc
   type (EdgeBuffer_t), public  :: ghostBufQnhc, ghostBufQ1, ghostBufFlux
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_nothr
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -51,11 +52,14 @@ contains
     !
     !
 
+    !-----------------------------------------------------------------
+    ! Note that this code should not be called from a threaded region 
+    !-----------------------------------------------------------------
     call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
     num_levels = kmax-kmin+1
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_levels*(ntrac+1),ndepth,nc)
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_levels*(ntrac+1),ndepth,nc,nthreads=1)
     call t_stopf('FVM:initbuf')
     call t_startf('FVM:pack')
     do ie=nets,nete
@@ -169,7 +173,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       !*********************************************
       !
       call t_startf('fill_halo_and_extend_panel initbuffer')
-      call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhcc,nphys)
+      call initghostbuffer(hybrid%par,cellghostbuf,elem,numlev*num_flds,nhcc,nphys,nthreads=1)
       call t_stopf('fill_halo_and_extend_panel initbuffer')
       do ie=nets,nete
         call ghostpack(cellghostbuf, fld(:,:,:,:,ie),numlev*num_flds,0,ie)
@@ -410,6 +414,9 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       !
       call subcell_integration(one, np, nc, elem(ie)%metdet,fvm(ie)%inv_se_area_sphere)
       fvm(ie)%inv_se_area_sphere = 1.0_r8/fvm(ie)%inv_se_area_sphere
+      !if(ie==nets) then 
+      !   print *,'SUM(fvm(ie)%inv_se_area_sphere): ',SUM(fvm(ie)%inv_se_area_sphere)
+      !endif
 
       fvm(ie)%fc(:,:,:,:) = 0.0_r8
       fvm(ie)%fm(:,:,:,:) = 0.0_r8
@@ -418,6 +425,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
     call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_nothr,elem,nlev*(ntrac+1),nhc,nc,nthreads=1)
     call initghostbuffer(hybrid%par,ghostBufQ1,elem,nlev*(ntrac+1),1,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
 
@@ -461,7 +469,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! fill halo start
     !
     itot=9+irecons-1+2
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,itot,nhc,nc)
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,itot,nhc,nc,nthreads=1)
     do ie=nets,nete
       istart = 0
       call ghostpack(cellghostbuf, fvm(ie)%norm_elem_coord(1,:,:),1,istart,ie)
@@ -679,7 +687,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       ! fill halo start
       !
       itot=9+irecons-1+2
-      call initghostbuffer(hybrid%par,cellghostbuf,elem,itot,nhc_phys,fv_nphys)
+      call initghostbuffer(hybrid%par,cellghostbuf,elem,itot,nhc_phys,fv_nphys,nthreads=1)
       do ie=nets,nete
         istart = 0
         call ghostpack(cellghostbuf, fvm(ie)%norm_elem_coord_physgrid(1,:,:),1,istart,ie)

@@ -221,7 +221,7 @@ CONTAINS
     use edgetype_mod,     only: EdgeBuffer_t
     use bndry_mod,        only: bndry_exchange
     use parallel_mod,     only: par
-    use thread_mod,       only: horz_num_threads
+    use thread_mod,       only: max_num_threads
     use cam_grid_support, only: cam_grid_id
     use hybrid_mod,       only: hybrid_t,config_thread_region, get_loop_ranges
     use fvm_mapping,      only: fvm2dyn,phys2dyn
@@ -304,7 +304,7 @@ CONTAINS
     if(decomp_type==phys_decomp) then
       fld_dyn = -999_R8
       if(local_dp_map) then
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff,k)
+        !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff,k)
         do lchnk=begchunk,endchunk
           ncols=get_ncols_p(lchnk)
           call get_gcol_all_p(lchnk,pcols,pgcols)
@@ -322,7 +322,7 @@ CONTAINS
         allocate( bbuffer(block_buf_nrecs*numlev) )!xxx Steve: this is different that dp_coupling? (no numlev in dp_coupling)
         allocate( cbuffer(chunk_buf_nrecs*numlev) )
 
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, k, icol)
+        !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, k, icol)
         do lchnk = begchunk,endchunk
           ncols = get_ncols_p(lchnk)
 
@@ -347,7 +347,7 @@ CONTAINS
           else
              allocate(bpter(npsq,0:pver))
           end if
-          !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, k, ncols, icol)
+          !!$omp parallel do num_threads(max_num_threads) private (ie, bpter, k, ncols, icol)
           do ie=1,nelemd
             if (fv_nphys>0) then
               call chunk_to_block_recv_pters(elem(ie)%GlobalID,fv_nphys*fv_nphys,pverp,1,bpter)
@@ -402,7 +402,7 @@ CONTAINS
     ! code for non-GLL grids: need to fill halo and interpolate (if on panel edge/corner) for bilinear interpolation
     !
     if (decomp_type==fvm_decomp.or.(fv_nphys>0.and.decomp_type==phys_decomp)) then
-      !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
+      !JMD $OMP PARALLEL NUM_THREADS(max_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
       !JMD        hybrid = config_thread_region(par,'horizontal')
       hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid,ibeg=nets,iend=nete)
@@ -482,7 +482,7 @@ CONTAINS
     use edgetype_mod,     only: EdgeBuffer_t
     use bndry_mod,        only: bndry_exchange
     use parallel_mod,     only: par
-    use thread_mod,       only: horz_num_threads
+    use thread_mod,       only: max_num_threads
     use cam_grid_support, only: cam_grid_id
     use fvm_mod,          only: fill_halo_and_extend_panel
     use control_mod,      only: cubed_sphere_map
@@ -564,7 +564,7 @@ CONTAINS
     fld_dyn = -999_R8
     if(decomp_type==phys_decomp) then
       if(local_dp_map) then
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, k, ioff)
+        !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, k, ioff)
         do lchnk=begchunk,endchunk
           ncols=get_ncols_p(lchnk)
           call get_gcol_all_p(lchnk,pcols,pgcols)
@@ -582,7 +582,7 @@ CONTAINS
       else
         allocate( bbuffer(2*block_buf_nrecs*numlev) )
         allocate( cbuffer(2*chunk_buf_nrecs*numlev) )
-        !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, k, icol)
+        !!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, k, icol)
         do lchnk = begchunk,endchunk
           ncols = get_ncols_p(lchnk)
 
@@ -607,7 +607,7 @@ CONTAINS
           else
             allocate(bpter(npsq,0:pver))
           end if
-          !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, k, icol)
+          !!$omp parallel do num_threads(max_num_threads) private (ie, bpter, k, icol)
           do ie=1,nelemd
             if (fv_nphys>0) then
               call chunk_to_block_recv_pters(elem(ie)%GlobalID,fv_nphys*fv_nphys,pverp,2,bpter)
@@ -678,7 +678,7 @@ CONTAINS
       !***************************************************************************
       !
 
-      !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
+      !JMD $OMP PARALLEL NUM_THREADS(max_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
       !JMD        hybrid = config_thread_region(par,'horizontal')
       hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid,ibeg=nets,iend=nete)

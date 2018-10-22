@@ -341,8 +341,8 @@ subroutine diag_dynvar_ic(elem, fvm)
 
       if (fv_nphys > 0) then
 
-         !JMD $OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
-         !JMD        hybrid = config_thread_region(par,'horizontal')
+         !!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n)
+         !!hybrid = config_thread_region(par,'horizontal')
          hybrid = config_thread_region(par,'serial')
          call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
@@ -370,6 +370,7 @@ subroutine diag_dynvar_ic(elem, fvm)
          deallocate(fld_fvm)
          deallocate(fld_gll)
          deallocate(llimiter)
+         !!$OMP END PARALLEL
       end if
 
    end if  ! if (write_inithist)

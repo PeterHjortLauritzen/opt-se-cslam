@@ -1,3 +1,4 @@
+#define PROBLEM 1918
 module viscosity_mod
 !
 !  This module should be renamed "global_deriv_mod.F90"
@@ -50,7 +51,7 @@ module viscosity_mod
 
 CONTAINS
 
-subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
+subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge,hybrid,nt,nets,nete,kbeg,kend,&
      dptens2,dp3d_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
   use dimensions_mod, only : ntrac
@@ -69,7 +70,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   real (kind=r8), dimension(np,np,2,nlev,nets:nete)  :: vtens
   real (kind=r8), dimension(np,np,nlev,nets:nete) :: ttens,dptens
   real (kind=r8), dimension(np,np,nlev,nets:nete), optional :: dptens2, dp3d_ref
-  type (EdgeBuffer_t)  , intent(inout) :: edge3
+  type (EdgeBuffer_t)  , intent(inout) :: edge
   type (derivative_t)  , intent(in) :: deriv
   
   ! local
@@ -105,7 +106,12 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   endif
   
   do ie=nets,nete    
-!$omp parallel do num_threads(vert_num_threads) private(k,tmp)
+    !if(present(dptens2)) then 
+    !if(elem(ie)%GlobalId == PROBLEM) then
+    !   print *,'biharmonic_wk_dp3d: point #0: SUM(dp3d_ref): ',sum(dp3d_ref(:,:,:,ie))
+    !endif
+    !endif
+    !!$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
       tmp=elem(ie)%state%T(:,:,k,nt) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ttens(:,:,k,ie),var_coef=var_coef1)
@@ -122,45 +128,52 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
       call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),vtens(:,:,:,k,ie), &
            var_coef=var_coef1,nu_ratio=nu_ratio1)
     enddo
+    !if(elem(ie)%GlobalId == PROBLEM) then
+    !   print *,'biharmonic_wk_dp3d: point #1: SUM(dptens): ',sum(dptens(:,:,:,ie))
+    !endif
+
     
     kptr = kbeg - 1
-    call edgeVpack(edge3,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVpack(edge,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + nlev 
-    call edgeVpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVpack(edge,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + 2*nlev 
-    call edgeVpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVpack(edge,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + 3*nlev 
-    call edgeVpack(edge3,dptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVpack(edge,dptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     if (present(dptens2)) then
       kptr = kbeg - 1 + 4*nlev 
-      call edgeVpack(edge3,dptens2(:,:,kbeg:kend,ie),kblk,kptr,ie)
+      call edgeVpack(edge,dptens2(:,:,kbeg:kend,ie),kblk,kptr,ie)
     end if    
   enddo
   
-  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_dp3d')
+  call bndry_exchange(hybrid,edge,location='biharmonic_wk_dp3d')
   
   do ie=nets,nete
-!CLEAN    rspheremv     => elem(ie)%rspheremp(:,:)
     
     kptr = kbeg - 1
-    call edgeVunpack(edge3,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVunpack(edge,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + nlev 
-    call edgeVunpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVunpack(edge,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + 2*nlev 
-    call edgeVunpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVunpack(edge,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
     
     kptr = kbeg - 1 + 3*nlev 
-    call edgeVunpack(edge3,dptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVunpack(edge,dptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     if (present(dptens2)) then
       kptr = kbeg - 1 + 4*nlev 
-      call edgeVunpack(edge3,dptens2(:,:,kbeg:kend,ie),kblk,kptr,ie)
+      call edgeVunpack(edge,dptens2(:,:,kbeg:kend,ie),kblk,kptr,ie)
     end if
+
+    !if(elem(ie)%GlobalId == PROBLEM) then
+    !   print *,'biharmonic_wk_dp3d: point #2: SUM(dptens): ',sum(dptens(:,:,:,ie))
+    !endif
 
     if (ntrac>0) then
       do k=1,nlev
@@ -171,7 +184,7 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
     endif
     
     ! apply inverse mass matrix, then apply laplace again
-    !$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2)
+    !!$omp parallel do num_threads(vert_num_threads) private(k,v,tmp,tmp2)
     do k=kbeg,kend
 !CLEAN      tmp(:,:)=rspheremv(:,:)*ttens(:,:,k,ie)
       tmp(:,:)=elem(ie)%rspheremp(:,:)*ttens(:,:,k,ie)
@@ -198,13 +211,13 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
 end subroutine biharmonic_wk_dp3d
 
 
-subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend)
+subroutine biharmonic_wk_omega(elem,ptens,deriv,edge,hybrid,nets,nete,kbeg,kend)
   type (hybrid_t)      , intent(in) :: hybrid
   type (element_t)     , intent(inout), target :: elem(:)
   integer              , intent(in)  :: nets,nete
   integer              , intent(in)  :: kbeg, kend
   real (kind=r8), dimension(np,np,nlev,nets:nete) :: ptens
-  type (EdgeBuffer_t)  , intent(inout) :: edge3
+  type (EdgeBuffer_t)  , intent(inout) :: edge
   type (derivative_t)  , intent(in) :: deriv
   
   ! local
@@ -235,16 +248,16 @@ subroutine biharmonic_wk_omega(elem,ptens,deriv,edge3,hybrid,nets,nete,kbeg,kend
     enddo
     
     kptr = kbeg - 1
-    call edgeVpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVpack(edge,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
   enddo
   
-  call bndry_exchange(hybrid,edge3,location='biharmonic_wk_omega')
+  call bndry_exchange(hybrid,edge,location='biharmonic_wk_omega')
   
   do ie=nets,nete
     rspheremv     => elem(ie)%rspheremp(:,:)
     
     kptr = kbeg - 1
-    call edgeVunpack(edge3,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+    call edgeVunpack(edge,ptens(:,:,kbeg:kend,ie),kblk,kptr,ie)
     
     ! apply inverse mass matrix, then apply laplace again
     !$omp parallel do num_threads(vert_num_threads) private(k,tmp)

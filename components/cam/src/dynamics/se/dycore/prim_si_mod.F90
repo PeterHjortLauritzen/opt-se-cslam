@@ -34,7 +34,7 @@ contains
     !-----------------------------------------------------------------------
 
 #if (defined COLUMN_OPENMP)
-!$omp parallel do private(k,j,i,hkk,hkl)
+!!$omp parallel do private(k,j,i,hkk,hkl)
 #endif
        do j=1,np   !   Loop inversion (AAM)
 

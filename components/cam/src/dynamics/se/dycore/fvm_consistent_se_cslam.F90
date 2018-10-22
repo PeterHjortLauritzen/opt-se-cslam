@@ -77,9 +77,7 @@ contains
     end do
     call t_stopf('fvm:before_Qnhc')
 
-    call t_startf('fvm:ghost_exchange:Qnhc')
-    call ghost_exchange(hybrid,ghostbufQnhc,location='ghostbufQnhc')
-    call t_stopf('fvm:ghost_exchange:Qnhc')
+    call ghost_exchange(hybrid,ghostbufQnhc,location='fvm:ghostbufQnhc')
 
     call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
@@ -87,7 +85,7 @@ contains
       call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev),nlev     ,0,ie)
       call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,1:nlev,1:ntrac),   nlev*ntrac,nlev,ie)
       do k=1,nlev
-        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k)
+        call compute_displacements_for_swept_areas (elem(ie), fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k)
       end do
       call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,:),4*nlev,0,ie)
     end do
@@ -180,6 +178,9 @@ contains
         ! convert to dp and scale back dp
         !
         fvm(ie)%dp_fvm(1:nc,1:nc,k) = fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
+        !if(ie==nets .and. hybrid%ithr == 0) then 
+        !   print *,'SUM(fvm(ie)%dp_fvm): ',SUM(fvm(ie)%dp_fvm)
+        !endif
       end do
       !
       ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
@@ -245,6 +246,9 @@ contains
 
     integer :: iseg, iseg_tmp,flowcase,ii,jj,itr
 
+    integer :: gid
+
+    gid = elem%GlobalId
     call define_swept_areas(fvm,ilev,displ,base_vec,base_vtx,idx)
 
     mass_flux_se(1:nc,1:nc,1:4)  = -elem%sub_elem_mass_flux(1:nc,1:nc,1:4,ilev)
@@ -491,7 +495,7 @@ contains
             do iarea=1,num_area
               dp_area(iarea) = dp(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside))
             end do
-            call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
+            call get_flux_segments_area_iterate(gid,i,j,x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
                  num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max)
             call t_stopf('fvm:swept_area:get_gamma')
             !
@@ -653,9 +657,10 @@ contains
     end if
   end subroutine ghost_flux_unpack
 
-  subroutine compute_displacements_for_swept_areas(fvm,cair,irecons,k)
+  subroutine compute_displacements_for_swept_areas(elem,fvm,cair,irecons,k)
     use dimensions_mod, only: large_Courant_incr
     implicit none
+    type (element_t), intent(in)         :: elem
     type (fvm_struct), intent(inout)     :: fvm
     integer, intent(in) :: irecons,k
     real (kind=r8)      :: cair(1-nhc:nc+nhc,1-nhc:nc+nhc,irecons,nlev) !high-order air density reconstruction
@@ -692,6 +697,8 @@ contains
     REAL(KIND=r8), dimension(num_area) :: dp_area
     integer, dimension(4) :: flowcase
     REAL(KIND=r8)  :: gamma(4), flux_se
+    integer :: gid
+    
 
     num_seg_static(1,1) =  1; num_seg(1,1) = 1; flowcase(1) = -1
     num_seg_static(1,2) =  0; num_seg(1,2) = 2; flowcase(2) = -2
@@ -761,7 +768,7 @@ contains
           end do
        end do
     end do
-
+    gid = elem%GlobalID
 !    do k=1,nlev
       do j=1,nc
         do i=1,nc
@@ -775,7 +782,7 @@ contains
               !
               x_tmp (:,1:num_seg(1,iside),:)=x (:,1:num_seg(1,iside),:,iside,i,j)
               dx_tmp(:,1:num_seg(1,iside),:)=dx(:,1:num_seg(1,iside),:,iside,i,j)
-              call get_flux_segments_area_iterate(&
+              call get_flux_segments_area_iterate(gid,i,j,&
                    x_tmp(:,:,:),x_static(:,:,:,iside,i,j),dx_static(:,:,:,iside,i,j),dx_tmp(:,:,:),&
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
@@ -804,10 +811,12 @@ contains
 
 
 
-  subroutine get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
+  subroutine get_flux_segments_area_iterate(gid,i,j,x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
        num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max)
     implicit none
+    integer, intent(in) :: gid,i,j
     integer                                                , intent(in)    :: num_area, num_seg_max
+     
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(in)    :: x_static, dx_static
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(inout) :: x, dx
     integer             , dimension(num_area              ), intent(in) :: num_seg, num_seg_static
@@ -835,6 +844,12 @@ contains
     !
     ! compute static line-integrals (not necessary to recompute them for every iteration)
     !
+    !if(gid == 1843) then 
+    !   print *,'get_flux_segments_area_iterate: SUM(x_static)',SUM(x_static)
+    !   print *,'get_flux_segments_area_iterate: SUM(dx_static)',SUM(dx_static)
+    !   print *,'get_flux_segments_area_iterate: SUM(x)',SUM(x)
+    !   print *,'get_flux_segments_area_iterate: SUM(dx)',SUM(dx)
+    !endif
     flux_static = 0.0_r8
     w_static    = 0.0_r8
     weight_area = 0.0_r8
@@ -1184,7 +1199,7 @@ contains
            ! dgamma set to minimum displacement to avoid f2-f1=0
            !
            gamma3=gamma2-SIGN(1.0_r8,dgamma)*eps
-           write(iulog,*) "WARNING: setting gamma to min",gamma3,iter
+           write(iulog,*) "WARNING: setting gamma to min",gid,i,j,gamma3,iter
          end if
          gamma3=MAX(gamma3,gamma_min)
          !

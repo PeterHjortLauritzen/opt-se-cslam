@@ -525,6 +525,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: qsize_condensate_loading_cp
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
    use prim_driver_mod,    only: prim_init2
+   use prim_advance_mod,   only: prim_advance_init
    use time_mod,           only: time_at
    use control_mod,        only: runtype
    use test_fvm_mapping,   only: test_mapping_addfld
@@ -699,13 +700,13 @@ subroutine dyn_init(dyn_in, dyn_out)
          if (nu_scale_top(k)>1.0_r8) write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
        end if
       end do
-
-!!$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
-      !hybrid = config_thread_region(par,'horizontal')
-      hybrid = config_thread_region(par,'serial')
+      call prim_advance_init(par,elem)
+      !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
+      hybrid = config_thread_region(par,'horizontal')
+      !hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
-!!$OMP END PARALLEL
+      !$OMP END PARALLEL
 
       if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
    end if  ! iam < par%nprocs
@@ -811,8 +812,11 @@ subroutine dyn_run(dyn_state)
 
    if (iam >= par%nprocs) return
 
-   !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k)
+   !$OMP PARALLEL NUM_THREADS(horz_num_threads)  DEFAULT(SHARED) &
+   !$OMP PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k) &
+   !$OMP PRIVATE(dtime,rec2dt,tl_f,ps_before,abs_ps_tend,ldiag)
    hybrid = config_thread_region(par,'horizontal')
+   !hybrid = config_thread_region(par,'serial')
    call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
    dtime = get_step_size()
@@ -1750,7 +1754,7 @@ subroutine read_phis(dyn_in)
          allocate(lonvals_phys(fv_nphys*fv_nphys*nelemd))
          indx = 1
          do ie = 1, nelemd
-           elem(ie)%sub_elem_mass_flux=0
+           elem(ie)%sub_elem_mass_flux=0.0_r8
             do j = 1, fv_nphys
                do i = 1, fv_nphys
                   latvals_phys(indx) = dyn_in%fvm(ie)%center_cart_physgrid(i,j)%lat

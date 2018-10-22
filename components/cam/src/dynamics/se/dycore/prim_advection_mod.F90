@@ -46,7 +46,7 @@ module prim_advection_mod
   public :: prim_advec_tracers_fvm
   public :: vertical_remap
 
-  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax, edgeAdv1,  edgeveloc
+  type (EdgeBuffer_t)      :: edgeAdv, edgeAdvp1, edgeAdvQminmax
 
   integer,parameter :: DSSeta = 1
   integer,parameter :: DSSomega = 2
@@ -85,8 +85,8 @@ contains
                          nthreads=horz_num_threads*tracer_num_threads)
     call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
                          nthreads=horz_num_threads*tracer_num_threads)
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
-    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
+!    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+!    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
 
     ! This is a different type of buffer pointer allocation
     ! used for determine the minimum and maximum value from
@@ -941,7 +941,7 @@ contains
     
     use hybvcoord_mod, only          : hvcoord_t
     use vertremap_mod,          only : remap1, remap1_nofilter
-    use hybrid_mod            , only : hybrid_t!, set_region_num_threads
+    use hybrid_mod            , only : hybrid_t
     use fvm_control_volume_mod, only : fvm_struct
     use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
@@ -1123,7 +1123,7 @@ contains
           end do
         end do
         dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)
-        call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+        call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc,hybrid=hybrid)
         do k=1,nlev
           do j=1,nc
             do i=1,nc

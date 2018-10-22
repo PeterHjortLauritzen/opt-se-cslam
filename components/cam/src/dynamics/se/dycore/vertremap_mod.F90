@@ -69,6 +69,7 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
     if ( present(hybrid) ) then
       !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
       hybridnew = config_thread_region(hybrid,'tracer')
+      !hybridnew = config_thread_region(hybrid,'serial')
       call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
       call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
       !$OMP END PARALLEL
@@ -526,6 +527,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
         !Find the index of the old grid cell in which this new cell's bottom interface resides.
         do while ( pio(kk) <= pin(k+1) )
           kk = kk + 1
+          if(kk==nlev+2) exit
         enddo
         kk = kk - 1                   !kk is now the cell index we're integrating over.
         if (kk == nlev+1) kk = nlev   !This is to keep the indices in bounds.

@@ -1,3 +1,10 @@
+#define PROBLEM 1918
+#define SUB_ELEM1 1
+#define SUB_ELEM2 1
+#define SUB_ELEM3 1
+#define SUB_ELEM4 1
+#define SUB_ELEM5 1
+#define SUB_ELEM6 1
 !xxx #define phl_thread
 module prim_advance_mod
   use shr_kind_mod,   only: r8=>shr_kind_r8
@@ -14,7 +21,7 @@ module prim_advance_mod
   
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
 
-  type (EdgeBuffer_t) :: edge3p1,edgeOmega
+  type (EdgeBuffer_t) :: edge2p1, edge4, edge5, edgeOmega
   real (kind=r8), allocatable :: ur_weights(:)
   
 contains
@@ -29,12 +36,15 @@ contains
     type (element_t), target, intent(inout) :: elem(:)
     integer                                 :: i
 
-    if (hypervis_on_plevs.and.nu_p>0) then
-      call initEdgeBuffer(par,edge3p1,elem,5*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
-    else
-      call initEdgeBuffer(par,edge3p1,elem,4*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
-    end if
-    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=1)
+    !if (hypervis_on_plevs.and.nu_p>0) then
+    !  call initEdgeBuffer(par,edge3p1,elem,5*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    !else
+    !  call initEdgeBuffer(par,edge3p1,elem,4*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    !end if
+    call initEdgeBuffer(par,edge5,elem,5*nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edge4,elem,4*nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edge2p1,elem,2*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
+    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     
     if(.not. allocated(ur_weights)) allocate(ur_weights(qsplit))
     ur_weights(:)=0.0_r8
@@ -126,7 +136,7 @@ contains
       
       do ie=nets,nete
         ! subcycling code uses a mean flux to advect tracers
- !$omp parallel do num_threads (vert_num_threads) private(k,dp)
+        !$omp parallel do num_threads (vert_num_threads) private(k,dp)
         do k=1,nlev
           dp(:,:) = elem(ie)%state%dp3d(:,:,k,tl%n0)
           
@@ -177,7 +187,7 @@ contains
         inv_cp_full(:,:,:,nets:nete) = 1.0_r8/cpair
       end do
     end if
-    
+
     dt_vis = dt
     if (tstep_type==1) then
       ! RK2-SSP 3 stage.  matches tracer scheme. optimal SSP CFL, but
@@ -269,22 +279,24 @@ contains
     else
       call endrun('ERROR: bad choice of tstep_type')
     endif
-
     ! ==============================================
     ! Time-split Horizontal diffusion: nu.del^2 or nu.del^4
     ! U(*) = U(t+1)  + dt2 * HYPER_DIFF_TERM(t+1)
     ! ==============================================
 
+    call omp_set_nested(.false.)
+    !$OMP BARRIER 
     call t_startf('advance_hypervis')
 
     ! note:time step computes u(t+1)= u(t*) + RHS.
     ! for consistency, dt_vis = t-1 - t*, so this is timestep method dependent
 
     ! forward-in-time, hypervis applied to dp3d
-    call advance_hypervis_dp(edge3p1,elem,fvm,hybrid,deriv,np1,qn0,nets,nete,dt_vis,eta_ave_w,&
+    call advance_hypervis_dp(elem,fvm,hybrid,deriv,np1,qn0,nets,nete,dt_vis,eta_ave_w,&
          inv_cp_full,hvcoord)
 
     call t_stopf('advance_hypervis')
+    !$OMP BARRIER
     !
     ! update psdry
     !
@@ -296,7 +308,6 @@ contains
     end do
     tevolve=tevolve+dt
 
-    call omp_set_nested(.false.)
 
     call t_stopf('prim_advance_exp')
   end subroutine prim_advance_exp
@@ -380,7 +391,7 @@ contains
       !
       if (qsize>0.and.dt_local_tracer>0) then
 #if (defined COLUMN_OPENMP)
-    !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
+        !$omp parallel do num_threads(tracer_num_threads) private(q,k,i,j,v1)
 #endif
         do q=1,qsize
           do k=1,nlev
@@ -445,7 +456,7 @@ contains
   end subroutine applyCAMforcing
 
 
-  subroutine advance_hypervis_dp(edge3,elem,fvm,hybrid,deriv,nt,qn0,nets,nete,dt2,eta_ave_w,inv_cp_full,hvcoord)
+  subroutine advance_hypervis_dp(elem,fvm,hybrid,deriv,nt,qn0,nets,nete,dt2,eta_ave_w,inv_cp_full,hvcoord)
     !
     !  take one timestep of:
     !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
@@ -472,7 +483,6 @@ contains
     type (hybrid_t)    , intent(in)   :: hybrid
     type (element_t)   , intent(inout), target :: elem(:)
     type(fvm_struct)   , intent(in)   :: fvm(:)
-    type (EdgeBuffer_t), intent(inout):: edge3
     type (derivative_t), intent(in  ) :: deriv
     integer            , intent(in)   :: nets,nete, nt, qn0
     real (kind=r8)     , intent(in)   :: inv_cp_full(np,np,nlev,nets:nete)
@@ -517,9 +527,15 @@ contains
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
     call t_startf('advance_hypervis_dp')
 
+    !do ie=nets,nete
+    !   if(elem(ie)%GlobalId == PROBLEM) then 
+    !     print *,'advance_hypervis_dp: SUM(dp3d): ',sum(elem(ie)%state%dp3d) 
+    !   endif
+    !enddo
     if (hypervis_on_plevs.and.nu_p>0)&
-         call calc_dp3d_reference(elem,edge3p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
+         call calc_dp3d_reference(elem,edge2p1,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
     
+!    print *,'advance_hypervis_dp: hypervis_on_plevs:',hypervis_on_plevs
     ! call get_loop_ranges(hybrid,kbeg=kbeg,kend=kend)
     kbeg=1; kend=nlev
     
@@ -530,18 +546,24 @@ contains
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
      !  hyper viscosity
      !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!     print *,'eta_ave_w:         ',eta_ave_w
+!     print *,'nu_p:              ',nu_p
+!     print *,'hypervis_subcycle: ',hypervis_subcycle
 
     do ic=1,hypervis_subcycle
       call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBH')
       
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
       if (hypervis_on_plevs.and.nu_p>0) then
-        call biharmonic_wk_dp3d(elem,dptens_ref,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
+        call biharmonic_wk_dp3d(elem,dptens_ref,dpflux,ttens,vtens,deriv,edge5,hybrid,nt,nets,nete,kbeg,kend,&
              dptens,dp3d_ref)
       else
-        call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend)
+        call biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge4,hybrid,nt,nets,nete,kbeg,kend)
       end if
       do ie=nets,nete
+        !if(elem(ie)%GlobalId == PROBLEM) then 
+        !   print *,'advance_hypervis_dp: SUM(dpflux): ',sum(dpflux(:,:,:,:,ie)) 
+        !endif
         if (hypervis_on_plevs) then
           !
           ! compute \nabla^4 p_k
@@ -639,14 +661,24 @@ contains
           if (ntrac>0) then
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED
+!SUB_ELEM1
+#ifdef SUB_ELEM1
             do j=1,nc
               do i=1,nc
-                elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                     rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+                elem(ie)%sub_elem_mass_flux(i,j,1,k) = elem(ie)%sub_elem_mass_flux(i,j,1,k) - &
+                    rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,1,k,ie)
+                elem(ie)%sub_elem_mass_flux(i,j,2,k) = elem(ie)%sub_elem_mass_flux(i,j,2,k) - &
+                    rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,2,k,ie)
+                elem(ie)%sub_elem_mass_flux(i,j,3,k) = elem(ie)%sub_elem_mass_flux(i,j,3,k) - &
+                    rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,3,k,ie)
+                elem(ie)%sub_elem_mass_flux(i,j,4,k) = elem(ie)%sub_elem_mass_flux(i,j,4,k) - &
+                    rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,4,k,ie)
               enddo
             enddo
-          if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
+#endif
+            if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
               call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
+!SUB_ELEM2
               elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                    rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
             endif
@@ -665,30 +697,30 @@ contains
         enddo
         
         kptr = kbeg - 1
-        call edgeVpack(edge3,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVpack(edge4,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
         
         kptr = kbeg - 1 + nlev
-        call edgeVpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVpack(edge4,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
         
         kptr = kbeg - 1 + 2*nlev
-        call edgeVpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVpack(edge4,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
         
         kptr = kbeg - 1 + 3*nlev
-        call edgeVpack(edge3,elem(ie)%state%dp3d(:,:,kbeg:kend,nt),kblk,kptr,ie)
+        call edgeVpack(edge4,elem(ie)%state%dp3d(:,:,kbeg:kend,nt),kblk,kptr,ie)
       enddo
       
-      call bndry_exchange(hybrid,edge3,location='advance_hypervis_dp2')
+      call bndry_exchange(hybrid,edge4,location='advance_hypervis_dp2')
       
       do ie=nets,nete
         
         kptr = kbeg - 1
-        call edgeVunpack(edge3,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVunpack(edge4,ttens(:,:,kbeg:kend,ie),kblk,kptr,ie)
         
         kptr = kbeg - 1 + nlev
-        call edgeVunpack(edge3,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVunpack(edge4,vtens(:,:,1,kbeg:kend,ie),kblk,kptr,ie)
         
         kptr = kbeg - 1 + 2*nlev
-        call edgeVunpack(edge3,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
+        call edgeVunpack(edge4,vtens(:,:,2,kbeg:kend,ie),kblk,kptr,ie)
         
         if (ntrac>0) then
           do k=kbeg,kend
@@ -704,14 +736,14 @@ contains
           enddo
         endif
         kptr = kbeg - 1 + 3*nlev
-        call edgeVunpack(edge3,elem(ie)%state%dp3d(:,:,kbeg:kend,nt),kblk,kptr,ie)
+        call edgeVunpack(edge4,elem(ie)%state%dp3d(:,:,kbeg:kend,nt),kblk,kptr,ie)
         
         if (ntrac>0) then
-          desc = elem(ie)%desc
+          !desc = elem(ie)%desc
           
           kptr = kbeg - 1 + 3*nlev
 #ifdef phl_thread
-          call edgeDGVunpack(edge3,corners(:,:,kbeg:kend,ie),kblk,kptr,ie)
+          call edgeDGVunpack(edge4,corners(:,:,kbeg:kend,ie),kblk,kptr,ie)
           do k=kbeg,kend
             corners(:,:,k,ie) = corners(:,:,k,ie)/dt !note: array size is 0:np+1
             do j=1,np
@@ -720,19 +752,24 @@ contains
 !                temp(i,j,k) =  temp(i,j,k)/dt
               enddo
             enddo
-            call distribute_flux_at_corners(cflux(:,:,:,ie), corners(:,:,k,ie), elem(ie)%desc%getmapP)
+            !call distribute_flux_at_corners(cflux(:,:,:,ie), corners(:,:,k,ie), elem(ie)%desc%getmapP)
+            call distribute_flux_at_corners(cflux(:,:,:,ie), corners(:,:,k,ie), edge4%getmap(:,ie))
 
             cflux(1,1,:,ie)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:,ie)
             cflux(2,1,:,ie)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:,ie)
             cflux(1,2,:,ie)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:,ie)
             cflux(2,2,:,ie)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:,ie)
             
+
             call subcell_dss_fluxes(temp(:,:,k,ie), np, nc, elem(ie)%metdet,cflux(:,:,:,ie),tempflux(:,:,:,ie))
+!SUB_ELEM3
+#ifdef SUB_ELEM3
             elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                  rhypervis_subcycle*eta_ave_w*tempflux(:,:,:,ie)
+#endif
           end do
 #else
-          call edgeDGVunpack(edge3,corners(:,:,kbeg:kend),kblk,kptr,ie)
+          call edgeDGVunpack(edge4,corners(:,:,kbeg:kend),kblk,kptr,ie)
           do k=kbeg,kend
             corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
             !OMP_COLLAPSE_SIMD
@@ -744,7 +781,8 @@ contains
               enddo
             enddo
             
-            call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+            ! call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+            call distribute_flux_at_corners(cflux, corners(:,:,k), edge4%getmap(:,ie))
             
             cflux(1,1,:)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:)
             cflux(2,1,:)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:)
@@ -752,10 +790,16 @@ contains
             cflux(2,2,:)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:)
             
             call subcell_dss_fluxes(temp(:,:,k), np, nc, elem(ie)%metdet,cflux,tempflux)
+!SUB_ELEM4  !BUG
+#ifdef SUB_ELEM4
             elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                  rhypervis_subcycle*eta_ave_w*tempflux
+#endif
           end do
 #endif
+          !if(elem(ie)%GlobalId == PROBLEM) then 
+          !  print *,'advance_hypervis_dp: SUM(sub_elem_mass_flux): ',sum(elem(ie)%sub_elem_mass_flux) 
+          !endif
         endif
         
         ! apply inverse mass matrix, accumulate tendencies
@@ -1021,7 +1065,7 @@ contains
        ckk         = 0.5_r8
        suml(:,:  ) = 0
 #if (defined COLUMN_OPENMP)
-!$omp parallel do num_threads(vert_num_threads) private(k,j,i,ckk,term)
+       !$omp parallel do num_threads(vert_num_threads) private(k,j,i,ckk,term)
 #endif
        do k=1,nlev
         !OMP_COLLAPSE_SIMD 
@@ -1039,7 +1083,7 @@ contains
          end do
        end do       
 #if (defined COLUMN_OPENMP)
-     !$omp parallel do num_threads(vert_num_threads) private(k)
+       !$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev  !  Loop index added (AAM)
          elem(ie)%derived%omega(:,:,k) = &
@@ -1049,7 +1093,7 @@ contains
        ! Compute phi + kinetic energy term: 10*nv*nv Flops
        ! ==============================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do num_threads(vert_num_threads) private(k,i,j,v1,v2,E,Ephi,vtemp,vgrad_T,gpterm,glnps1,glnps2)
+       !$omp parallel do num_threads(vert_num_threads) private(k,i,j,v1,v2,E,Ephi,vtemp,vgrad_T,gpterm,glnps1,glnps2)
 #endif
        vertloop: do k=1,nlev
         !OMP_COLLAPSE_SIMD 
@@ -1152,7 +1196,7 @@ contains
        ! apply mass matrix
        ! =========================================================
 #if (defined COLUMN_OPENMP)
-!$omp parallel do num_threads(vert_num_threads) private(k)
+       !$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev
          !OMP_COLLAPSE_SIMD 
@@ -1179,7 +1223,10 @@ contains
              enddo
            enddo
            call subcell_div_fluxes(v, np, nc, elem(ie)%metdet,tempflux)
+!SUB_ELEM5  !BUG
+#ifdef SUB_ELEM5
            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) - eta_ave_w*tempflux
+#endif
          end if
        enddo
        ! =========================================================
@@ -1188,29 +1235,29 @@ contains
        !
        ! =========================================================
        kptr=0
-       call edgeVpack(edge3p1, elem(ie)%state%T(:,:,:,np1),nlev,kptr,ie)
+       call edgeVpack(edge4, elem(ie)%state%T(:,:,:,np1),nlev,kptr,ie)
        
        kptr=nlev
-       call edgeVpack(edge3p1, elem(ie)%state%v(:,:,:,:,np1),2*nlev,kptr,ie)
+       call edgeVpack(edge4, elem(ie)%state%v(:,:,:,:,np1),2*nlev,kptr,ie)
        
        kptr=kptr+2*nlev
-       call edgeVpack(edge3p1, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr, ie)
+       call edgeVpack(edge4, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr, ie)
      end do
      
      ! =============================================================
      ! Insert communications here: for shared memory, just a single
      ! sync is required
      ! =============================================================
-     call bndry_exchange(hybrid,edge3p1,location='edge3p1')
+     call bndry_exchange(hybrid,edge4,location='compute_and_apply_rhs')
      do ie=nets,nete
        ! ===========================================================
        ! Unpack the edges for vgrad_T and v tendencies...
        ! ===========================================================
        kptr=0
-       call edgeVunpack(edge3p1, elem(ie)%state%T(:,:,:,np1), nlev, kptr, ie)
+       call edgeVunpack(edge4, elem(ie)%state%T(:,:,:,np1), nlev, kptr, ie)
        
        kptr=nlev
-       call edgeVunpack(edge3p1, elem(ie)%state%v(:,:,:,:,np1), 2*nlev, kptr, ie)
+       call edgeVunpack(edge4, elem(ie)%state%v(:,:,:,:,np1), 2*nlev, kptr, ie)
        
        if (ntrac>0.and.eta_ave_w.ne.0._r8) then
          do k=1,nlev
@@ -1221,12 +1268,12 @@ contains
        corners = 0.0_r8
        corners(1:np,1:np,:) = elem(ie)%state%dp3d(:,:,:,np1)
        kptr=kptr+2*nlev
-       call edgeVunpack(edge3p1, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr,ie)
+       call edgeVunpack(edge4, elem(ie)%state%dp3d(:,:,:,np1),nlev,kptr,ie)
        
        if  (ntrac>0.and.eta_ave_w.ne.0._r8) then
-         desc = elem(ie)%desc
+         !desc = elem(ie)%desc
 
-         call edgeDGVunpack(edge3p1, corners, nlev, kptr, ie)
+         call edgeDGVunpack(edge4, corners, nlev, kptr, ie)
 
          corners = corners/dt2
          
@@ -1235,7 +1282,7 @@ contains
            tempdp3d = tempdp3d - stashdp3d(:,:,k)
            tempdp3d = tempdp3d/dt2
            
-           call distribute_flux_at_corners(cflux, corners(:,:,k), desc%getmapP)
+           call distribute_flux_at_corners(cflux, corners(:,:,k), edge4%getmap(:,ie))
            
            cflux(1,1,:)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:)
            cflux(2,1,:)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:)
@@ -1243,7 +1290,10 @@ contains
            cflux(2,2,:)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:)
            
            call subcell_dss_fluxes(tempdp3d, np, nc, elem(ie)%metdet, cflux,tempflux)
+!SUB_ELEM6 !BUG
+#ifdef SUB_ELEM6
            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + eta_ave_w*tempflux
+#endif
          end do
        end if
        
@@ -1252,7 +1302,7 @@ contains
        ! ====================================================
        
 #if (defined COLUMN_OPENMP)
-!$omp parallel do num_threads(vert_num_threads) private(k)
+       !$omp parallel do num_threads(vert_num_threads) private(k)
 #endif
        do k=1,nlev
          !OMP_COLLAPSE_SIMD 
@@ -1736,7 +1786,7 @@ contains
      !call FreeEdgeBuffer(edgeOmega)
    end subroutine compute_omega
 
-  subroutine calc_dp3d_reference(elem,edge3,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
+  subroutine calc_dp3d_reference(elem,edge,hybrid,nets,nete,nt,hvcoord,dp3d_ref)
     !
     ! calc_dp3d_reference: When the del^4 horizontal damping is applied to dp3d 
     !                      the values are implicitly affected by natural variations 
@@ -1759,7 +1809,7 @@ contains
     ! Passed variables
     !-------------------
     type(element_t   ),target,intent(inout):: elem(:)
-    type(EdgeBuffer_t)       ,intent(inout):: edge3
+    type(EdgeBuffer_t)       ,intent(inout):: edge
     type(hybrid_t    )       ,intent(in   ):: hybrid
     integer                  ,intent(in   ):: nets,nete
     integer                  ,intent(in   ):: nt
@@ -1792,6 +1842,13 @@ contains
     ! Loop over elements
     !--------------------
     do ie=nets,nete
+
+       !if(elem(ie)%GlobalId == PROBLEM) then
+       !  print *,'calc_dp3d_reference: SUM(spheremp): ',sum(elem(ie)%spheremp)
+       !  print *,'calc_dp3d_reference: SUM(rspheremp): ',sum(elem(ie)%rspheremp)
+       !  print *,'calc_dp3d_reference: SUM(T):        ',sum(elem(ie)%state%T)
+       !  print *,'calc_dp3d_reference: SUM(phis):     ',sum(elem(ie)%state%phis)
+       !endif
 
       ! Calculate Pressure values from dp3dp
       !--------------------------------------
@@ -1846,27 +1903,37 @@ contains
         RT_avg (:,:,kk,ie) = elem(ie)%spheremp(:,:)*RT_avg (:,:,kk,ie)
       end do
       kptr = 0
-      call edgeVpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
+      call edgeVpack(edge,Phi_avg(:,:,:,ie),nlev,kptr,ie)
       kptr = nlev
-      call edgeVpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
+      call edgeVpack(edge,RT_avg (:,:,:,ie),nlev,kptr,ie)
       kptr = 2*nlev
-      call edgeVpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
+      call edgeVpack(edge,Phis_avg (:,:,ie),1   ,kptr,ie)
+      if(elem(ie)%GlobalId == PROBLEM) then
+         print *,'calc_dp3d_reference: point #1: SUM(Phi_avg):  ',sum(Phi_avg(:,:,:,ie))
+         print *,'calc_dp3d_reference: point #1: SUM(RT_avg):   ',sum(RT_avg(:,:,:,ie))
+         print *,'calc_dp3d_reference: point #1: SUM(Phis_avg): ',sum(Phis_avg(:,:,ie))
+      endif
     end do ! ie=nets,nete
 
-    call bndry_exchange(hybrid,edge3,location='calc_dp3d_reference')
+    call bndry_exchange(hybrid,edge,location='calc_dp3d_reference')
 
     do ie=nets,nete
       kptr = 0
-      call edgeVunpack(edge3,Phi_avg(:,:,:,ie),nlev,kptr,ie)
+      call edgeVunpack(edge,Phi_avg(:,:,:,ie),nlev,kptr,ie)
       kptr = nlev
-      call edgeVunpack(edge3,RT_avg (:,:,:,ie),nlev,kptr,ie)
+      call edgeVunpack(edge,RT_avg (:,:,:,ie),nlev,kptr,ie)
       kptr = 2*nlev
-      call edgeVunpack(edge3,Phis_avg (:,:,ie),1   ,kptr,ie)
+      call edgeVunpack(edge,Phis_avg (:,:,ie),1   ,kptr,ie)
       Phis_avg(:,:,ie) = elem(ie)%rspheremp(:,:)*Phis_avg(:,:,ie)
       do kk=1,nlev
         Phi_avg(:,:,kk,ie) = elem(ie)%rspheremp(:,:)*Phi_avg(:,:,kk,ie)
         RT_avg (:,:,kk,ie) = elem(ie)%rspheremp(:,:)*RT_avg (:,:,kk,ie)
       end do
+      if(elem(ie)%GlobalId == PROBLEM) then
+         print *,'calc_dp3d_reference: point #2: SUM(Phi_avg):  ',sum(Phi_avg(:,:,:,ie))
+         print *,'calc_dp3d_reference: point #2: SUM(RT_avg):   ',sum(RT_avg(:,:,:,ie))
+         print *,'calc_dp3d_reference: point #2: SUM(Phis_avg): ',sum(Phis_avg(:,:,ie))
+      endif
     end do ! ie=nets,nete
 
     ! Loop over elements
@@ -1880,6 +1947,15 @@ contains
         call fill_element(Phi_avg(1,1,kk,ie))
         call fill_element(RT_avg (1,1,kk,ie))
       end do
+
+      !if(elem(ie)%GlobalId == PROBLEM) then
+      !   print *,'calc_dp3d_reference: point #3: SUM(Phi_avg):  ',sum(Phi_avg(:,:,:,ie))
+      !   print *,'calc_dp3d_reference: point #3: SUM(RT_avg):   ',sum(RT_avg(:,:,:,ie))
+      !   print *,'calc_dp3d_reference: point #3: SUM(Phis_avg): ',sum(Phis_avg(:,:,ie))
+      !   ! print *,'calc_dp3d_reference: point #3: hvcoord%hyai: ',hvcoord%hyai
+      !   ! print *,'calc_dp3d_reference: point #3: hvcoord%hybi: ',hvcoord%hybi
+      !   ! print *,'calc_dp3d_reference: point #3: hvcoord%ps0: ',hvcoord%ps0
+      !endif
 
       ! Integrate upward to compute Alpha == (dp3d/P)
       !----------------------------------------------
@@ -1935,6 +2011,11 @@ contains
         dp3d_ref(:,:,kk,ie) = DP_avg(:,:,kk) + (hvcoord%hybi(kk+1)            &
                                                -hvcoord%hybi(kk  ))*dlt_Ps(:,:)
       end do
+      !if(elem(ie)%GlobalId == PROBLEM) then
+      !   print *,'calc_dp3d_reference: point #4: SUM(Ps_ref): ',sum(Ps_ref)
+      !   print *,'calc_dp3d_reference: point #4: SUM(Ps_avg): ',sum(Ps_avg)
+      !   print *,'calc_dp3d_reference: point #4: SUM(DP_avg): ',sum(DP_avg)
+      !endif
 
     end do ! ie=nets,nete
 
