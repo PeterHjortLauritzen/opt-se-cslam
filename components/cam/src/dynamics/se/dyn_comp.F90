@@ -715,33 +715,33 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    if (masterproc) write(iulog,*) "sponge layer viscosity scaling factor"
    do k=1,nlev
-     press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
-     ptop  = hvcoord%hyai(1)*hvcoord%ps0
-     nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
-     !
-     ! reduce order of CSLAM tracer advection
-     !
-     if (nu_scale_top(k).ge.2.0_r8) then
-       irecons_tracer_lev(k) = 1
-       ksponge_end = k
-     else if (nu_scale_top(k).ge.1.0_r8) then
-       irecons_tracer_lev(k) = 3
-       ksponge_end = k
-     else
-       irecons_tracer_lev(k) = irecons_tracer
-     end if
-     
-     if (masterproc) then
-       if (nu_scale_top(k)>1.0_r8) then
-         write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
-         if (ntrac>0) then
-           if (irecons_tracer_lev(k)==3) &
-                write(iulog,*) "CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
-           if (irecons_tracer_lev(k)==1) &
-                write(iulog,*) "CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
+      ptop  = hvcoord%hyai(1)*hvcoord%ps0
+      nu_scale_top(k) = 8.0_r8*(1.0_r8+tanh(1.0_r8*log(ptop/press))) ! tau will be maximum 8 at model top
+      !
+      ! reduce order of CSLAM tracer advection
+      !
+      if (nu_scale_top(k).ge.2.0_r8) then
+         irecons_tracer_lev(k) = 1
+         ksponge_end = k
+      else if (nu_scale_top(k).ge.1.0_r8) then
+         irecons_tracer_lev(k) = 3
+         ksponge_end = k
+      else
+         irecons_tracer_lev(k) = irecons_tracer
+      end if
+      
+      if (masterproc) then
+         if (nu_scale_top(k)>1.0_r8) then
+            write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
+            if (ntrac>0) then
+               if (irecons_tracer_lev(k)==3) &
+                    write(iulog,*) "CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
+               if (irecons_tracer_lev(k)==1) &
+                    write(iulog,*) "CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+            end if
          end if
-       end if
-     end if
+      end do
    end do
    ksponge_end = MAX(ksponge_end,1)
 

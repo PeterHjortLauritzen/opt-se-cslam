@@ -55,6 +55,7 @@ contains
       !
       !***********************************************************
       !
+      call t_startf('p2d-pg2:copying')
       nflds = 4+ntrac
       allocate(fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,nlev,nflds,nets:nete))
       allocate(fld_gll(np,np,nlev,3,nets:nete))
@@ -75,6 +76,8 @@ contains
                fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,:,m_cnst)
         end do
       end do
+      call t_stopf('p2d-pg2:copying')
+      call t_startf('p2d-pg2:fill_halo_phys')
       call fill_halo_phys(elem,fld_phys,hybrid,nets,nete,nlev,nflds)
       !
       ! do mapping of fu,fv,ft
@@ -85,11 +88,13 @@ contains
         elem(ie)%derived%fM(:,:,1,:) = fld_gll(:,:,:,2,ie)
         elem(ie)%derived%fM(:,:,2,:) = fld_gll(:,:,:,3,ie)
       end do
+      call t_stopf('p2d-pg2:fill_halo_phys')
 
       deallocate(fld_gll)
       !
       ! map fq from phys to fvm
       !
+      call t_startf('p2d-pg2:phys2fvm')
       do ie=nets,nete
          do k=1,nlev
 !#ifdef just_map_q
@@ -102,7 +107,8 @@ contains
                 fld_phys(:,:,k,5:4+ntrac,ie),fvm(ie)%fc(:,:,k,1:ntrac),ntrac)
 !#endif
          end do
-       end do       
+       end do
+       call t_stopf('p2d-pg2:phys2fvm')
        !
        ! overwrite SE Q with cslam Q
        !
@@ -117,8 +123,10 @@ contains
                 fvm(ie)%fc(1:nc,1:nc,:,qsize_condensate_loading_idx(m_cnst))/fvm(ie)%dp_fvm(1:nc,1:nc,:)
          enddo
        end do
+       call t_startf('p2d-pg2:fvm2dyn')
        llimiter(1:nflds) = .false.
        call fvm2dyn(elem,fld_fvm,fld_gll(:,:,:,1:nflds,:),hybrid,nets,nete,nlev,nflds,fvm,llimiter(1:nflds))
+       call t_stopf('p2d-pg2:fvm2dyn')
        !
        ! fld_gll now holds q cslam value on gll grid
        !

@@ -13,11 +13,11 @@ set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
-#set res="ne30pg3_ne30pg3_mg17" #cslam
-set res="ne30_ne30_mg17"        #no cslam
+set res="ne30pg3_ne30pg3_mg17" #cslam
+#set res="ne30_ne30_mg17"        #no cslam
 
-#set climateRun="True"
-set climateRun="False"
+set climateRun="True"
+#set climateRun="False"
 #set energyConsistency="True"
 set energyConsistency="False"
 set test_tracers="False"
@@ -43,7 +43,7 @@ if ($climateRun == "True") then
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="2700"
+  set pecount="1800"
   set NTHRDS="1"
   set stopoption="nmonths"
   set steps="13"
@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=nowaccm_debug_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=bugfree_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -67,11 +67,11 @@ cd /glade/scratch/$USER/$caze
 #./xmlchange EXEROOT=/glade/scratch/$USER/$caze/bld
 #./xmlchange RUNDIR=/glade/scratch/$USER/$caze/run
 
-#if ($test_tracers == "True") then
-#    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug -nadv_tt=5"
-#else
-#    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
-#endif
+if ($test_tracers == "True") then
+    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug -nadv_tt=5"
+else
+    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+endif
 #./xmlchange DEBUG=TRUE #xxxx
 #
 ./xmlchange NTHRDS=$NTHRDS
@@ -195,6 +195,9 @@ else
 endif
 
 if ($cset == "FW2000") then
+  echo "se_nsplit = 4" >> user_nl_cam
+  echo "se_fvm_supercycling     = 7" >> user_nl_cam
+  echo "se_fvm_supercycling_jet = 7" >> user_nl_cam
   if ($res == "ne30pg3_ne30pg3_mg17") then
     echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
   else

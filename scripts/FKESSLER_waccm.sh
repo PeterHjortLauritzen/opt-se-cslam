@@ -3,7 +3,7 @@ setenv PBS_ACCOUNT "P93300642"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam"
+set src="opt-se-cslam-master"
 #
 # number of test tracers
 #
@@ -12,10 +12,11 @@ set NTHRDS="1"
 #
 # run with CSLAM or without
 #
-set res=ne30pg3_ne30pg3_mg17 #cslam
+#set res=ne30pg3_ne30pg3_mg17 #cslam
+set res=ne30pg2_ne30pg2_mg17 #cslam pg2
 #setenv res ne30_ne30_mg17        #no cslam
 set stopoption="nsteps"
-set steps="7"
+set steps="5"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
