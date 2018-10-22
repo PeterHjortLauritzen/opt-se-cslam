@@ -120,18 +120,13 @@ echo "inithist    = '6-HOURLY'"   >> user_nl_cam #xxx
 echo "se_statefreq       = 244"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
-echo "interpolate_output = .true.,.true." >> user_nl_cam
+#echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 #
 # 70 layer IC file
 #
 echo "ncdata = '$inic/waccm.i.spinup.nc'"   >> user_nl_cam
 
-#echo "se_statefreq       = 244"       >> user_nl_cam
-echo "se_nsplit          = 10"        >> user_nl_cam   #WACCM mod
-echo "se_large_Courant_incr=.false."  >> user_nl_cam   #WACCM mod
-#echo "inithist           = 'DAILY'"   >> user_nl_cam
-echo "se_hypervis_subcycle = 1"       >> user_nl_cam
-echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
+
 
 #
 # spinup
