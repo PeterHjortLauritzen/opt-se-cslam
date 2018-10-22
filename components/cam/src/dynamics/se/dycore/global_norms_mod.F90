@@ -325,7 +325,9 @@ contains
   !
   ! ================================
 
-  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop)
+  subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,&
+       dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
+       dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual,dt_phys)
     !
     !   estimate various CFL limits
     !   also, for variable resolution viscosity coefficient, make sure
@@ -351,6 +353,11 @@ contains
     integer              , intent(in) :: nets,nete
     type (hybrid_t)      , intent(in) :: hybrid
     real (kind=r8), intent(in) :: dtnu, ptop
+    !
+    ! actual time-steps
+    !
+    real (kind=r8), intent(in) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
+                           dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual, dt_phys
     
     ! Element statisics
     real (kind=r8) :: min_max_dx,max_unif_dx   ! used for normalizing scalar HV
@@ -654,82 +661,46 @@ contains
         dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
         dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
 
+! dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
+!                           dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual)
+        
         write(iulog,'(a,f10.2,a)') ' '
-        write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable time-steps for different aspects of algorithm:'
+        write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
         write(iulog,'(a,f12.8,a)') '(assume max wind is ',umax,'m/s)'
         write(iulog,'(a)')         '(assume max gravity wave speed is 342m/s)'
         write(iulog,'(a,f10.2,a)') ' '
-        write(iulog,'(a,f10.2,a)') '* dt_dyn        (time-stepping dycore  ; u,v,T,dM) < ',MIN(dt_max_adv,dt_max_gw)
-        write(iulog,'(a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn        (time-stepping dycore  ; u,v,T,dM) < ',&
+             MIN(dt_max_adv,dt_max_gw),'s ',dt_dyn_actual,'s'
+        if (dt_dyn_actual>MIN(dt_max_adv,dt_max_gw)) write(iulog,*) 'WARNING: dt_dyn theoretically unstable'
+        
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis,&
+             's ',dt_dyn_visco_actual,'s'
+        if (dt_dyn_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
+
         do k=1,nlev
           if (nu_scale_top(k)>1.0_r8) then
             if(nu_top>0) then
-              write(iulog,'(a,i2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                   dt_max_laplacian_top/nu_scale_top(k),'s'
+              write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
+                   dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
+              if (dt_max_hypervis>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
             end if
           end if
         end do
-        write(iulog,'(a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se
-        write(iulog,'(a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis
-        if (ntrac>0) &
-             write(iulog,'(a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm
-
-        write(iulog,*) ' '
-        write(iulog,*) ' '
-        write(iulog,*) ' '
-        write(iulog,*) ' '
-        write(iulog,*) ' '
-        write(iulog,*) ' '
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
+             dt_tracer_se_actual,'s'
+        if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
         
-
-        if (rk_stage_user>0) then
-          write(iulog,'(a,f10.2,a)') 'SSP preservation RKSSP euler step dt  < S *', &
-               min_gw/(umax*max_normDinv*ra),'s'
-        endif
+        write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis,'s',&
+             dt_tracer_visco_actual,'s'
+        if (dt_tracer_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
         
-        write(iulog,'(a,f10.2,a)') "Stability: nu_q   hyperviscosity  dt < S *", 1/(nu_q*normDinv_hypervis),'s'
-        
-        !        write(iulog,'(a,f10.2,a)') "Stability: nu_q   hyperviscosity  dt < S *", 1/(nu_q*normDinv_hypervis),'s'
-!        write(iulog,'(a,f10.2,a)') "Stability: nu_vor hyperviscosity  dt < S *", 1/(nu*normDinv_hypervis),'s'
-        
-!        write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity  dt < S *", 1/
-
-        if (qsize>0) &
-             write(iulog,'(a,f10.2,a)') 'Stability: advective dt_tracer < S *',&
-             dt_max_adv,'s'
         if (ntrac>0) then
-          !
-          ! rough estimate of Courant number limted time-step:
-          !
-          ! umax*dt_tracer/dx < nhe
-          !
-          ! where dx = 360 degrees/(4*ne*nc) = (2*pi*Rearth m)/(4*ne*nc)
-          !
-          write(iulog,'(a,f10.2,a)') "Stability (fvm Courant number): advective dt_tracer < ",&
-               dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax,'s'
-          write(iulog,*) "(note that fvm stability is also limited by flow deformation - Lipschitz criterion!)"
+          write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_fvm (time-stepping tracers ; q       ) < ',dt_max_tracer_fvm,&
+               's ',dt_tracer_fvm_actual
+          if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
         end if
-        if (umax<ugw) then
-          write(iulog,'(a,f10.2,a)') 'Stability: gravity wave(342m/s)   dt_dyn  < ', &
-               dt_max_gw,'s'
-        else
-          write(iulog,'(a,f10.2,a)') 'Stability: advective              dt_dyn  < ', &
-               1/(ugw*max_normDinv*lambda_max*ra),'s'
-        end if
-        
-        if (nu>0) then
-          !          if (hypervis_order==1) then
-          !              write(iulog,'(a,f10.2,a)') 'Stability: viscosity dt < S *',1/(((ra*max_normDinv)**2)*lambda_vis),'s'
-          !          endif
-          !          if (hypervis_order==2) then
-          ! counrant number = dtnu*normDinv_hypervis  < S
-          !  dt < S  1/nu*normDinv
-          write(iulog,'(a,f10.2,a)') "Stability: nu_q   hyperviscosity  dt < S *", 1/(nu_q*normDinv_hypervis),'s'
-          write(iulog,'(a,f10.2,a)') "Stability: nu_vor hyperviscosity  dt < S *", 1/(nu*normDinv_hypervis),'s'
-          
-          write(iulog,'(a,f10.2,a)') "Stability: nu_div hyperviscosity  dt < S *", 1/(nu_div*normDinv_hypervis),'s'
-          !          endif
-        endif
+
+        write(iulog,*) ' '
 
         if (hypervis_power /= 0) then
           write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
