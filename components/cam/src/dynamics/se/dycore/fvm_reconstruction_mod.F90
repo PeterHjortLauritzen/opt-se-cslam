@@ -361,7 +361,7 @@ contains
                 !rck combined min/max and unrolled inner loop
                 !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                 !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-!DIR$ SIMD
+                !DIR$ SIMD
                 do itmp2=-1,+1
                    itmp1 = j+itmp2
                    minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
@@ -371,29 +371,35 @@ contains
                 maxval_patch = max(maxval_array(-1),maxval_array(0),maxval_array(1))
                 
                 min_phi=1.0_r8
+
+                !
+                ! coordinate bounds (could be pre-computed!)
+                !
+                xminmax(1) = min(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                xminmax(2) = max(vtx_cart(1,1,i,j),vtx_cart(2,1,i,j),vtx_cart(3,1,i,j),vtx_cart(4,1,i,j))
+                yminmax(1) = min(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                yminmax(2) = max(vtx_cart(1,2,i,j),vtx_cart(2,2,i,j),vtx_cart(3,2,i,j),vtx_cart(4,2,i,j))
+                
                 !rck restructured loop
                 !DIR$ SIMD
                 do vertex=1,4
-                   extrema_value(vertex) = &
-                        SUM(recons(2:3,i,j)*vertex_recons_weights(vertex,1:2,i,j))+fcube(i,j)
-                   call slopelimiter_val(extrema_value(vertex), fcube(i,j),minval_patch, maxval_patch, min_phi)
+                  call recons_val_cart_plm(fcube(i,j), vtx_cart(vertex,1,i,j), vtx_cart(vertex,2,i,j), spherecentroid(:,i,j), &
+                       recons(1:3,i,j), extrema_value(vertex))                   
                 end do
                 max_val = MAXVAL(extrema_value(1:4))
                 min_val = MINVAL(extrema_value(1:4))
-                !            if (ABS(min_val-fcube(i,j))<1.0D-16.or.ABS(max_val-fcube(i,j))<1.0D-16) then
-                !               min_phi=0.0_r8
-                !            else
-                if (max_val>maxval_patch) then
-                   phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
-                   if (phi<min_phi) min_phi=phi
+
+                if (max_val>maxval_patch.and.abs(max_val-fcube(i,j))>threshold) then
+                  phi = (maxval_patch-fcube(i,j))/(max_val-fcube(i,j))
+                  if (phi<min_phi) min_phi=phi
                 end if
-                if (min_val<minval_patch) then
-                   phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
-                   if (phi<min_phi) min_phi=phi
+                if (min_val<minval_patch.and.abs(min_val-fcube(i,j))>threshold) then
+                  phi = (minval_patch-fcube(i,j))/(min_val-fcube(i,j))
+                  if (phi<min_phi) min_phi=phi
                 end if
                 ! Apply monotone limiter to all reconstruction coefficients
-                recons(2:3,i,j)=min_phi*recons(2:3,i,j)
-             end do
+                recons(2:3,i,j)=min_phi*recons(2:3,i,j)                
+              end do
           end do
        end do
        !
@@ -409,7 +415,7 @@ contains
                 !rck combined min/max and unrolled inner loop
                 !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                 !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-!DIR$ SIMD
+                !DIR$ SIMD
                 do itmp2=-1,+1
                    itmp1 = j+itmp2
                    minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
@@ -461,7 +467,7 @@ contains
                 ! Check all potential minimizer points along element boundaries
                 !
                 if (abs(recons(6,i,j)) > threshold) then
-                   invtmp = 1.0d0 / (recons(6,i,j) + spherecentroid(2,i,j))
+                   invtmp = 1.0_r8 / (recons(6,i,j) + spherecentroid(2,i,j))
                    do n=1,2
                       ! Left edge, intercept with du/dx = 0
                       extrema(2) = invtmp * (-recons(2,i,j) - 2.0_r8 * recons(4,i,j) * (xminmax(n) - spherecentroid(1,i,j)))
@@ -471,7 +477,7 @@ contains
                       endif
                    enddo
                    ! Top/bottom edge, intercept with du/dy = 0
-                   invtmp = 1.0d0 / recons(6,i,j) + spherecentroid(1,i,j)
+                   invtmp = 1.0_r8 / recons(6,i,j) + spherecentroid(1,i,j)
                    do n = 1,2
                       extrema(1) = invtmp * (-recons(3,i,j) - 2.0_r8 * recons(5,i,j) * (yminmax(n) - spherecentroid(2,i,j)))
                       if ((extrema(1) > xminmax(1)-threshold) .and. (extrema(1) < xminmax(2)+threshold)) then
@@ -483,7 +489,7 @@ contains
 
                 ! Top/bottom edge, y=const., du/dx=0
                 if (abs(recons(4,i,j)) > threshold) then
-                   invtmp = 1.0d0 / (2.0_r8 * recons(4,i,j))! + spherecentroid(1,i,j)
+                   invtmp = 1.0_r8 / (2.0_r8 * recons(4,i,j))! + spherecentroid(1,i,j)
                    do n = 1,2
                       extrema(1) = spherecentroid(1,i,j)+&
                            invtmp * (-recons(2,i,j) - recons(6,i,j) * (yminmax(n) - spherecentroid(2,i,j)))
@@ -496,7 +502,7 @@ contains
                 endif
                 ! Left/right edge, x=const., du/dy=0
                 if (abs(recons(5,i,j)) > threshold) then
-                   invtmp = 1.0d0 / (2.0_r8 * recons(5,i,j))
+                   invtmp = 1.0_r8 / (2.0_r8 * recons(5,i,j))
                    do n = 1,2
                       extrema(2) = spherecentroid(2,i,j)+&
                            invtmp * (-recons(3,i,j) - recons(6,i,j) * (xminmax(n) - spherecentroid(1,i,j)))
@@ -552,14 +558,14 @@ contains
   !        recons ...  array of reconstructed coefficients                            !
   ! OUTPUT: value ... evaluation at a given point                                     !
   !-----------------------------------------------------------------------------------!
-  SUBROUTINE recons_val_cart(fcube, cartx, carty, centroid, pre_computed_metrics, recons, value)
-    IMPLICIT NONE
-    REAL(KIND=r8), intent(in) :: fcube
-    REAL(KIND=r8), intent(in) :: cartx, carty
-    REAL(KIND=r8), dimension(1:5), intent(in) :: centroid
-    REAL(KIND=r8), dimension(3),   intent(in) :: pre_computed_metrics
-    REAL(KIND=r8), dimension(1:6), intent(in) :: recons
-    REAL(KIND=r8), intent(out) :: value
+  subroutine recons_val_cart(fcube, cartx, carty, centroid, pre_computed_metrics, recons, value)
+    implicit none
+    real(kind=r8), intent(in) :: fcube
+    real(kind=r8), intent(in) :: cartx, carty
+    real(kind=r8), dimension(1:5), intent(in) :: centroid
+    real(kind=r8), dimension(3),   intent(in) :: pre_computed_metrics
+    real(kind=r8), dimension(1:6), intent(in) :: recons
+    real(kind=r8), intent(out) :: value
     real(kind=r8) :: dx, dy
     dx = cartx - centroid(1)
     dy = carty - centroid(2)
@@ -572,7 +578,24 @@ contains
          recons(4) * (pre_computed_metrics(1) + dx*dx) + &
          recons(5) * (pre_computed_metrics(2) + dy*dy) + &
          recons(6) * (pre_computed_metrics(3) + dx*dy)
-END SUBROUTINE recons_val_cart
+  END subroutine recons_val_cart
+
+    subroutine recons_val_cart_plm(fcube, cartx, carty, centroid, recons, value)
+    implicit none
+    real(kind=r8), intent(in) :: fcube
+    real(kind=r8), intent(in) :: cartx, carty
+    real(kind=r8), dimension(1:5), intent(in) :: centroid
+    real(kind=r8), dimension(1:3), intent(in) :: recons
+    real(kind=r8), intent(out) :: value
+    real(kind=r8) :: dx, dy
+    dx = cartx - centroid(1)
+    dy = carty - centroid(2)
+    ! Evaluate constant order terms
+    value = fcube + &
+         ! Evaluate linear order terms
+         recons(2) * dx + &
+         recons(3) * dy 
+  END subroutine recons_val_cart_plm
 
 
   ! ----------------------------------------------------------------------------------!

@@ -1765,7 +1765,8 @@
 
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"> 4 </se_hypervis_subcycle>
 
-<se_hypervis_subcycle_q> 1 </se_hypervis_subcycle_q>
+<se_hypervis_subcycle_q>                 1 </se_hypervis_subcycle_q>
+<se_hypervis_subcycle_q hgrid="ne16np4"> 2 </se_hypervis_subcycle_q>
 
 <se_limiter_option> 8 </se_limiter_option>
 
@@ -1781,7 +1782,7 @@
 <se_nsplit hgrid="ne16np4"  waccm_phys="1">  2  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1">  5  </se_nsplit>
 <se_nsplit hgrid="ne60np4"  waccm_phys="1"> 10  </se_nsplit>
-<se_nsplit hgrid="ne120np4"  waccm_phys="1">20  </se_nsplit>
+<se_nsplit hgrid="ne120np4" waccm_phys="1"> 20  </se_nsplit>
 
 <se_nsplit hgrid="ne0np4CONUS.ne30x8"> 5 </se_nsplit>
 
