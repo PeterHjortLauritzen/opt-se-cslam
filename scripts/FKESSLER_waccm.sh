@@ -3,11 +3,7 @@ setenv PBS_ACCOUNT "NTDD0004"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-<<<<<<< HEAD
 set src="opt-se-cslam"
-=======
-set src="trunk"
->>>>>>> cd75b3f050855d2f6893f82e83b12cf50879b0ac
 #
 # number of test tracers
 #
