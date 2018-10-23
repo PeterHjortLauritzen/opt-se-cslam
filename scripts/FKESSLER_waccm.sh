@@ -1,9 +1,9 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT "P93300642"
+setenv PBS_ACCOUNT "NTDD0004"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam-master"
+set src="opt-se-cslam"
 #
 # number of test tracers
 #
@@ -57,13 +57,13 @@ else
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="450"
+  set pecount="225"
   set compiler="intel"  
 endif
 
 
-set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
-$homedir/$USER/src/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --compiler $compiler --run-unsupported
+set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_baseline
+$homedir/$USER/PEL/baseline/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --compiler $compiler --run-unsupported
 
 cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
@@ -127,11 +127,11 @@ echo "interpolate_output = .true.,.true." >> user_nl_cam
 echo "ncdata = '$inic/waccm.i.spinup.nc'"   >> user_nl_cam
 
 #echo "se_statefreq       = 244"       >> user_nl_cam
-echo "se_nsplit          = 10"        >> user_nl_cam   #WACCM mod
-echo "se_large_Courant_incr=.false."  >> user_nl_cam   #WACCM mod
+#echo "se_nsplit          = 10"        >> user_nl_cam   #WACCM mod
+#echo "se_large_Courant_incr=.false."  >> user_nl_cam   #WACCM mod
 #echo "inithist           = 'DAILY'"   >> user_nl_cam
-echo "se_hypervis_subcycle = 1"       >> user_nl_cam
-echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
+#echo "se_hypervis_subcycle = 1"       >> user_nl_cam
+#echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 
 #
 # spinup
