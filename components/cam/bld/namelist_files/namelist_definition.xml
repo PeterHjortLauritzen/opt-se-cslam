@@ -6228,23 +6228,32 @@ Default: TRUE
 
 <entry id="se_fvm_supercycling" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
-  Number of CSLAM time-steps relative to SE time-steps
+Number of SE rsplit time-steps CSLAM supercycles
+rsplit/se_fvm_supercycling must be an integer
 </entry>
 
 <entry id="se_fvm_supercycling_jet" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
-  Number of CSLAM time-steps relative to SE time-steps in the jet region
-  specified by kmin_jet and kmax_jet
+Number of SE rsplit time-steps CSLAM supercycles in the jet region
+(which is specified by kmin_jet and kmax_jet)
+rsplit/se_fvm_supercycling_jet must be an integer
+se_fvm_supercycling_jet/se_fvm_supercyling must be an integer
 </entry>
 
 <entry id="se_kmin_jet" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
-   Min level index where CSLAM runs with se_fvm_supercycling_jet
+  Min level index where CSLAM runs with se_fvm_supercycling_jet
+  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
+  min index where are Courant number increment is active
+  (se_large_Courant_incr=.true.)
 </entry>
 
 <entry id="se_kmax_jet" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
-   Max level index where CSLAM runs with se_fvm_supercycling_jet
+  Max level index where CSLAM runs with se_fvm_supercycling_jet
+  (if se_fvm_supercycling_jet.ne.se_fvm_supercycling) or
+  max index where are Courant number increment is active
+  (se_large_Courant_incr=.true.)
 </entry>  
 
 

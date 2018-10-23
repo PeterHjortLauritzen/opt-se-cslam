@@ -1761,12 +1761,12 @@
 
 <se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" > 3.2 </se_hypervis_scaling>
 
-<se_hypervis_subcycle>                   1 </se_hypervis_subcycle>
-
+<se_hypervis_subcycle>                             1 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne16np4">            2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"> 4 </se_hypervis_subcycle>
 
-<se_hypervis_subcycle_q>                 1 </se_hypervis_subcycle_q>
-<se_hypervis_subcycle_q hgrid="ne16np4"> 2 </se_hypervis_subcycle_q>
+<se_hypervis_subcycle_q>1 </se_hypervis_subcycle_q>
+
 
 <se_limiter_option> 8 </se_limiter_option>
 
