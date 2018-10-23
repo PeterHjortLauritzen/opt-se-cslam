@@ -537,6 +537,7 @@ end subroutine dyn_register
 
 subroutine dyn_init(dyn_in, dyn_out)
 
+   use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
    use physconst,          only: cpwv, cpliq, cpice
@@ -746,12 +747,13 @@ subroutine dyn_init(dyn_in, dyn_out)
    ksponge_end = MAX(ksponge_end,1)
 
    if (iam < par%nprocs) then
+      call prim_advance_init(par,elem)
 !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,ie)
       !hybrid = config_thread_region(par,'horizontal')
       hybrid = config_thread_region(par,'serial')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
-!!$OMP END PARALLEL
+!$OMP END PARALLEL
 
       if (use_gw_front .or. use_gw_front_igw) call gws_init(elem)
    end if  ! iam < par%nprocs

@@ -38,7 +38,7 @@ contains
     use global_norms_mod,       only: test_global_integral, print_cfl
     use hybvcoord_mod,          only: hvcoord_t
     use prim_advection_mod,     only: prim_advec_init2,deriv
-    use prim_advance_mod,       only: prim_advance_init, compute_omega
+    use prim_advance_mod,       only: compute_omega
 
     type (element_t), intent(inout) :: elem(:)
     type (fvm_struct), intent(inout)    :: fvm(:)
@@ -75,7 +75,7 @@ contains
     ! ==========================
     ! begin executable code
     ! ==========================
-    call prim_advance_init(hybrid%par,elem)
+    !call prim_advance_init(hybrid%par,elem)
 
     if (topology == "cube") then
        call test_global_integral(elem, hybrid,nets,nete)

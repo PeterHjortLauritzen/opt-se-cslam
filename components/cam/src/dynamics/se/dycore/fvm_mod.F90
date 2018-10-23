@@ -448,9 +448,9 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! preallocate buffers for physics-dynamics coupling
     !
     if (fv_nphys.ne.nc) then
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=horz_num_threads)
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
     else
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=horz_num_threads)
+       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=1)
     end if
     
     if (fvm_supercycling.ne.fvm_supercycling_jet) then
