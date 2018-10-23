@@ -361,7 +361,7 @@ contains
                 !rck combined min/max and unrolled inner loop
                 !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                 !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-!DIR$ SIMD
+                !DIR$ SIMD
                 do itmp2=-1,+1
                    itmp1 = j+itmp2
                    minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
@@ -383,8 +383,8 @@ contains
                 !rck restructured loop
                 !DIR$ SIMD
                 do vertex=1,4
-                  call recons_val_cart(fcube(i,j), vtx_cart(vertex,1,i,j), vtx_cart(vertex,2,i,j), spherecentroid(:,i,j), &
-                       recons_metrics(:,i,j), recons(:,i,j), extrema_value(vertex))                   
+                  call recons_val_cart_plm(fcube(i,j), vtx_cart(vertex,1,i,j), vtx_cart(vertex,2,i,j), spherecentroid(:,i,j), &
+                       recons(1:3,i,j), extrema_value(vertex))                   
                 end do
                 max_val = MAXVAL(extrema_value(1:4))
                 min_val = MINVAL(extrema_value(1:4))
@@ -415,7 +415,7 @@ contains
                 !rck combined min/max and unrolled inner loop
                 !minval_patch = MINVAL(fcube(i-1:i+1,j-1:j+1))
                 !maxval_patch = MAXVAL(fcube(i-1:i+1,j-1:j+1))
-!DIR$ SIMD
+                !DIR$ SIMD
                 do itmp2=-1,+1
                    itmp1 = j+itmp2
                    minval_array(itmp2) = min(fcube(i-1,itmp1),fcube(i,itmp1),fcube(i+1,itmp1))
@@ -558,14 +558,14 @@ contains
   !        recons ...  array of reconstructed coefficients                            !
   ! OUTPUT: value ... evaluation at a given point                                     !
   !-----------------------------------------------------------------------------------!
-  SUBROUTINE recons_val_cart(fcube, cartx, carty, centroid, pre_computed_metrics, recons, value)
-    IMPLICIT NONE
-    REAL(KIND=r8), intent(in) :: fcube
-    REAL(KIND=r8), intent(in) :: cartx, carty
-    REAL(KIND=r8), dimension(1:5), intent(in) :: centroid
-    REAL(KIND=r8), dimension(3),   intent(in) :: pre_computed_metrics
-    REAL(KIND=r8), dimension(1:6), intent(in) :: recons
-    REAL(KIND=r8), intent(out) :: value
+  subroutine recons_val_cart(fcube, cartx, carty, centroid, pre_computed_metrics, recons, value)
+    implicit none
+    real(kind=r8), intent(in) :: fcube
+    real(kind=r8), intent(in) :: cartx, carty
+    real(kind=r8), dimension(1:5), intent(in) :: centroid
+    real(kind=r8), dimension(3),   intent(in) :: pre_computed_metrics
+    real(kind=r8), dimension(1:6), intent(in) :: recons
+    real(kind=r8), intent(out) :: value
     real(kind=r8) :: dx, dy
     dx = cartx - centroid(1)
     dy = carty - centroid(2)
@@ -578,7 +578,24 @@ contains
          recons(4) * (pre_computed_metrics(1) + dx*dx) + &
          recons(5) * (pre_computed_metrics(2) + dy*dy) + &
          recons(6) * (pre_computed_metrics(3) + dx*dy)
-END SUBROUTINE recons_val_cart
+  END subroutine recons_val_cart
+
+    subroutine recons_val_cart_plm(fcube, cartx, carty, centroid, recons, value)
+    implicit none
+    real(kind=r8), intent(in) :: fcube
+    real(kind=r8), intent(in) :: cartx, carty
+    real(kind=r8), dimension(1:5), intent(in) :: centroid
+    real(kind=r8), dimension(1:3), intent(in) :: recons
+    real(kind=r8), intent(out) :: value
+    real(kind=r8) :: dx, dy
+    dx = cartx - centroid(1)
+    dy = carty - centroid(2)
+    ! Evaluate constant order terms
+    value = fcube + &
+         ! Evaluate linear order terms
+         recons(2) * dx + &
+         recons(3) * dy 
+  END subroutine recons_val_cart_plm
 
 
   ! ----------------------------------------------------------------------------------!

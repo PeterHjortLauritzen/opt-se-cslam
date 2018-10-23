@@ -3,7 +3,7 @@ setenv PBS_ACCOUNT "P93300642"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam-master"
+set src="trunk"
 #
 # number of test tracers
 #
@@ -12,8 +12,8 @@ set NTHRDS="1"
 #
 # run with CSLAM or without
 #
-#set res=ne30pg3_ne30pg3_mg17 #cslam
-set res=ne30pg2_ne30pg2_mg17 #cslam pg2
+set res=ne30pg3_ne30pg3_mg17 #cslam
+#set res=ne30pg2_ne30pg2_mg17 #cslam pg2
 #setenv res ne30_ne30_mg17        #no cslam
 set stopoption="nsteps"
 set steps="5"
@@ -120,7 +120,7 @@ echo "inithist    = '6-HOURLY'"   >> user_nl_cam #xxx
 echo "se_statefreq       = 244"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
-#echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
+echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 #
 # 70 layer IC file
 #
