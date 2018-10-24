@@ -1710,6 +1710,9 @@ subroutine read_phis(dyn_in)
    if (fv_nphys > 0) then
       allocate(phis_phys_tmp(fv_nphys**2,nelemd))
       phis_phys_tmp = 0.0_r8
+      do ie=1,nelemd
+        elem(ie)%sub_elem_mass_flux=0.0_r8
+      end do
    end if
 
    ! Set mask to indicate which columns are active in GLL grid.
@@ -1798,7 +1801,6 @@ subroutine read_phis(dyn_in)
          allocate(lonvals_phys(fv_nphys*fv_nphys*nelemd))
          indx = 1
          do ie = 1, nelemd
-           elem(ie)%sub_elem_mass_flux=0
             do j = 1, fv_nphys
                do i = 1, fv_nphys
                   latvals_phys(indx) = dyn_in%fvm(ie)%center_cart_physgrid(i,j)%lat
