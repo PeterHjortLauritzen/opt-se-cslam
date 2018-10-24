@@ -657,7 +657,7 @@ contains
         dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
         dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
         if (large_Courant_incr) then
-          dt_max_tracer_fvm      = dble(nhe)*(       pi*Rearth/dble(4.0_r8*ne*nc))/umax
+          dt_max_tracer_fvm      = dble(nhe)*(4.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
         else
           dt_max_tracer_fvm      = dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
         end if
