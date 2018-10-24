@@ -593,7 +593,7 @@ contains
           if (fvm%se_flux(i,j,iside,ilev)>eps) then
             flux = fvm%se_flux(i,j,iside,ilev)
 #ifdef waccm_debug
-            fvm(ie)%CSLAM_gamma(i,j,ilev,k,iside) = fvm(ie)%CSLAM_gamma(i,j,ilev,iside)+&
+            fvm%CSLAM_gamma(i,j,ilev,k,iside) = fvm%CSLAM_gamma(i,j,ilev,iside)+&
                  fvm%se_flux(i,j,iside,ilev)*inv_dp_area(i,j)
 #endif
             
