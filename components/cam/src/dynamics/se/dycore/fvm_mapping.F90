@@ -508,13 +508,15 @@ contains
       ! simple limiter
       !
       if (present(q_gll)) then
+        min_val = minval(q_gll)
+        max_val = maxval(q_gll)
         do j = 1, nc
           do i = 1, nc
             !
             ! simple limiter: only coded for nc=3 and np4
             !
-            min_val = minval(q_gll(i:i+1,j:j+1))
-            max_val = maxval(q_gll(i:i+1,j:j+1))
+!xxx            min_val = minval(q_gll(i:i+1,j:j+1))
+!xxx            max_val = maxval(q_gll(i:i+1,j:j+1))
             qdp_phys(i,j) = max(min_val,min(max_val,qdp_phys(i,j)))
           end do
         end do
