@@ -592,6 +592,11 @@ contains
         do i=imin_side(iside),imax_side(iside)
           if (fvm%se_flux(i,j,iside,ilev)>eps) then
             flux = fvm%se_flux(i,j,iside,ilev)
+#ifdef waccm_debug
+            fvm(ie)%CSLAM_gamma(i,j,k,iside) = fvm(ie)%CSLAM_gamma(i,j,k,iside)+&
+                 fvm%se_flux(i,j,iside,ilev)*inv_dp_area(i,j)
+#endif
+            
             do itr=1,ntrac
               flux_tracer(itr) = fvm%se_flux(i,j,iside,ilev)*c_tmp(i,j,itr)*inv_dp_area(i,j)
             end do
@@ -781,7 +786,7 @@ contains
                    num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
 #ifdef waccm_debug
-              fvm%CSLAM_gamma(i,j,k,iside) = MAX(gamma(iside),fvm%CSLAM_gamma(i,j,k,iside))
+              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)!xxx MAX(gamma(iside),fvm%CSLAM_gamma(i,j,k,iside))
 #endif              
               if (gamma(iside)>1_r8) then
                  if (.not.large_Courant_incr) then
