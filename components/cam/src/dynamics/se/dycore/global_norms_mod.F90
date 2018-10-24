@@ -336,7 +336,7 @@ contains
     !
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
-    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev
+    use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev,large_Courant_incr
     use quadrature_mod, only: gausslobatto, quadrature_t
     
     use reduction_mod,  only: ParallelMin,ParallelMax
@@ -656,14 +656,15 @@ contains
         dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
         dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
         dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
-        dt_max_tracer_fvm      = dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax        
+        if (large_Courant_incr) then
+          dt_max_tracer_fvm      = dble(nhe)*(       pi*Rearth/dble(4.0_r8*ne*nc))/umax
+        else
+          dt_max_tracer_fvm      = dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
+        end if
         dt_max_hypervis        = s_hypervis/(MAX(nu_div,nu)*normDinv_hypervis)
         dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
         dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
 
-! dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-!                           dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual)
-        
         write(iulog,'(a,f10.2,a)') ' '
         write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
         write(iulog,'(a,f12.8,a)') '(assume max wind is ',umax,'m/s)'
@@ -676,20 +677,9 @@ contains
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_dyn_vis    (hyperviscosity)       ; u,v,T,dM) < ',dt_max_hypervis,&
              's ',dt_dyn_visco_actual,'s'
         if (dt_dyn_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
-
-        do k=1,nlev
-          if (nu_scale_top(k)>1.0_r8) then
-            if(nu_top>0) then
-              write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                   dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-              if (dt_max_hypervis>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
-            end if
-          end if
-        end do
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_se  (time-stepping tracers ; q       ) < ',dt_max_tracer_se,'s ',&
              dt_tracer_se_actual,'s'
         if (dt_tracer_se_actual>dt_max_tracer_se) write(iulog,*) 'WARNING: dt_tracer_se theoretically unstable'
-        
         write(iulog,'(a,f10.2,a,f10.2,a)') '* dt_tracer_vis (hyperviscosity tracers; q       ) < ',dt_max_hypervis,'s',&
              dt_tracer_visco_actual,'s'
         if (dt_tracer_visco_actual>dt_max_hypervis) write(iulog,*) 'WARNING: dt_tracer_hypervis theoretically unstable'
@@ -699,6 +689,16 @@ contains
                's ',dt_tracer_fvm_actual
           if (dt_tracer_fvm_actual>dt_max_tracer_fvm) write(iulog,*) 'WARNING: dt_tracer_fvm theortically unstable'
         end if
+
+        do k=1,nlev
+          if (nu_scale_top(k)>1.0_r8) then
+            if(nu_top>0) then
+              write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
+                   dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
+              if (dt_max_hypervis>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
+            end if
+          end if
+        end do        
 
         write(iulog,*) ' '
 
