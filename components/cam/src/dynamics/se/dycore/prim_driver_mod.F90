@@ -382,7 +382,6 @@ contains
     ! Dynamical Step
     ! ===============
     n_Q = tl%n0  ! n_Q = timelevel of FV tracers at time t.  need to save this
-                 ! FV tracers still carry 3 timelevels
                  ! SE tracers only carry 2 timelevels
 
     call t_startf('prim_advance_exp')
