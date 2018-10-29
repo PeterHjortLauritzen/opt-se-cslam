@@ -34,7 +34,7 @@ contains
     else
       call initEdgeBuffer(par,edge3p1,elem,4*nlev+1,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     end if
-    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=1)
+    call initEdgeBuffer(par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
     
     if(.not. allocated(ur_weights)) allocate(ur_weights(qsplit))
     ur_weights(:)=0.0_r8
