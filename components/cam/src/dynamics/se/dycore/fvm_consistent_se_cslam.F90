@@ -1,6 +1,6 @@
 module fvm_consistent_se_cslam
   use shr_kind_mod,           only: r8=>shr_kind_r8
-  use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht, lbc,ubc
+  use dimensions_mod,         only: nc, nhe, nlev, ntrac, np, nhr, nhc, ngpc, ns, nht
   use dimensions_mod,         only: irecons_tracer
   use dimensions_mod,         only: kmin_jet,kmax_jet
   use cam_abortutils,         only: endrun
@@ -15,7 +15,6 @@ module fvm_consistent_se_cslam
   private
   save
 
-  real (kind=r8), dimension(ngpc), private :: gsweights, gspts
   real (kind=r8),parameter       , private :: eps=1.0e-14_r8
   public :: run_consistent_se_cslam
 contains
@@ -59,8 +58,10 @@ contains
     real (kind=r8) :: recons_weights(4,irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     real (kind=r8) :: inv_dp_area(nc,nc)
 
+    real (kind=r8), dimension(ngpc) :: gsweights, gspts
+
     logical :: llimiter(ntrac)
-    integer :: i,j,k,ie,itr
+    integer :: i,j,k,ie,itr    
     integer :: ir
     integer :: klev !total number of levels in which tracer transport is performed
 
@@ -80,11 +81,9 @@ contains
        call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac),klev*ntrac,klev,ie)
     end do
     call t_stopf('fvm:before_Qnhc')
-
     call t_startf('fvm:ghost_exchange:Qnhc')
     call ghost_exchange(hybrid,ghostbufQnhc,location='ghostbufQnhc')
     call t_stopf('fvm:ghost_exchange:Qnhc')
-
     call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
       do k=kmin,kmax
@@ -93,20 +92,21 @@ contains
       call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   , klev      ,0   ,ie)
       call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac), klev*ntrac,klev,ie)
       do k=kmin,kmax
-        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k)
+        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k,gsweights,gspts)
       end do
       call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
     end do
+
     call ghost_exchange(hybrid,ghostBufFlux,location='ghostBufFlux')
+
     do ie=nets,nete
       call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
       do k=kmin,kmax
-        call ghost_flux_unpack(fvm(ie),k)
+         call ghost_flux_unpack(fvm(ie),k)
       end do
     enddo
 
     call t_stopf('fvm:orthogonal_swept_areas')
-
     do ie=nets,nete
       do ir=1,irecons_tracer-1
          recons_weights(1,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,1,1-nhe:nc+nhe,1-nhe:nc+nhe)
@@ -125,11 +125,10 @@ contains
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
              recons_weights,fvm(ie)%vtx_cart,&
-             irecons_tracer_lev(k)&
-             )
+             irecons_tracer_lev(k))
         call t_stopf('fvm:tracers_reconstruct')
         call t_startf('fvm:swept_flux')
-        call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k))
+        call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k),gsweights,gspts)
         call t_stopf('fvm:swept_flux')
       end do
     end do
@@ -204,7 +203,7 @@ contains
     call t_stopf('fvm:end_of_reconstruct_subroutine')
   end subroutine run_consistent_se_cslam
 
-  subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual)
+  subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual,gsweights,gspts)
     use fvm_analytic_mod      , only: get_high_order_weights_over_areas
     use dimensions_mod, only : kmin_jet,kmax_jet
     implicit none
@@ -212,7 +211,7 @@ contains
     type (fvm_struct), intent(inout):: fvm
     integer          , intent(in) :: ilev, irecons_tracer_actual
     real (kind=r8), intent(inout) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-
+    real (kind=r8), dimension(ngpc), intent(in) :: gsweights, gspts
     integer, parameter :: num_area=5, num_sides=4, imin= 0, imax=nc+1
     real (kind=r8)    , dimension(0:7       , imin:imax,imin:imax,num_sides) :: displ
     integer (kind=r8) , dimension(1:2,11    , imin:imax,imin:imax,num_sides) :: base_vec
@@ -491,7 +490,8 @@ contains
               dp_area(iarea) = dp(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside))
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-                 num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max)
+                 num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
+                 gsweights,gspts)
             call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
@@ -508,7 +508,8 @@ contains
             ! compute higher-order weights
             !
             call t_startf('fvm:swept_area:get_high_order_w')
-            call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,gsweights, gspts,irecons_tracer)
+            call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,&
+                 gsweights, gspts,irecons_tracer)
             call t_stopf('fvm:swept_area:get_high_order_w')
             !
             !**************************************************
@@ -658,12 +659,13 @@ contains
     end if
   end subroutine ghost_flux_unpack
 
-  subroutine compute_displacements_for_swept_areas(fvm,cair,irecons,k)
+  subroutine compute_displacements_for_swept_areas(fvm,cair,irecons,k,gsweights,gspts)
     use dimensions_mod, only: large_Courant_incr
     implicit none
     type (fvm_struct), intent(inout)     :: fvm
     integer, intent(in) :: irecons,k
     real (kind=r8)      :: cair(1-nhc:nc+nhc,1-nhc:nc+nhc,irecons,nlev) !high-order air density reconstruction
+    real (kind=r8), dimension(ngpc), intent(in) :: gsweights, gspts
     !
     !   flux iside 1                     flux iside 3                    flux iside 2       flux iside 4
     !
@@ -783,10 +785,11 @@ contains
               call get_flux_segments_area_iterate(&
                    x_tmp(:,:,:),x_static(:,:,:,iside,i,j),dx_static(:,:,:,iside,i,j),dx_tmp(:,:,:),&
                    x_start(:,:,iside,i,j),dgam_vec(:,:,iside,i,j),num_seg(:,iside),num_seg_static(:,iside),&
-                   num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8)
+                   num_seg_max,num_area,dp_area,flowcase(iside),gamma(iside),flux_se,0.0_r8,1.0_r8,        &
+                   gsweights,gspts)
               fvm%se_flux(i,j,iside,k) = ABS(SUM(gamma(iside)*dgam_vec(:,1,iside,i,j)))
 #ifdef waccm_debug
-              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)!xxx MAX(gamma(iside),fvm%CSLAM_gamma(i,j,k,iside))
+              fvm%CSLAM_gamma(i,j,k,iside) = gamma(iside)
 #endif              
               if (gamma(iside)>1_r8) then
                  if (.not.large_Courant_incr) then
@@ -810,7 +813,7 @@ contains
 
 
   subroutine get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
-       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max)
+       num_seg_max,num_area,c,flow_case,gamma,flux,gamma_min,gamma_max,gsweights,gspts)
     implicit none
     integer                                                , intent(in)    :: num_area, num_seg_max
     REAL(KIND=r8), dimension(2,num_seg_max,num_area), intent(in)    :: x_static, dx_static
@@ -822,6 +825,7 @@ contains
     integer                                                , intent(in) :: flow_case
 
     real (kind=r8), dimension(num_area)             , intent(in) :: c
+    real (kind=r8), dimension(ngpc)                 , intent(in) :: gsweights, gspts
 
     real (kind=r8)                                :: flux_static
     real (kind=r8)                                :: weight_area(num_area), xtmp(2), xtmp2(2)
@@ -1213,9 +1217,9 @@ contains
     real (kind=r8)    , dimension(0:7       , imin:imax,imin:imax,num_sides), intent(out) :: displ
     integer (kind=r8) , dimension(1:2,11    , imin:imax,imin:imax,num_sides), intent(out) :: base_vec
     real (kind=r8)    , dimension(1:2, 6    , imin:imax,imin:imax,num_sides), intent(out) :: base_vtx
-    integer                  , dimension(2,num_area, imin:imax,imin:imax,num_sides), intent(out) :: idx
+    integer           , dimension(2,num_area, imin:imax,imin:imax,num_sides), intent(out) :: idx
 
-    real (kind=r8) :: flux_sum     (0:nc+1,0:nc+1,2)
+    real (kind=r8)        :: flux_sum     (0:nc+1,0:nc+1,2)
     integer               :: degenerate   (1:nc+1,1:nc+1  )
     integer               :: circular_flow(1:nc+1,1:nc+1  )
     integer               :: illcond      (1:nc+1,1:nc+1)
