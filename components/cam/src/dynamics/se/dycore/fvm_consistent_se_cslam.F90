@@ -55,7 +55,6 @@ contains
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
-    real (kind=r8) :: recons_weights(4,irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     real (kind=r8) :: inv_dp_area(nc,nc)
 
     real (kind=r8), dimension(ngpc) :: gsweights, gspts
@@ -108,12 +107,6 @@ contains
 
     call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
-      do ir=1,irecons_tracer-1
-         recons_weights(1,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,1,1-nhe:nc+nhe,1-nhe:nc+nhe)
-         recons_weights(2,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,2,1-nhe:nc+nhe,1-nhe:nc+nhe)
-         recons_weights(3,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,3,1-nhe:nc+nhe,1-nhe:nc+nhe)
-         recons_weights(4,ir,1-nhe:nc+nhe,1-nhe:nc+nhe) = fvm(ie)%vertex_recons_weights(ir,4,1-nhe:nc+nhe,1-nhe:nc+nhe)
-      enddo
       do k=kmin,kmax
         call t_startf('fvm:tracers_reconstruct')
         call reconstruction(fvm(ie)%c(:,:,:,:),nlev,k,&
@@ -124,7 +117,7 @@ contains
              fvm(ie)%spherecentroid(:,1-nhe:nc+nhe,1-nhe:nc+nhe),&
              fvm(ie)%recons_metrics,fvm(ie)%recons_metrics_integral,&
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
-             recons_weights,fvm(ie)%vtx_cart,&
+             fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart,&
              irecons_tracer_lev(k))
         call t_stopf('fvm:tracers_reconstruct')
         call t_startf('fvm:swept_flux')

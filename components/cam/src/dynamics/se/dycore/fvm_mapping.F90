@@ -1403,7 +1403,7 @@ contains
        fvm%recons_metrics_integral_physgrid(:,1:fv_nphys,1:fv_nphys)    ,&
        fvm%rot_matrix_physgrid,&
        fvm%centroid_stretch_physgrid(1:7,1:fv_nphys,1:fv_nphys),&
-       fvm%vertex_recons_weights_physgrid(1:irecons_tracer-1,:,1:fv_nphys,1:fv_nphys),&
+       fvm%vertex_recons_weights_physgrid(:,1:irecons_tracer-1,1:fv_nphys,1:fv_nphys),&
        fvm%vtx_cart_physgrid(:,:,1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys))
   end subroutine get_physgrid_recons
 
@@ -1433,7 +1433,7 @@ contains
          fvm%recons_metrics(:,1:nc,1:nc),&
          fvm%recons_metrics_integral(:,1:nc,1:nc)    ,&
          fvm%rot_matrix,fvm%centroid_stretch(1:7,1:nc,1:nc),&
-         fvm%vertex_recons_weights(1:irecons_tracer-1,:,1:nc,1:nc),&
+         fvm%vertex_recons_weights(:,1:irecons_tracer-1,1:nc,1:nc),&
          fvm%vtx_cart(:,:,1-nhc:nc+nhc,1-nhc:nc+nhc))
   end subroutine get_fvm_recons
 end module fvm_mapping

@@ -116,7 +116,7 @@ module fvm_control_volume_mod
     !          recons(4,a,b) * (carty - centroid(2,a,b))**2 + &
     !          recons(5,a,b) * (cartx - centroid(1,a,b)) * (carty - centroid(2,a,b))
     !   
-    real (kind=r8)    :: vertex_recons_weights(1:irecons_tracer-1,4,1-nhe:nc+nhe,1-nhe:nc+nhe)
+    real (kind=r8)    :: vertex_recons_weights(4,1:irecons_tracer-1,1-nhe:nc+nhe,1-nhe:nc+nhe)
     !
     ! for mapping fvm2dyn
     !
@@ -295,7 +295,7 @@ contains
       allocate(fvm(ie)%area_sphere_physgrid(fv_nphys,fv_nphys))       
       allocate(fvm(ie)%ibase_physgrid(1-nhr_phys:fv_nphys+nhr_phys,1:nhr_phys,2))
       allocate(fvm(ie)%halo_interp_weight_physgrid(1:ns_phys,1-nhr_phys:fv_nphys+nhr_phys,1:nhr_phys,2))
-      allocate(fvm(ie)%vertex_recons_weights_physgrid(1:irecons_tracer-1,4,1-nhe_phys:fv_nphys+nhe_phys,&
+      allocate(fvm(ie)%vertex_recons_weights_physgrid(4,1:irecons_tracer-1,1-nhe_phys:fv_nphys+nhe_phys,&
             1-nhe_phys:fv_nphys+nhe_phys))
       
       allocate(fvm(ie)%norm_elem_coord_physgrid(2,1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys    ))
