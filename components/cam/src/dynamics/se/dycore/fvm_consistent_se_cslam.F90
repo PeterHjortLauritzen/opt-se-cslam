@@ -79,7 +79,7 @@ contains
        call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   ,klev,      0   ,ie)
        call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac),klev*ntrac,klev,ie)
     end do
-    call t_stopf('fvm:before_Qnhc')
+    !call t_stopf('fvm:before_Qnhc')
     call t_startf('fvm:ghost_exchange:Qnhc')
     call ghost_exchange(hybrid,ghostbufQnhc,location='ghostbufQnhc')
     call t_stopf('fvm:ghost_exchange:Qnhc')
@@ -108,7 +108,7 @@ contains
     call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
       do k=kmin,kmax
-        call t_startf('fvm:tracers_reconstruct')
+        !call t_startf('fvm:tracers_reconstruct')
         call reconstruction(fvm(ie)%c(:,:,:,:),nlev,k,&
              ctracer(:,:,:,:),irecons_tracer,llimiter,ntrac,&
              nc,nhe,nhr,nhc,nht,ns,nhr+(nhe-1),&
@@ -119,10 +119,10 @@ contains
              fvm(ie)%rot_matrix,fvm(ie)%centroid_stretch,&
              fvm(ie)%vertex_recons_weights,fvm(ie)%vtx_cart,&
              irecons_tracer_lev(k))
-        call t_stopf('fvm:tracers_reconstruct')
-        call t_startf('fvm:swept_flux')
+        !call t_stopf('fvm:tracers_reconstruct')
+        !call t_startf('fvm:swept_flux')
         call swept_flux(elem(ie),fvm(ie),k,ctracer,irecons_tracer_lev(k),gsweights,gspts)
-        call t_stopf('fvm:swept_flux')
+        !call t_stopf('fvm:swept_flux')
       end do
     end do
      !
@@ -478,14 +478,14 @@ contains
             !
             ! iterate to get flux area
             !
-            call t_startf('fvm:swept_area:get_gamma')
+            !call t_startf('fvm:swept_area:get_gamma')
             do iarea=1,num_area
               dp_area(iarea) = dp(idx(1,iarea,i,j,iside),idx(2,iarea,i,j,iside))
             end do
             call get_flux_segments_area_iterate(x,x_static,dx_static,dx,x_start,dgam_vec,num_seg,num_seg_static,&
                  num_seg_max,num_area,dp_area,flowcase,gamma,mass_flux_se(i,j,iside),0.0_r8,gamma_max,          &
                  gsweights,gspts)
-            call t_stopf('fvm:swept_area:get_gamma')
+            !call t_stopf('fvm:swept_area:get_gamma')
             !
             ! pack segments for high-order weights computation
             !
@@ -500,10 +500,10 @@ contains
             !
             ! compute higher-order weights
             !
-            call t_startf('fvm:swept_area:get_high_order_w')
+            !call t_startf('fvm:swept_area:get_high_order_w')
             call get_high_order_weights_over_areas(x,dx,num_seg,num_seg_max,num_area,weights,ngpc,&
                  gsweights, gspts,irecons_tracer)
-            call t_stopf('fvm:swept_area:get_high_order_w')
+            !call t_stopf('fvm:swept_area:get_high_order_w')
             !
             !**************************************************
             !
@@ -511,7 +511,7 @@ contains
             !
             !**************************************************
             !
-            call t_startf('fvm:swept_area:remap')
+            !call t_startf('fvm:swept_area:remap')
             flux=0.0_r8; flux_tracer=0.0_r8
             do iarea=1,num_area
               if (num_seg(iarea)>0) then
@@ -554,7 +554,7 @@ contains
               fvm%dp_fvm(i-1,j,ilev        ) = fvm%dp_fvm(i-1,j,ilev        )+flux
               fvm%     c(i-1,j,ilev,1:ntrac) = fvm%     c(i-1,j,ilev,1:ntrac)+flux_tracer(1:ntrac)
             end if
-            call t_stopf('fvm:swept_area:remap')
+            !call t_stopf('fvm:swept_area:remap')
           end if
         end do
       end do

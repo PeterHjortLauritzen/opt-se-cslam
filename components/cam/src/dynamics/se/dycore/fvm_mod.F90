@@ -1,3 +1,4 @@
+#define FVM_TIMERS .FALSE.
 !-----------------------------------------------------------------------------!
 !MODULE FVM_MOD-----------------------------------------------------CE-for FVM!
 ! FVM_MOD File for the fvm project in HOMME                                   !
@@ -55,31 +56,31 @@ contains
     !
     !
 
-    call t_startf('FVM:initbuf')
+    if(FVM_TIMERS) call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
     num_levels = kmax-kmin+1
     call initghostbuffer(hybrid%par,cellghostbuf,elem,num_levels*(ntrac+1),ndepth,nc)
-    call t_stopf('FVM:initbuf')
-    call t_startf('FVM:pack')
+    if(FVM_TIMERS) call t_stopf('FVM:initbuf')
+    if(FVM_TIMERS) call t_startf('FVM:pack')
     do ie=nets,nete
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
        call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:)   ,num_levels*ntrac,num_levels,ie)
     end do
-    call t_stopf('FVM:pack')
-    call t_startf('FVM:Communication')
+    if(FVM_TIMERS) call t_stopf('FVM:pack')
+    if(FVM_TIMERS) call t_startf('FVM:Communication')
     call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_noprealloc')
-    call t_stopf('FVM:Communication')
+    if(FVM_TIMERS) call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
-    call t_startf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:Unpack')
     do ie=nets,nete
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
        call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   num_levels*ntrac,num_levels,ie)
     enddo
-    call t_stopf('FVM:Unpack')
-    call t_startf('FVM:freebuf')
+    if(FVM_TIMERS) call t_stopf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:freebuf')
     call freeghostbuffer(cellghostbuf)
-    call t_stopf('FVM:freebuf')
+    if(FVM_TIMERS) call t_stopf('FVM:freebuf')
   end subroutine fill_halo_fvm_noprealloc
 
 subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
@@ -101,22 +102,22 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     i1=1-ndepth
     i2=nc+ndepth
     num_levels = kmax-kmin+1
-    call t_startf('FVM:pack')
+    if(FVM_TIMERS) call t_startf('FVM:pack')
     do ie=nets,nete
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
        call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:) ,num_levels*ntrac,num_levels,ie)
     end do
-    call t_stopf('FVM:pack')
-    call t_startf('FVM:Communication')
+    if(FVM_TIMERS) call t_stopf('FVM:pack')
+    if(FVM_TIMERS) call t_startf('FVM:Communication')
     call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_prealloc')
-    call t_stopf('FVM:Communication')
+    if(FVM_TIMERS) call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
-    call t_startf('FVM:Unpack')
+    if(FVM_TIMERS) call t_startf('FVM:Unpack')
     do ie=nets,nete
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
        call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:), num_levels*ntrac,num_levels,ie)
     enddo
-    call t_stopf('FVM:Unpack')
+    if(FVM_TIMERS) call t_stopf('FVM:Unpack')
 
   end subroutine fill_halo_fvm_prealloc
 
