@@ -92,9 +92,7 @@ contains
         locstring = TRIM(subname)
       endif
       ! location 1 for copyBuffer
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
       call MPI_wait(request,lstatus,ierr)
       call t_stopf('bndry_a2a')
@@ -105,9 +103,7 @@ contains
       else
         locstring = TRIM(subname)
       endif
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
    endif
 #else
@@ -212,9 +208,7 @@ contains
       call MPI_wait(requestIntra,lstatus,ierr)
 
       ! location 3 for copyBuffer
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
       ! Finish the Inter-node communication
       call MPI_wait(requestInter,lstatus,ierr)
@@ -228,9 +222,7 @@ contains
         locstring = TRIM(subname)
       endif
       !Copy buffer for ithr!=0
-      call t_startf('bndry_copy')
       call copyBuffer(nthreads,ithr,buffer,locstring)
-      call t_stopf('bndry_copy')
 
    endif
 #else
@@ -323,9 +315,7 @@ contains
     else
       locstring = TRIM(subname)
     endif
-    call t_startf('bndry_copy')
     call copyBuffer(nthreads,ithr,buffer,locstring)
-    call t_stopf('bndry_copy')
     if (nSendCycles>0) call MPI_Waitall(nSendCycles,buffer%Srequest,buffer%status,ierr)
     if (nRecvCycles>0) call MPI_Waitall(nRecvCycles,buffer%Rrequest,buffer%status,ierr)
   else
@@ -334,9 +324,7 @@ contains
     else
       locstring = TRIM(subname)
     endif
-    call t_startf('bndry_copy')
     call copyBuffer(nthreads,ithr,buffer,locstring)
-    call t_stopf('bndry_copy')
   endif
 
   end subroutine bndry_exchange_p2p
@@ -456,9 +444,7 @@ contains
   else
     locstring = TRIM(subname)
   endif
-  call t_startf('bndry_copy')
   call copyBuffer(nthreads,ithr,buffer,locstring)
-  call t_stopf('bndry_copy')
 
   if(ithr == 0) then
 
