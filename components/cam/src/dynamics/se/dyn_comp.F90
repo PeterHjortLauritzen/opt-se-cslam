@@ -861,6 +861,12 @@ subroutine dyn_run(dyn_state)
 
    if (iam >= par%nprocs) return
 
+   ldiag = hist_fld_active('ABS_dPSdt')
+   if (ldiag) then
+      allocate(ps_before(np,np,nets:nete))
+      allocate(abs_ps_tend(np,np,nets:nete))
+   end if
+
    !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k)
    hybrid = config_thread_region(par,'horizontal')
    call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
@@ -927,12 +933,10 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-   ldiag = hist_fld_active('ABS_dPSdt')
-   if (ldiag) then
-      allocate(ps_before(np,np,nets:nete))
-      allocate(abs_ps_tend(np,np,nets:nete))
+   if (ldiag) then 
       abs_ps_tend(:,:,nets:nete) = 0.0_r8
-   end if
+   endif
+
 
    do n = 1, nsplit
 
@@ -961,13 +965,15 @@ subroutine dyn_run(dyn_state)
          abs_ps_tend(:,:,ie)=abs_ps_tend(:,:,ie)/DBLE(nsplit)
          call outfld('ABS_dPSdt',RESHAPE(abs_ps_tend(:,:,ie),(/npsq/)),npsq,ie)
       end do
-      deallocate(ps_before,abs_ps_tend)
    end if
 
    call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
    call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,'dBF')
    !$OMP END PARALLEL
 
+   if (ldiag) then 
+      deallocate(ps_before,abs_ps_tend)
+   endif
    ! output vars on CSLAM fvm grid
    call write_dyn_vars(dyn_state)
 
