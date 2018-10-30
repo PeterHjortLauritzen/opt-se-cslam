@@ -749,9 +749,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    if (iam < par%nprocs) then
       call prim_advance_init(par,elem)
       !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete)
-      hybrid = config_thread_region(par,'horizontal')!tphl
-!tphl      hybrid = config_thread_region(par,'serial')
-
       hybrid = config_thread_region(par,'horizontal')
       call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
       call prim_init2(elem, fvm, hybrid, nets, nete, TimeLevel, hvcoord)
