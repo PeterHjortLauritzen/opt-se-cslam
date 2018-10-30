@@ -13,7 +13,7 @@ module fvm_mod
   use edge_mod,               only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
   use edgetype_mod,           only: edgebuffer_t
   use bndry_mod,              only: ghost_exchange
-  use thread_mod,             only: horz_num_threads
+  use thread_mod,             only: horz_num_threads, vert_num_threads
 
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
@@ -24,7 +24,9 @@ module fvm_mod
   save
   
   type (EdgeBuffer_t)                         :: edgeveloc
-  type (EdgeBuffer_t), public  :: ghostBufQnhc, ghostBufQ1, ghostBufFlux
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_s, ghostBufQnhc_vh, ghostBufQnhc_h
+  type (EdgeBuffer_t), public  :: ghostBufQ1_h, ghostBufQ1_vh 
+  type (EdgeBuffer_t), public  :: ghostBufFlux_h, ghostBufFlux_vh
   type (EdgeBuffer_t), public  :: ghostBufQnhcJet, ghostBufFluxJet
   type (EdgeBuffer_t), public  :: ghostBufPG
 
@@ -440,10 +442,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! Need to allocate ghostBufQnhc after compute_ghost_corner_orientation because it 
     ! changes the values for reverse
 
-    call initghostbuffer(hybrid%par,ghostBufQnhc,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_s,elem,nlev*(ntrac+1),nhc,nc,nthreads=1)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_h,elem,nlev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQnhc_vh,elem,nlev*(ntrac+1),nhc,nc,nthreads=vert_num_threads*horz_num_threads)
     klev = kmax_jet-kmin_jet+1
-    call initghostbuffer(hybrid%par,ghostBufQ1,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
-    call initghostbuffer(hybrid%par,ghostBufFlux,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQ1_h,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufQ1_vh,elem,klev*(ntrac+1),1,nc,nthreads=vert_num_threads*horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
+    call initghostbuffer(hybrid%par,ghostBufFlux_vh,elem,4*nlev,nhe,nc,nthreads=vert_num_threads*horz_num_threads)
     !
     ! preallocate buffers for physics-dynamics coupling
     !

@@ -202,7 +202,7 @@ contains
     use bndry_mod     , only: ghost_exchange
     use edge_mod      , only: initghostbuffer, freeghostbuffer,ghostpack,ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-    use fvm_mod       , only: ghostBufQnhc
+    use fvm_mod       , only: ghostBufQnhc_s
 
     integer              , intent(in)    :: nets,nete,num_flds,numlev
     real (kind=r8), intent(inout) :: fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,numlev,num_flds,nets:nete)
@@ -225,13 +225,13 @@ contains
 !    call t_stopf('fvm2dyn:initbuffer')
     do ie=nets,nete
 !       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostpack(ghostBufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostpack(ghostBufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
 !    call ghost_exchange(hybrid,cellghostbuf)
-    call ghost_exchange(hybrid,ghostbufQnhc,location='fvm2dyn')
+    call ghost_exchange(hybrid,ghostbufQnhc_s,location='fvm2dyn')
     do ie=nets,nete
 !       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostunpack(ghostbufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostunpack(ghostbufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
 !    call freeghostbuffer(cellghostbuf)
      !
