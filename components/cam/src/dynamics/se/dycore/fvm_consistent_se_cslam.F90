@@ -9,7 +9,7 @@ module fvm_consistent_se_cslam
   use time_mod,               only: timelevel_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
-  use hybrid_mod,             only: hybrid_t
+  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges
   use perf_mod,               only: t_startf, t_stopf 
   implicit none
   private
@@ -30,7 +30,7 @@ contains
   !**************************************************************************************
   !
   subroutine run_consistent_se_cslam(elem,fvm,hybrid,dt_fvm,tl,nets,nete,hvcoord,&
-       ghostbufQnhc,ghostBufQ1, ghostBufFlux,kmin,kmax)
+       ghostbufQnhc,ghostBufQ1, ghostBufFlux,kminp,kmaxp)
     ! ---------------------------------------------------------------------------------
     use fvm_mod               , only: fill_halo_fvm
     use fvm_reconstruction_mod, only: reconstruction
@@ -41,6 +41,7 @@ contains
     use hybvcoord_mod         , only: hvcoord_t
     use constituents          , only: qmin
     use dimensions_mod        , only: large_Courant_incr,irecons_tracer_lev
+    use thread_mod            , only: vert_num_threads, omp_set_nested
     implicit none
     type (element_t)      , intent(inout) :: elem(:)
     type (fvm_struct)     , intent(inout) :: fvm(:)
@@ -51,27 +52,58 @@ contains
     integer               , intent(in)    :: nete  ! ending thread element number   (private)
     real (kind=r8)        , intent(in)    :: dt_fvm
     type (EdgeBuffer_t)   , intent(inout) :: ghostbufQnhc,ghostBufQ1, ghostBufFlux
-    integer               , intent(in)    :: kmin,kmax
+    integer               , intent(in)    :: kminp,kmaxp
 
     !high-order air density reconstruction
     real (kind=r8) :: ctracer(irecons_tracer,1-nhe:nc+nhe,1-nhe:nc+nhe,ntrac)
     real (kind=r8) :: inv_dp_area(nc,nc)
+    type (hybrid_t) :: hybridnew
 
     real (kind=r8), dimension(ngpc) :: gsweights, gspts
 
     logical :: llimiter(ntrac)
     integer :: i,j,k,ie,itr,kptr,q
     integer :: kmin_jet_local,kmax_jet_local
+    integer :: kmin,kmax
     integer :: ir
     integer :: kblk !total number of levels in which tracer transport is performed
+    integer :: region_num_threads
+    logical :: inJetCall
+  
 
     llimiter = .true.
 
+    inJetCall = .false.
+    if(((kminp .ne. 1) .or. (kmaxp .ne. nlev)) .and. vert_num_threads>1) then 
+       print *,'WARNING: deactivating vertical threading for JET region call'   
+       inJetCall = .true.
+       region_num_threads = 1
+    else
+       region_num_threads = vert_num_threads
+    endif
+
+    call omp_set_nested(.true.)
+    !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), & 
+    !$OMP PRIVATE(hybridnew,kblk,ie,k,kmin,gspts,inv_dp_area,itr), &
+    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer)
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
+    if(inJetCall) then 
+      ! ===============================================================================
+      ! if this is the reduced Jet region call then do not thread over the vertical.... 
+      ! Just use the number of vertical levels that were passed into subroutine
+      ! ===============================================================================
+      hybridnew = config_thread_region(hybrid,'serial')
+      kmin = kminp
+      kmax = kmaxp
+    else
+      hybridnew = config_thread_region(hybrid,'vertical')
+      call get_loop_ranges(hybridnew,kbeg=kmin,kend=kmax)
+    endif
+
     kblk = kmax-kmin+1
-    call t_startf('fvm:before_Qnhc')
+    !call t_startf('fvm:before_Qnhc')
     do ie=nets,nete
        do k=kmin,kmax
           elem(ie)%sub_elem_mass_flux(:,:,:,k) = dt_fvm*elem(ie)%sub_elem_mass_flux(:,:,:,k)*fvm(ie)%dp_ref_inverse(k)
@@ -85,10 +117,10 @@ contains
        enddo
     end do
     !call t_stopf('fvm:before_Qnhc')
-    call t_startf('fvm:ghost_exchange:Qnhc')
-    call ghost_exchange(hybrid,ghostbufQnhc,location='ghostbufQnhc')
-    call t_stopf('fvm:ghost_exchange:Qnhc')
-    call t_startf('fvm:orthogonal_swept_areas')
+    !call t_startf('fvm:ghost_exchange:Qnhc')
+    call ghost_exchange(hybridnew,ghostbufQnhc,location='ghostbufQnhc')
+    !call t_stopf('fvm:ghost_exchange:Qnhc')
+    !call t_startf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
       do k=kmin,kmax
         fvm(ie)%se_flux    (1:nc,1:nc,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k)
@@ -100,23 +132,23 @@ contains
          call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
       enddo
       do k=kmin,kmax
-        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k,gsweights,gspts)
+        call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,k),k,gsweights,gspts)
       end do
       kptr = 4*(kmin-1)
       call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
     end do
 
-    call ghost_exchange(hybrid,ghostBufFlux,location='ghostBufFlux')
+    call ghost_exchange(hybridnew,ghostBufFlux,location='ghostBufFlux')
 
     do ie=nets,nete
       kptr = 4*(kmin-1)
       call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
       do k=kmin,kmax
-         call ghost_flux_unpack(fvm(ie),k)
+         call ghost_flux_unpack(fvm(ie),fvm(ie)%se_flux(:,:,:,k))
       end do
     enddo
 
-    call t_stopf('fvm:orthogonal_swept_areas')
+    !call t_stopf('fvm:orthogonal_swept_areas')
     do ie=nets,nete
       do k=kmin,kmax
         !call t_startf('fvm:tracers_reconstruct')
@@ -155,24 +187,24 @@ contains
     if (large_Courant_incr) then
       kmin_jet_local = max(kmin_jet,kmin)
       kmax_jet_local = min(kmax_jet,kmax)
-      call t_startf('fvm:fill_halo_fvm:large_Courant')
-      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,1,kmin_jet_local,kmax_jet_local)
-      call t_stopf('fvm:fill_halo_fvm:large_Courant')
-      call t_startf('fvm:large_Courant_number_increment')
+      !call t_startf('fvm:fill_halo_fvm:large_Courant')
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local)
+      !call t_stopf('fvm:fill_halo_fvm:large_Courant')
+      !call t_startf('fvm:large_Courant_number_increment')
       do ie=nets,nete
-        do k=kmin_jet,kmax_jet !1,nlev
+        do k=kmin_jet_local,kmax_jet_local !1,nlev
           call large_courant_number_increment(fvm(ie),k)
         end do
       end do
-      call t_stopf('fvm:large_Courant_number_increment')
+      !call t_stopf('fvm:large_Courant_number_increment')
     end if
 
-    call t_startf('fvm:end_of_reconstruct_subroutine')
-    do ie=nets,nete
+    !call t_startf('fvm:end_of_reconstruct_subroutine')
+    do k=kmin,kmax
       !
       ! convert to mixing ratio
       !
-      do k=kmin,kmax
+      do ie=nets,nete
         do j=1,nc
           do i=1,nc
             inv_dp_area(i,j) = 1.0_r8/fvm(ie)%dp_fvm(i,j,k)
@@ -203,7 +235,9 @@ contains
         elem(ie)%sub_elem_mass_flux(:,:,:,k)=0
       end do
     end do
-    call t_stopf('fvm:end_of_reconstruct_subroutine')
+    !call t_stopf('fvm:end_of_reconstruct_subroutine')
+    !$OMP END PARALLEL 
+    call omp_set_nested(.false.)
   end subroutine run_consistent_se_cslam
 
   subroutine swept_flux(elem,fvm,ilev,ctracer,irecons_tracer_actual,gsweights,gspts)
@@ -631,11 +665,12 @@ contains
     end do
   end subroutine large_courant_number_increment
 
-  subroutine ghost_flux_unpack(fvm,k)
+  subroutine ghost_flux_unpack(fvm,var)
     use control_mod, only : neast, nwest, seast, swest
     implicit none
     type (fvm_struct), intent(inout) :: fvm
-    integer, intent(in)              :: k
+    real(kind=r8)                    :: var(1-nhe:nc+nhe,1-nhe:nc+nhe,4)
+
     integer :: i,j,ishft
     !
     ! rotate coordinates if needed
@@ -644,30 +679,30 @@ contains
       do j=1-nhe,nc+nhe
         do i=1-nhe,nc+nhe
           ishft = NINT(fvm%flux_orient(2,i,j))
-          fvm%se_flux(i,j,1:4,k) = cshift(fvm%se_flux(i,j,1:4,k),shift=ishft)
+          var(i,j,1:4) = cshift(var(i,j,1:4),shift=ishft)
         end do
       end do
       !
       ! non-existent cells in physical space - necessary?
       !
       if (fvm%cubeboundary==nwest) then
-        fvm%se_flux(1-nhe:0,nc+1 :nc+nhe,:,k) = 0.0_r8
+        var(1-nhe:0,nc+1 :nc+nhe,:) = 0.0_r8
       else if (fvm%cubeboundary==swest) then
-        fvm%se_flux(1-nhe:0,1-nhe:0     ,:,k) = 0.0_r8
+        var(1-nhe:0,1-nhe:0     ,:) = 0.0_r8
       else if (fvm%cubeboundary==neast) then
-        fvm%se_flux(nc+1 :nc+nhe,nc+1 :nc+nhe,:,k) = 0.0_r8
+        var(nc+1 :nc+nhe,nc+1 :nc+nhe,:) = 0.0_r8
       else if (fvm%cubeboundary==seast) then
-        fvm%se_flux(nc+1 :nc+nhe,1-nhe:0,:,k) = 0.0_r8
+        var(nc+1 :nc+nhe,1-nhe:0,:) = 0.0_r8
       end if
     end if
   end subroutine ghost_flux_unpack
 
-  subroutine compute_displacements_for_swept_areas(fvm,cair,irecons,k,gsweights,gspts)
+  subroutine compute_displacements_for_swept_areas(fvm,cair,k,gsweights,gspts)
     use dimensions_mod, only: large_Courant_incr
     implicit none
     type (fvm_struct), intent(inout)     :: fvm
-    integer, intent(in) :: irecons,k
-    real (kind=r8)      :: cair(1-nhc:nc+nhc,1-nhc:nc+nhc,irecons,nlev) !high-order air density reconstruction
+    integer, intent(in) :: k
+    real (kind=r8)      :: cair(1-nhc:nc+nhc,1-nhc:nc+nhc) !high-order air density reconstruction
     real (kind=r8), dimension(ngpc), intent(in) :: gsweights, gspts
     !
     !   flux iside 1                     flux iside 3                    flux iside 2       flux iside 4
@@ -775,7 +810,7 @@ contains
 !    do k=1,nlev
       do j=1,nc
         do i=1,nc
-          dp_area = cair(i,j,1,k)
+          dp_area = cair(i,j)
           do iside=1,4
             flux_se = -fvm%se_flux(i,j,iside,k)
             if (flux_se>eps) then

@@ -28,8 +28,8 @@ module fvm_mod
   type (EdgeBuffer_t), public  :: ghostBufQnhc_s, ghostBufQnhc_vh, ghostBufQnhc_h
   type (EdgeBuffer_t), public  :: ghostBufQ1_h, ghostBufQ1_vh 
   type (EdgeBuffer_t), public  :: ghostBufFlux_h, ghostBufFlux_vh
-  type (EdgeBuffer_t), public  :: ghostBufQnhcJet, ghostBufFluxJet
-  type (EdgeBuffer_t), public  :: ghostBufPG
+  type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h, ghostBufFluxJet_h
+  type (EdgeBuffer_t), public  :: ghostBufPG_s
 
   interface fill_halo_fvm
      module procedure fill_halo_fvm_noprealloc
@@ -475,9 +475,9 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     ! preallocate buffers for physics-dynamics coupling
     !
     if (fv_nphys.ne.nc) then
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(4+ntrac),nhc_phys,fv_nphys,nthreads=1)
     else
-       call initghostbuffer(hybrid%par,ghostBufPG,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=1)
+       call initghostbuffer(hybrid%par,ghostBufPG_s,elem,nlev*(3+qsize_condensate_loading),nhc_phys,fv_nphys,nthreads=1)
     end if
     
     if (fvm_supercycling.ne.fvm_supercycling_jet) then
@@ -485,8 +485,8 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       ! buffers for running different fvm time-steps in the jet region
       !
       klev = kmax_jet-kmin_jet+1
-      call initghostbuffer(hybrid%par,ghostBufQnhcJet,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
-      call initghostbuffer(hybrid%par,ghostBufFluxJet,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
+      call initghostbuffer(hybrid%par,ghostBufQnhcJet_h,elem,klev*(ntrac+1),nhc,nc,nthreads=horz_num_threads)
+      call initghostbuffer(hybrid%par,ghostBufFluxJet_h,elem,4*klev,nhe,nc,nthreads=horz_num_threads)
     end if
   end subroutine fvm_init2
 
