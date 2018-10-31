@@ -526,6 +526,7 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
         !Find the index of the old grid cell in which this new cell's bottom interface resides.
         do while ( pio(kk) <= pin(k+1) )
           kk = kk + 1
+          if(kk==nlev+2) exit
         enddo
         kk = kk - 1                   !kk is now the cell index we're integrating over.
         if (kk == nlev+1) kk = nlev   !This is to keep the indices in bounds.
