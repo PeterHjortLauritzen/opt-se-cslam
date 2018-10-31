@@ -1,3 +1,12 @@
+!==================================================================================
+! The subroutine reconstruction is called from both a horizontal 
+!    threaded region and a nested region for horizontal and 
+!    vertical threading.  if horz_num_threads != horz_num_threads*vert_num_threads
+!    then the timers calls will generate segfault...  So the simple solution is 
+!    to deactivate them by default.
+!
+#define FVM_TIMERS .FALSE.
+!==================================================================================
   !MODULE FVM_RECONSTRUCTION_MOD--------------------------------------CE-for FVM!
   ! AUTHOR: CHRISTOPH ERATH, 17.October 2011                                  !
   ! This module contains everything  to do (ONLY) a CUBIC (3rd order) reconstruction  !
@@ -93,7 +102,7 @@ contains
     !    
     call zero_non_existent_ghost_cell(recons,irecons,cubeboundary,nc,nhe,ntrac_in)
     if (irecons_actual>1) then
-       call t_startf('FVM:reconstruction:part#1')
+       if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#1')
        if (nhe>0) then
           do itr=1,ntrac_in
              !        f=-9e9_r8
@@ -112,8 +121,8 @@ contains
                   rot_matrix,centroid_stretch,nc,nht,nhe,nhc,irecons_actual)
           end do
        end if
-       call t_stopf('FVM:reconstruction:part#1')
-       call t_startf('FVM:reconstruction:part#2')       
+       if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#1')
+       if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#2')       
        !
        ! fill in non-existent (in physical space) corner values to simplify
        ! logic in limiter code (min/max operation)
@@ -149,9 +158,9 @@ contains
                   recons_metrics,vertex_recons_weights,vtx_cart,irecons_actual)
           end if
        end do
-       call t_stopf('FVM:reconstruction:part#2')
+       if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#2')
     end if
-    call t_startf('FVM:reconstruction:part#3')
+    if(FVM_TIMERS) call t_startf('FVM:reconstruction:part#3')
     select case (irecons_actual)
     case(1)
       do in=1,3
@@ -206,7 +215,7 @@ contains
     case default
       write(*,*) "irecons out of range in get_ceof", irecons
     end select
-    call t_stopf('FVM:reconstruction:part#3')
+    if(FVM_TIMERS) call t_stopf('FVM:reconstruction:part#3')
 
     !          recons(a,b,3) * (centroid(a,b,1)**2 - centroid(a,b,3)) + &
     !          recons(a,b,4) * (centroid(a,b,2)**2 - centroid(a,b,4)) + &

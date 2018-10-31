@@ -33,7 +33,7 @@ contains
     use control_mod,            only: runtype, &
          topology, rsplit, qsplit, rk_stage_user,         &
          nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q
-    use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc
+    use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: test_global_integral, print_cfl
     use hybvcoord_mod,          only: hvcoord_t
@@ -102,7 +102,7 @@ contains
       !
       ! need to fill halo for dp_coupling for fvm2phys mapping
       !
-      call fill_halo_fvm(ghostBufQnhc,elem,fvm,hybrid,nets,nete,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc_h,elem,fvm,hybrid,nets,nete,nhc,1,nlev)
     end if
     !$OMP BARRIER
     if (hybrid%ithr==0) then
@@ -185,7 +185,7 @@ contains
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
-    use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc
+    use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc_h
     use dimensions_mod,         only: ntrac,fv_nphys
 
     type (element_t) , intent(inout) :: elem(:)
@@ -298,7 +298,7 @@ contains
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(ghostBufQnhc, elem,fvm,hybrid,nets,nete,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc_h, elem,fvm,hybrid,nets,nete,nhc,1,nlev)
     end if
 
   end subroutine prim_run_subcycle
@@ -332,7 +332,7 @@ contains
     use hybrid_mod,             only: set_region_num_threads, config_thread_region
     use dimensions_mod,         only: ntrac,fvm_supercycling,fvm_supercycling_jet
     use dimensions_mod,         only: kmin_jet, kmax_jet
-    use fvm_mod,                only: ghostBufQnhc,ghostBufQ1, ghostBufFlux
+    use fvm_mod,                only: ghostBufQnhc_h,ghostBufQ1_h, ghostBufFlux_h
     use fvm_mod,                only: ghostBufQnhcJet, ghostBufFluxJet
 #ifdef waccm_debug
   use cam_history, only: outfld
@@ -469,7 +469,7 @@ contains
       !
       if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then        
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-             dt_q,tl,nets,nete,ghostBufQnhc,ghostBufQ1, ghostBufFlux,1,nlev)
+             dt_q,tl,nets,nete,ghostBufQnhc_h,ghostBufQ1_h, ghostBufFlux_h,1,nlev)
         !
         ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
         ! surface pressure
@@ -488,7 +488,7 @@ contains
         ! shorter fvm time-step in jet region
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-             dt_q,tl,nets,nete,ghostBufQnhcJet,ghostBufQ1, ghostBufFluxJet,kmin_jet,kmax_jet)
+             dt_q,tl,nets,nete,ghostBufQnhcJet,ghostBufQ1_h, ghostBufFluxJet,kmin_jet,kmax_jet)
       end if
         
 

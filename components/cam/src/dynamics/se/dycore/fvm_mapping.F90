@@ -202,7 +202,7 @@ contains
     use bndry_mod     , only: ghost_exchange
     use edge_mod      , only: initghostbuffer, freeghostbuffer,ghostpack,ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-    use fvm_mod       , only: ghostBufQnhc
+    use fvm_mod       , only: ghostBufQnhc_s
 
     integer              , intent(in)    :: nets,nete,num_flds,numlev
     real (kind=r8), intent(inout) :: fld_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,numlev,num_flds,nets:nete)
@@ -225,13 +225,13 @@ contains
 !    call t_stopf('fvm2dyn:initbuffer')
     do ie=nets,nete
 !       call ghostpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostpack(ghostBufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostpack(ghostBufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
 !    call ghost_exchange(hybrid,cellghostbuf)
-    call ghost_exchange(hybrid,ghostbufQnhc,location='fvm2dyn')
+    call ghost_exchange(hybrid,ghostbufQnhc_s,location='fvm2dyn')
     do ie=nets,nete
 !       call ghostunpack(cellghostbuf, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
-       call ghostunpack(ghostbufQnhc, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
+       call ghostunpack(ghostbufQnhc_s, fld_fvm(:,:,:,:,ie),numlev*num_flds,0,ie)
     end do
 !    call freeghostbuffer(cellghostbuf)
      !
@@ -1403,7 +1403,7 @@ contains
        fvm%recons_metrics_integral_physgrid(:,1:fv_nphys,1:fv_nphys)    ,&
        fvm%rot_matrix_physgrid,&
        fvm%centroid_stretch_physgrid(1:7,1:fv_nphys,1:fv_nphys),&
-       fvm%vertex_recons_weights_physgrid(1:irecons_tracer-1,:,1:fv_nphys,1:fv_nphys),&
+       fvm%vertex_recons_weights_physgrid(:,1:irecons_tracer-1,1:fv_nphys,1:fv_nphys),&
        fvm%vtx_cart_physgrid(:,:,1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys))
   end subroutine get_physgrid_recons
 
@@ -1433,7 +1433,7 @@ contains
          fvm%recons_metrics(:,1:nc,1:nc),&
          fvm%recons_metrics_integral(:,1:nc,1:nc)    ,&
          fvm%rot_matrix,fvm%centroid_stretch(1:7,1:nc,1:nc),&
-         fvm%vertex_recons_weights(1:irecons_tracer-1,:,1:nc,1:nc),&
+         fvm%vertex_recons_weights(:,1:irecons_tracer-1,1:nc,1:nc),&
          fvm%vtx_cart(:,:,1-nhc:nc+nhc,1-nhc:nc+nhc))
   end subroutine get_fvm_recons
 end module fvm_mapping
