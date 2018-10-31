@@ -43,7 +43,7 @@ contains
 
   subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
-    use dimensions_mod, only: nc, ntrac
+    use dimensions_mod, only: nc, ntrac, nlev
     implicit none
     type (element_t),intent(inout)            :: elem(:)
     type (fvm_struct),intent(inout)           :: fvm(:)
@@ -52,20 +52,28 @@ contains
     type (edgeBuffer_t)                      :: cellghostbuf
 
     integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
-    integer                                   :: ie,i1,i2,num_levels
+    integer                                   :: ie,i1,i2,kblk,kptr,q
     !
     !
-
+     
+    if(kmin .ne. 1 .or. kmax .ne. nlev) then 
+       print *,'WARNING: fill_halo_fvm_noprealloc does not support the passing of non-contigous arrays'
+       print *,'WARNING:   incorrect answers are likely'
+    endif
     if(FVM_TIMERS) call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
-    num_levels = kmax-kmin+1
-    call initghostbuffer(hybrid%par,cellghostbuf,elem,num_levels*(ntrac+1),ndepth,nc)
+    kblk = kmax-kmin+1
+    call initghostbuffer(hybrid%par,cellghostbuf,elem,kblk*(ntrac+1),ndepth,nc)
     if(FVM_TIMERS) call t_stopf('FVM:initbuf')
     if(FVM_TIMERS) call t_startf('FVM:pack')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:)   ,num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk,   kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + kblk
+          call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q)   ,kblk,kptr,ie)
+       enddo
     end do
     if(FVM_TIMERS) call t_stopf('FVM:pack')
     if(FVM_TIMERS) call t_startf('FVM:Communication')
@@ -74,8 +82,12 @@ contains
     !-----------------------------------------------------------------------------------!                        
     if(FVM_TIMERS) call t_startf('FVM:Unpack')
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk   ,kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + kblk
+          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   kblk,kptr,ie)
+       enddo
     enddo
     if(FVM_TIMERS) call t_stopf('FVM:Unpack')
     if(FVM_TIMERS) call t_startf('FVM:freebuf')
@@ -85,7 +97,7 @@ contains
 
 subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
-    use dimensions_mod, only: nc, ntrac
+    use dimensions_mod, only: nc, ntrac, nlev
     implicit none
     type (EdgeBuffer_t), intent(inout)       :: cellghostbuf
     type (element_t),intent(inout)            :: elem(:)
@@ -94,18 +106,22 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
 
 
     integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
-    integer                                   :: ie,i1,i2,num_levels
+    integer                                   :: ie,i1,i2,kblk,q,kptr
     !
     !
 
 !    call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
-    num_levels = kmax-kmin+1
+    kblk = kmax-kmin+1
     if(FVM_TIMERS) call t_startf('FVM:pack')
     do ie=nets,nete
-       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels,      0,ie)
-       call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:) ,num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
+       do q=1, ntrac
+          kptr = kptr + nlev
+          call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q) ,kblk,kptr,ie)
+       enddo
     end do
     if(FVM_TIMERS) call t_stopf('FVM:pack')
     if(FVM_TIMERS) call t_startf('FVM:Communication')
@@ -114,8 +130,12 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     !-----------------------------------------------------------------------------------!                        
     if(FVM_TIMERS) call t_startf('FVM:Unpack')
     do ie=nets,nete
-       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),num_levels      ,0,ie)
-       call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:), num_levels*ntrac,num_levels,ie)
+       kptr = kmin-1
+       call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
+       do q=1, ntrac
+          kptr = kptr + nlev
+          call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q), kblk,kptr,ie)
+       enddo
     enddo
     if(FVM_TIMERS) call t_stopf('FVM:Unpack')
 

@@ -60,24 +60,29 @@ contains
     real (kind=r8), dimension(ngpc) :: gsweights, gspts
 
     logical :: llimiter(ntrac)
-    integer :: i,j,k,ie,itr    
+    integer :: i,j,k,ie,itr,kptr,q
+    integer :: kmin_jet_local,kmax_jet_local
     integer :: ir
-    integer :: klev !total number of levels in which tracer transport is performed
+    integer :: kblk !total number of levels in which tracer transport is performed
 
     llimiter = .true.
 
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
-    klev = kmax-kmin+1
+    kblk = kmax-kmin+1
     call t_startf('fvm:before_Qnhc')
     do ie=nets,nete
        do k=kmin,kmax
           elem(ie)%sub_elem_mass_flux(:,:,:,k) = dt_fvm*elem(ie)%sub_elem_mass_flux(:,:,:,k)*fvm(ie)%dp_ref_inverse(k)
           fvm(ie)%dp_fvm(1:nc,1:nc,k)          =         fvm(ie)%dp_fvm (1:nc,1:nc,k)*fvm(ie)%dp_ref_inverse(k)
        end do
-       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   ,klev,      0   ,ie)
-       call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac),klev*ntrac,klev,ie)
+       kptr = kmin-1
+       call ghostpack(ghostbufQnhc,fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   ,kblk,      kptr,ie)
+       do q=1,ntrac
+          kptr = kptr + nlev
+          call ghostpack(ghostbufQnhc,fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
+       enddo
     end do
     !call t_stopf('fvm:before_Qnhc')
     call t_startf('fvm:ghost_exchange:Qnhc')
@@ -88,18 +93,24 @@ contains
       do k=kmin,kmax
         fvm(ie)%se_flux    (1:nc,1:nc,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k)
       end do
-      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   , klev      ,0   ,ie)
-      call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,1:ntrac), klev*ntrac,klev,ie)
+      kptr = kmin-1
+      call ghostunpack(ghostbufQnhc, fvm(ie)%dp_fvm(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax)   , kblk      ,kptr,ie)
+      do q=1,ntrac
+         kptr = kptr + nlev
+         call ghostunpack(ghostbufQnhc, fvm(ie)%c(1-nhc:nc+nhc,1-nhc:nc+nhc,kmin:kmax,q),kblk,kptr,ie)
+      enddo
       do k=kmin,kmax
         call compute_displacements_for_swept_areas (fvm(ie),fvm(ie)%dp_fvm(:,:,:),1,k,gsweights,gspts)
       end do
-      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
+      kptr = 4*(kmin-1)
+      call ghostpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
     end do
 
     call ghost_exchange(hybrid,ghostBufFlux,location='ghostBufFlux')
 
     do ie=nets,nete
-      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*klev,0,ie)
+      kptr = 4*(kmin-1)
+      call ghostunpack(ghostBufFlux, fvm(ie)%se_flux(:,:,:,kmin:kmax),4*kblk,kptr,ie)
       do k=kmin,kmax
          call ghost_flux_unpack(fvm(ie),k)
       end do
@@ -142,8 +153,10 @@ contains
      !
      !
     if (large_Courant_incr) then
+      kmin_jet_local = max(kmin_jet,kmin)
+      kmax_jet_local = min(kmax_jet,kmax)
       call t_startf('fvm:fill_halo_fvm:large_Courant')
-      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,1,kmin_jet,kmax_jet)
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybrid,nets,nete,1,kmin_jet_local,kmax_jet_local)
       call t_stopf('fvm:fill_halo_fvm:large_Courant')
       call t_startf('fvm:large_Courant_number_increment')
       do ie=nets,nete
@@ -153,6 +166,7 @@ contains
       end do
       call t_stopf('fvm:large_Courant_number_increment')
     end if
+
     call t_startf('fvm:end_of_reconstruct_subroutine')
     do ie=nets,nete
       !
@@ -179,17 +193,13 @@ contains
         ! convert to dp and scale back dp
         !
         fvm(ie)%dp_fvm(1:nc,1:nc,k) = fvm(ie)%dp_fvm(1:nc,1:nc,k)*fvm(ie)%dp_ref(k)*fvm(ie)%inv_area_sphere
-      end do
 #ifdef waccm_debug
-      do k=kmin,kmax
         do j=1,nc
           do i=1,nc
             fvm(ie)%CSLAM_gamma(i,j,k,1) = MAXVAL(fvm(ie)%CSLAM_gamma(i,j,k,:))
           end do
         end do
-      end do
 #endif
-      do k=kmin,kmax
         elem(ie)%sub_elem_mass_flux(:,:,:,k)=0
       end do
     end do
