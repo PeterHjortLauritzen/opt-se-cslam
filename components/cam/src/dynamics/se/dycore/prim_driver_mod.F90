@@ -329,11 +329,11 @@ contains
     use prim_advance_mod,       only: prim_advance_exp
     use prim_advection_mod,     only: prim_advec_tracers_remap, prim_advec_tracers_fvm, deriv
     use derivative_mod,         only: subcell_integration
-    use hybrid_mod,             only: set_region_num_threads, config_thread_region
+    use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
     use dimensions_mod,         only: ntrac,fvm_supercycling,fvm_supercycling_jet
     use dimensions_mod,         only: kmin_jet, kmax_jet
-    use fvm_mod,                only: ghostBufQnhc_h,ghostBufQ1_h, ghostBufFlux_h
-    use fvm_mod,                only: ghostBufQnhcJet, ghostBufFluxJet
+    use fvm_mod,                only: ghostBufQnhc_h,ghostBufQnhc_vh,ghostBufQ1_h,ghostBufQ1_vh, ghostBufFlux_h, ghostBufFlux_vh
+    use fvm_mod,                only: ghostBufQnhcJet_h, ghostBufFluxJet_h
 #ifdef waccm_debug
   use cam_history, only: outfld
 #endif  
@@ -349,17 +349,19 @@ contains
     type (TimeLevel_t), intent(inout) :: tl
     integer, intent(in)               :: rstep ! vertical remap subcycling step
 
-    type (hybrid_t):: hybridnew
+    type (hybrid_t):: hybridnew,hybridnew2
     real(kind=r8)  :: st, st1, dp, dt_q
     integer        :: ie,t,q,k,i,j,n, n_Q
     integer        :: ithr
     integer        :: region_num_threads
+    integer        :: kbeg,kend
 
     real (kind=r8) :: tempdp3d(np,np), x
     real (kind=r8) :: tempmass(nc,nc)
     real (kind=r8) :: tempflux(nc,nc,4)
 
     real (kind=r8) :: dp_np1(np,np)
+
 
     dt_q = dt*qsplit
     ! ===============
@@ -468,8 +470,15 @@ contains
       ! FVM transport
       !
       if ((mod(rstep,fvm_supercycling) == 0).and.(mod(rstep,fvm_supercycling_jet) == 0)) then        
+
+!        call omp_set_nested(.true.)
+!        !$OMP PARALLEL NUM_THREADS(vert_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,kbeg,kend)
+!        hybridnew2 = config_thread_region(hybrid,'vertical')
+!        call get_loop_ranges(hybridnew2,kbeg=kbeg,kend=kend)
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-             dt_q,tl,nets,nete,ghostBufQnhc_h,ghostBufQ1_h, ghostBufFlux_h,1,nlev)
+             dt_q,tl,nets,nete,ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh,1,nlev)
+!        !$OMP END PARALLEL
+!        call omp_set_nested(.false.)
         !
         ! to avoid accumulation of truncation error overwrite CSLAM surface pressure with SE
         ! surface pressure
@@ -488,7 +497,7 @@ contains
         ! shorter fvm time-step in jet region
         !
         call Prim_Advec_Tracers_fvm(elem,fvm,hvcoord,hybrid,&
-             dt_q,tl,nets,nete,ghostBufQnhcJet,ghostBufQ1_h, ghostBufFluxJet,kmin_jet,kmax_jet)
+             dt_q,tl,nets,nete,ghostBufQnhcJet_h,ghostBufQ1_h, ghostBufFluxJet_h,kmin_jet,kmax_jet)
       end if
         
 

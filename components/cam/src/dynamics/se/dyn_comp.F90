@@ -860,8 +860,9 @@ subroutine dyn_run(dyn_state)
 
    ldiag = hist_fld_active('ABS_dPSdt')
    if (ldiag) then
-      allocate(ps_before(np,np,1:nelemd))
-      allocate(abs_ps_tend(np,np,1:nelemd))
+      allocate(ps_before(np,np,nelemd))
+      allocate(abs_ps_tend(np,np,nelemd))
+
    end if
 
    !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k)

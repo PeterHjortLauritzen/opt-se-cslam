@@ -253,7 +253,7 @@ contains
 !    use edge_mod      , only: initghostbuffer, freeghostbuffer, ghostpack, ghostunpack
     use edge_mod      , only: ghostpack, ghostunpack
     use edgetype_mod  , only: edgebuffer_t
-    use fvm_mod       , only: ghostBufPG
+    use fvm_mod       , only: ghostBufPG_s
 
     integer              , intent(in)    :: nets,nete,num_lev,num_flds
     real (kind=r8), intent(inout) :: fld_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,num_lev,num_flds, &
@@ -275,13 +275,13 @@ contains
 !    call initghostbuffer(hybrid%par,ghotBufPG,elem,num_lev*num_flds,nhc_phys,fv_nphys)
 !    call t_stopf('fvm:fill_halo_phys:initbuffer')
     do ie=nets,nete
-       call ghostpack(ghostBufPG, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
+       call ghostpack(ghostBufPG_s, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
 
-    call ghost_exchange(hybrid,ghostBufPG,location='fill_halo_phys')
+    call ghost_exchange(hybrid,ghostBufPG_s,location='fill_halo_phys')
 
     do ie=nets,nete
-       call ghostunpack(ghostBufPG, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
+       call ghostunpack(ghostBufPG_s, fld_phys(:,:,:,:,ie),num_lev*num_flds,0,ie)
     end do
     !
     call t_stopf('fvm:fill_halo_phys')

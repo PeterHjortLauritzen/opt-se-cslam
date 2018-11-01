@@ -65,7 +65,7 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
   logical :: abort=.false.
 
   if (vert_remap_q_alg == 1 .or. vert_remap_q_alg == 2) then
-    call t_startf('remap_Q_ppm')
+    !call t_startf('remap_Q_ppm')
     if ( present(hybrid) ) then
       !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
       hybridnew = config_thread_region(hybrid,'tracer')
@@ -75,7 +75,7 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
     else
       call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
     endif
-    call t_stopf('remap_Q_ppm')
+    !call t_stopf('remap_Q_ppm')
     return
   endif
 
