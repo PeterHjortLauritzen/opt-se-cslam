@@ -653,7 +653,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    ! so do a simple sum (boundary exchange with no weights).
    ! For physics grid, we interpolated into all points, so do weighted average.
 
-   call t_startf('bndry_exchange')
+   call t_startf('p_d_coupling:bndry_exchange')
 
    do ie = 1, nelemd
       if (fv_nphys > 0) then
@@ -712,7 +712,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
          end do
       end if
    end do
-   call t_stopf('bndry_exchange')
+   call t_stopf('p_d_coupling:bndry_exchange')
 
    if (iam < par%nprocs .and. fv_nphys > 0) then
       call test_mapping_output_mapped_tendencies(dyn_in%fvm(1:nelemd), elem(1:nelemd), &

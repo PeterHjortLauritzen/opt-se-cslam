@@ -125,7 +125,33 @@ echo "nhtfrq             = -24,-24 " >> user_nl_cam
 # 70 layer IC file
 #
 echo "ncdata = '$inic/waccm.i.spinup.nc'"   >> user_nl_cam
+#
+# waccm time-stepping and viscosity
+#
+echo "se_ftype                =  2 "       >> user_nl_cam
+echo "se_fvm_supercycling     = 6"         >> user_nl_cam
+echo "se_fvm_supercycling_jet = 6"         >> user_nl_cam
+echo "se_kmax_jet             = 30"        >> user_nl_cam
+echo "se_kmin_jet             = 1 "        >> user_nl_cam
+echo "se_large_courant_incr   =  .true.  " >> user_nl_cam
+echo "se_nsplit               =   5  "     >> user_nl_cam
+echo "se_nu_div               = 2E15"      >> user_nl_cam
+echo "se_nu_top               =  1.0e6 "   >> user_nl_cam
+echo "se_rsplit               =   6 "      >> user_nl_cam
 
+#
+# possible future waccm setup
+#
+#echo "se_ftype                =  2 "       >> user_nl_cam
+#echo "se_fvm_supercycling     = 3"         >> user_nl_cam
+#echo "se_fvm_supercycling_jet = 6"         >> user_nl_cam
+#echo "se_kmax_jet             = 30"        >> user_nl_cam
+#echo "se_kmin_jet             = 1 "        >> user_nl_cam
+#echo "se_large_courant_incr   =  .false.  " >> user_nl_cam
+#echo "se_nsplit               =   5  "     >> user_nl_cam
+#echo "se_nu_div               = 2E15"      >> user_nl_cam
+#echo "se_nu_top               =  1.0e6 "   >> user_nl_cam
+#echo "se_rsplit               =   6 "      >> user_nl_cam
 
 #
 # spinup

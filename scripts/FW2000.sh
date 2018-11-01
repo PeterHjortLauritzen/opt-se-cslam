@@ -1,5 +1,5 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT "P93300642"
+setenv PBS_ACCOUNT "P03010039"
 # P03010039
 # P93300042
 # P03010083
@@ -16,8 +16,8 @@ set src="opt-se-cslam-master"
 set res="ne30pg3_ne30pg3_mg17" #cslam
 #set res="ne30_ne30_mg17"        #no cslam
 
-set climateRun="True"
-#set climateRun="False"
+#set climateRun="True"
+set climateRun="False"
 #set energyConsistency="True"
 set energyConsistency="False"
 set test_tracers="False"
@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=bugfree_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=bugfree_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_debug
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -72,7 +72,7 @@ if ($test_tracers == "True") then
 else
     ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
 endif
-#./xmlchange DEBUG=TRUE #xxxx
+./xmlchange DEBUG=TRUE #xxxx
 #
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
@@ -195,9 +195,9 @@ else
 endif
 
 if ($cset == "FW2000") then
-  echo "se_nsplit = 4" >> user_nl_cam
-  echo "se_fvm_supercycling     = 7" >> user_nl_cam
-  echo "se_fvm_supercycling_jet = 7" >> user_nl_cam
+#  echo "se_nsplit = 4" >> user_nl_cam
+#  echo "se_fvm_supercycling     = 7" >> user_nl_cam
+#  echo "se_fvm_supercycling_jet = 7" >> user_nl_cam
   if ($res == "ne30pg3_ne30pg3_mg17") then
     echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
   else
