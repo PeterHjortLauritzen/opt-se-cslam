@@ -168,31 +168,32 @@ contains
         !call t_stopf('fvm:swept_flux')
       end do
     end do
-     !
-     !***************************************
-     !
-     ! Large Courant number increment
-     !
-     !***************************************
-     !
-     ! In the jet region the effective Courant number
-     ! in the cslam trajectory algorithm can be > 1
-     ! (by up to 20%) in CAM
-     !
-     ! We limit the trajectories to < 1 but in this step
-     ! we do a piecewise constant update for the
-     ! amount of mass for which the Courant number is >1
-     !
-     !
+    !
+    !***************************************
+    !
+    ! Large Courant number increment
+    !
+    !***************************************
+    !
+    ! In the jet region the effective Courant number
+    ! in the cslam trajectory algorithm can be > 1
+    ! (by up to 20%) in CAM
+    !
+    ! We limit the trajectories to < 1 but in this step
+    ! we do a piecewise constant update for the
+    ! amount of mass for which the Courant number is >1
+    !
+    !
     if (large_Courant_incr) then
-      kmin_jet_local = max(kmin_jet,kmin)
-      kmax_jet_local = min(kmax_jet,kmax)
       !call t_startf('fvm:fill_halo_fvm:large_Courant')
-      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local)
+      if (kmin_jet<kmin.or.kmax_jet>kmax) then
+        call endrun('ERROR: kmax_jet must be .le. kmax passed to run_consistent_se_cslam')
+      end if      
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet,kmax_jet)
       !call t_stopf('fvm:fill_halo_fvm:large_Courant')
       !call t_startf('fvm:large_Courant_number_increment')
       do ie=nets,nete
-        do k=kmin_jet_local,kmax_jet_local !1,nlev
+        do k=kmin_jet,kmax_jet !1,nlev
           call large_courant_number_increment(fvm(ie),k)
         end do
       end do

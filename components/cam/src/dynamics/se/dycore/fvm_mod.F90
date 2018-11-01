@@ -119,7 +119,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
        kptr = kmin-1
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
        do q=1, ntrac
-          kptr = kptr + nlev
+          kptr = kptr + kblk
           call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q) ,kblk,kptr,ie)
        enddo
     end do
@@ -133,7 +133,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
        kptr = kmin-1
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
        do q=1, ntrac
-          kptr = kptr + nlev
+          kptr = kptr + kblk
           call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q), kblk,kptr,ie)
        enddo
     enddo
