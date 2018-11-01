@@ -27,7 +27,7 @@ use perf_mod,       only: t_startf, t_stopf, t_barrierf
 use cam_abortutils, only: endrun
 
 use parallel_mod,   only: par
-use thread_mod,     only: horz_num_threads
+use thread_mod,     only: max_num_threads, horz_num_threads
 use hybrid_mod,     only: config_thread_region, get_loop_ranges, hybrid_t
 use dimensions_mod, only: np, npsq, nelemd, nlev, nc, qsize, ntrac, fv_nphys
 
@@ -226,7 +226,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call t_startf('dpcopy')
    if (local_dp_map) then
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga)
       do lchnk = begchunk, endchunk
 
          ncols = get_ncols_p(lchnk)
@@ -279,7 +279,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       end if
 
       if (iam < par%nprocs) then
-         !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
+         !$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols, ioff)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -331,7 +331,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
       call transpose_block_to_chunk(tsize, bbuffer, cbuffer)
       call t_stopf  ('block_to_chunk')
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, icol, ilyr, m, pbuf_chnk, pbuf_frontgf, pbuf_frontga, ioff)
       do lchnk = begchunk, endchunk
          ncols = phys_state(lchnk)%ncol
 
@@ -401,7 +401,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
    call derived_phys_dry(phys_state, phys_tend, pbuf2d)
    call t_stopf('derived_phys')
 
-!!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, ilyr, icol)
+!$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, ilyr, icol)
    do lchnk = begchunk, endchunk
       ncols=get_ncols_p(lchnk)
       if (pcols > ncols) then
@@ -473,7 +473,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    call t_startf('pd_copy')
    if (local_dp_map) then
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, pgcols, icol, idmb1, idmb2, idmb3, ie, ioff, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
          call get_gcol_all_p(lchnk, pcols, pgcols)
@@ -515,7 +515,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
       allocate(bbuffer(tsize*block_buf_nrecs))
       allocate(cbuffer(tsize*chunk_buf_nrecs))
 
-      !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
+      !$omp parallel do num_threads(max_num_threads) private (lchnk, ncols, cpter, i, icol, ilyr, m, factor)
       do lchnk = begchunk, endchunk
          ncols = get_ncols_p(lchnk)
 
@@ -562,7 +562,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             allocate(bpter(npsq,0:pver))
          end if
 
-         !!$omp parallel do num_threads(horz_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
+         !$omp parallel do num_threads(max_num_threads) private (ie, bpter, icol, ilyr, m, ncols)
          do ie = 1, nelemd
 
             if (fv_nphys > 0) then
@@ -629,7 +629,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
          call t_startf('putUniquePoints')
 
-         !!$omp parallel do num_threads(horz_num_threads) private(ie,ncols)
+         !$omp parallel do num_threads(max_num_threads) private(ie,ncols)
          do ie = 1, nelemd
             ncols = elem(ie)%idxP%NumUniquePts
             call putUniquePoints(elem(ie)%idxP, nlev, T_tmp(1:ncols,:,ie),       &
@@ -759,6 +759,7 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
 
    ! Evaluate derived quantities
 
+   !LOOP9
    !!$omp parallel do num_threads(horz_num_threads) private (lchnk, ncol, k, i, m , zvirv, pbuf_chnk, factor_array)
    do lchnk = begchunk,endchunk
 
