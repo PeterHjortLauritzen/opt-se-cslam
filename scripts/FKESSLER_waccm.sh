@@ -8,7 +8,7 @@ set src="opt-se-cslam"
 # number of test tracers
 #
 setenv qsize "194" #there are already 6 tracers in FKESSLER!
-set NTHRDS="1"
+set NTHRDS="2"
 #
 # run with CSLAM or without
 #
@@ -62,8 +62,8 @@ else
 endif
 
 
-set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_baseline
-$homedir/$USER/PEL/baseline/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --compiler $compiler --run-unsupported
+set caze=${src}_${cset}_WACCM_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_master
+$homedir/$USER/PEL/master/$src/cime/scripts/create_newcase --case $scratch/$USER/$caze --compset $cset --res $res  --q $queue --walltime 00:15:00 --pecount $pecount  --project $PBS_ACCOUNT --compiler $compiler --run-unsupported
 
 cd $scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
@@ -120,7 +120,7 @@ echo "inithist    = '6-HOURLY'"   >> user_nl_cam #xxx
 echo "se_statefreq       = 244"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
-echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
+#echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 #
 # 70 layer IC file
 #
