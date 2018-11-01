@@ -862,12 +862,13 @@ subroutine dyn_run(dyn_state)
    if (ldiag) then
       allocate(ps_before(np,np,nelemd))
       allocate(abs_ps_tend(np,np,nelemd))
+
    end if
 
    !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k)
    hybrid = config_thread_region(par,'horizontal')
    call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
-
+   write(*,*) "xxx",nets,nete
    dtime = get_step_size()
    rec2dt = 1._r8/dtime
 
