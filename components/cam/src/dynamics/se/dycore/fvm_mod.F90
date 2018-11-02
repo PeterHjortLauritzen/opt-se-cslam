@@ -41,7 +41,7 @@ module fvm_mod
 
 contains
 
-  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
+  subroutine fill_halo_fvm_noprealloc(elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
     use dimensions_mod, only: nc, ntrac, nlev
     implicit none
@@ -51,7 +51,11 @@ contains
 
     type (edgeBuffer_t)                      :: cellghostbuf
 
-    integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
+    integer,intent(in)                        :: nets,nete
+    integer,intent(in)                        :: ndepth     ! depth of halo
+    integer,intent(in)                        :: kmin,kmax  ! min and max vertical level 
+    integer,intent(in)                        :: ksize      ! the total number of vertical 
+
     integer                                   :: ie,i1,i2,kblk,kptr,q
     !
     !
@@ -71,7 +75,7 @@ contains
        kptr = kmin-1
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk,   kptr,ie)
        do q=1,ntrac
-          kptr = kptr + kblk
+          kptr = kptr + ksize
           call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q)   ,kblk,kptr,ie)
        enddo
     end do
@@ -85,7 +89,7 @@ contains
        kptr = kmin-1
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk   ,kptr,ie)
        do q=1,ntrac
-          kptr = kptr + kblk
+          kptr = kptr + ksize
           call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,:),   kblk,kptr,ie)
        enddo
     enddo
@@ -95,7 +99,7 @@ contains
     if(FVM_TIMERS) call t_stopf('FVM:freebuf')
   end subroutine fill_halo_fvm_noprealloc
 
-subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax)
+subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
     use dimensions_mod, only: nc, ntrac, nlev
     implicit none
@@ -105,7 +109,10 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     type (hybrid_t),intent(in)                :: hybrid
 
 
-    integer,intent(in)                        :: nets,nete,ndepth,kmin,kmax
+    integer,intent(in)                        :: nets,nete
+    integer,intent(in)                        :: ndepth     ! depth of halo
+    integer,intent(in)                        :: kmin,kmax  ! min and max vertical level 
+    integer,intent(in)                        :: ksize      ! the total number of vertical 
     integer                                   :: ie,i1,i2,kblk,q,kptr
     !
     !
@@ -119,7 +126,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
        kptr = kmin-1
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
        do q=1, ntrac
-          kptr = kptr + nlev
+          kptr = kptr + ksize
           call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q) ,kblk,kptr,ie)
        enddo
     end do
@@ -133,7 +140,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
        kptr = kmin-1
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
        do q=1, ntrac
-          kptr = kptr + nlev
+          kptr = kptr + ksize
           call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q), kblk,kptr,ie)
        enddo
     enddo
@@ -518,7 +525,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,nhc,1,nlev)
+      call fill_halo_fvm(elem,fvm,hybrid,nets,nete,nhc,1,nlev,nlev)
     end if
 
 

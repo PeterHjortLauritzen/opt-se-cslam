@@ -66,7 +66,8 @@ contains
     integer :: kmin_jet_local,kmax_jet_local
     integer :: kmin,kmax
     integer :: ir
-    integer :: kblk !total number of levels in which tracer transport is performed
+    integer :: kblk               ! total number of vertical levels per thread
+    integer :: klev               ! total number of vertical levels in the JET region  
     integer :: region_num_threads
     logical :: inJetCall
   
@@ -188,7 +189,8 @@ contains
       kmin_jet_local = max(kmin_jet,kmin)
       kmax_jet_local = min(kmax_jet,kmax)
       !call t_startf('fvm:fill_halo_fvm:large_Courant')
-      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local)
+      klev = kmax_jet-kmin_jet+1
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev)
       !call t_stopf('fvm:fill_halo_fvm:large_Courant')
       !call t_startf('fvm:large_Courant_number_increment')
       do ie=nets,nete

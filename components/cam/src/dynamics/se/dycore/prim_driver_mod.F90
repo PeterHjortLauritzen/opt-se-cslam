@@ -102,7 +102,7 @@ contains
       !
       ! need to fill halo for dp_coupling for fvm2phys mapping
       !
-      call fill_halo_fvm(ghostBufQnhc_h,elem,fvm,hybrid,nets,nete,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc_h,elem,fvm,hybrid,nets,nete,nhc,1,nlev,nlev)
     end if
     !$OMP BARRIER
     if (hybrid%ithr==0) then
@@ -298,7 +298,7 @@ contains
       ! fill the fvm halo for mapping in d_p_coupling if
       ! physics grid resolution is different than fvm resolution
       !
-      call fill_halo_fvm(ghostBufQnhc_h, elem,fvm,hybrid,nets,nete,nhc,1,nlev)
+      call fill_halo_fvm(ghostBufQnhc_h, elem,fvm,hybrid,nets,nete,nhc,1,nlev,nlev)
     end if
 
   end subroutine prim_run_subcycle
