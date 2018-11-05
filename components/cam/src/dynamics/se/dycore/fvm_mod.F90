@@ -24,11 +24,16 @@ module fvm_mod
   private
   save
   
-  type (EdgeBuffer_t)                         :: edgeveloc
-  type (EdgeBuffer_t), public  :: ghostBufQnhc_s, ghostBufQnhc_vh, ghostBufQnhc_h
-  type (EdgeBuffer_t), public  :: ghostBufQ1_h, ghostBufQ1_vh 
-  type (EdgeBuffer_t), public  :: ghostBufFlux_h, ghostBufFlux_vh
-  type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h, ghostBufFluxJet_h
+  type (EdgeBuffer_t) :: edgeveloc
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_s
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_vh
+  type (EdgeBuffer_t), public  :: ghostBufQnhc_h
+  type (EdgeBuffer_t), public  :: ghostBufQ1_h
+  type (EdgeBuffer_t), public  :: ghostBufQ1_vh 
+!  type (EdgeBuffer_t), private  :: ghostBufFlux_h
+  type (EdgeBuffer_t), public  :: ghostBufFlux_vh
+  type (EdgeBuffer_t), public  :: ghostBufQnhcJet_h
+  type (EdgeBuffer_t), public  :: ghostBufFluxJet_h
   type (EdgeBuffer_t), public  :: ghostBufPG_s
 
   interface fill_halo_fvm
@@ -476,7 +481,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     klev = kmax_jet-kmin_jet+1
     call initghostbuffer(hybrid%par,ghostBufQ1_h,elem,klev*(ntrac+1),1,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufQ1_vh,elem,klev*(ntrac+1),1,nc,nthreads=vert_num_threads*horz_num_threads)
-    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
+!    call initghostbuffer(hybrid%par,ghostBufFlux_h,elem,4*nlev,nhe,nc,nthreads=horz_num_threads)
     call initghostbuffer(hybrid%par,ghostBufFlux_vh,elem,4*nlev,nhe,nc,nthreads=vert_num_threads*horz_num_threads)
     !
     ! preallocate buffers for physics-dynamics coupling

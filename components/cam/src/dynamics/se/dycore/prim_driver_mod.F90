@@ -104,11 +104,11 @@ contains
       !
       call fill_halo_fvm(ghostBufQnhc_h,elem,fvm,hybrid,nets,nete,nhc,1,nlev,nlev)
     end if
-    !$OMP BARRIER
-    if (hybrid%ithr==0) then
-       call syncmp(hybrid%par)
-    end if
-    !$OMP BARRIER
+!    !$OMP BARRIER
+!    if (hybrid%ithr==0) then
+!       call syncmp(hybrid%par)
+!    end if
+!    !$OMP BARRIER
 
     if (topology /= "cube") then
        call endrun('Error: only cube topology supported for primaitve equations')
@@ -332,8 +332,9 @@ contains
     use hybrid_mod,             only: set_region_num_threads, config_thread_region, get_loop_ranges
     use dimensions_mod,         only: ntrac,fvm_supercycling,fvm_supercycling_jet
     use dimensions_mod,         only: kmin_jet, kmax_jet
-    use fvm_mod,                only: ghostBufQnhc_h,ghostBufQnhc_vh,ghostBufQ1_h,ghostBufQ1_vh, ghostBufFlux_h, ghostBufFlux_vh
-    use fvm_mod,                only: ghostBufQnhcJet_h, ghostBufFluxJet_h
+    use fvm_mod,                only: ghostBufQnhc_vh,ghostBufQ1_vh, ghostBufFlux_vh
+    use fvm_mod,                only: ghostBufQ1_h,ghostBufQnhcJet_h, ghostBufFluxJet_h
+
 #ifdef waccm_debug
   use cam_history, only: outfld
 #endif  

@@ -865,7 +865,7 @@ subroutine dyn_run(dyn_state)
 
    end if
 
-   !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k)
+   !$OMP PARALLEL NUM_THREADS(horz_num_threads), DEFAULT(SHARED), PRIVATE(hybrid,nets,nete,n,ie,m,i,j,k,ftmp)
    hybrid = config_thread_region(par,'horizontal')
    call get_loop_ranges(hybrid, ibeg=nets, iend=nete)
 
