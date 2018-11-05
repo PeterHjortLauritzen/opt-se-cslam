@@ -154,21 +154,6 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
               dp3d_tmp, ps_tmp, q_tmp, T_tmp,              &
               omega_tmp, phis_tmp                          &
               )
-!            call dyn2phys_all_vars(ie,                                         &
-!               ! spectral element state
-!               elem(ie)%state%dp3d(:,:,:,tl_f),                                &
-!               elem(ie)%state%T(:,:,:,tl_f),                                   &
-!               elem(ie)%derived%omega(:,:,:),                                  &
-!               ! fvm state
-!               dyn_out%fvm(ie)%dp_fvm(:,:,:),                           &
-!               dyn_out%fvm(ie)%c(:,:,:,1:ntrac),                        &
-!               pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
-!               !
-!               hyai(1)*ps0,                                                    &
-!               ! output
-!               dp3d_tmp(:,:,ie), ps_tmp(:,ie), q_tmp(:,:,:,ie), T_tmp(:,:,ie), &
-!               omega_tmp(:,:,ie), phis_tmp(:,ie)                               &
-         !               )
          do ie = 1, nelemd
             uv_tmp(:,:,:,ie) = &
                dyn2phys_vector(elem(ie)%state%v(:,:,:,:,tl_f),elem(ie))
