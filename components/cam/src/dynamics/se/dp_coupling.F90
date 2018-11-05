@@ -146,27 +146,33 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
          ! physics runs on an FVM grid: map GLL vars to physics grid
          !******************************************************************
          call t_startf('dyn2phys')
+         ! note that the fvm halo has been filled in prim_run_subcycle
+         ! if physics grid resolution is not equal to fvm resolution
+         call dyn2phys_all_vars(1,nelemd,elem, dyn_out%fvm,&
+              pcnst,hyai(1)*ps0,tl_f,                      &
+              ! output
+              dp3d_tmp, ps_tmp, q_tmp, T_tmp,              &
+              omega_tmp, phis_tmp                          &
+              )
+!            call dyn2phys_all_vars(ie,                                         &
+!               ! spectral element state
+!               elem(ie)%state%dp3d(:,:,:,tl_f),                                &
+!               elem(ie)%state%T(:,:,:,tl_f),                                   &
+!               elem(ie)%derived%omega(:,:,:),                                  &
+!               ! fvm state
+!               dyn_out%fvm(ie)%dp_fvm(:,:,:),                           &
+!               dyn_out%fvm(ie)%c(:,:,:,1:ntrac),                        &
+!               pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
+!               !
+!               hyai(1)*ps0,                                                    &
+!               ! output
+!               dp3d_tmp(:,:,ie), ps_tmp(:,ie), q_tmp(:,:,:,ie), T_tmp(:,:,ie), &
+!               omega_tmp(:,:,ie), phis_tmp(:,ie)                               &
+         !               )
          do ie = 1, nelemd
-            ! note that the fvm halo has been filled in prim_run_subcycle
-            ! if physics grid resolution is not equal to fvm resolution
-            call dyn2phys_all_vars(ie,                                         &
-               ! spectral element state
-               elem(ie)%state%dp3d(:,:,:,tl_f),                                &
-               elem(ie)%state%T(:,:,:,tl_f),                                   &
-               elem(ie)%derived%omega(:,:,:),                                  &
-               ! fvm state
-               dyn_out%fvm(ie)%dp_fvm(:,:,:),                           &
-               dyn_out%fvm(ie)%c(:,:,:,1:ntrac),                        &
-               pcnst, elem(ie)%metdet, dyn_out%fvm(ie),        &
-               !
-               hyai(1)*ps0,                                                    &
-               ! output
-               dp3d_tmp(:,:,ie), ps_tmp(:,ie), q_tmp(:,:,:,ie), T_tmp(:,:,ie), &
-               omega_tmp(:,:,ie), phis_tmp(:,ie)                               &
-               )
             uv_tmp(:,:,:,ie) = &
                dyn2phys_vector(elem(ie)%state%v(:,:,:,:,tl_f),elem(ie))
-         end do
+          end do
          call t_stopf('dyn2phys')
       else
 
@@ -503,6 +509,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   end if
                   dq_tmp(ioff,ilyr,m,ie) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                             q_prev(icol,ilyr,m,lchnk))
+
                end do
             end do
          end do
@@ -543,7 +550,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                      phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
                   end if
                   cbuffer(cpter(icol,ilyr)+3+m) = (phys_state(lchnk)%q(icol,ilyr,m) - &
-                                                   q_prev(icol,ilyr,m,lchnk))
+                       q_prev(icol,ilyr,m,lchnk))
                end do
             end do
           end do
@@ -608,10 +615,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
             do j = 1, fv_nphys
                do i = 1, fv_nphys
                   ii = i + (j-1)*fv_nphys
-                  dyn_in%fvm(ie)%ft(i,j,1:pver)     = T_tmp(ii,1:pver,ie)
-                  dyn_in%fvm(ie)%fm(i,j,1:2,1:pver) = uv_tmp(ii,1:2,1:pver,ie)
+                  dyn_in%fvm(ie)%ft(i,j,1:pver)                 = T_tmp(ii,1:pver,ie)
+                  dyn_in%fvm(ie)%fm(i,j,1:2,1:pver)             = uv_tmp(ii,1:2,1:pver,ie)
                   dyn_in%fvm(ie)%fc_phys(i,j,1:pver,1:num_trac) = dq_tmp(ii,1:pver,1:num_trac,ie)
-                  dyn_in%fvm(ie)%dp_phys(i,j,1:pver) = dp_phys(ii,1:pver,ie)
+                  dyn_in%fvm(ie)%dp_phys(i,j,1:pver)            = dp_phys(ii,1:pver,ie)
                end do
             end do
          end do
