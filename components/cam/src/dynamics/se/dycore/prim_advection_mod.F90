@@ -34,7 +34,7 @@ module prim_advection_mod
                                  neighbor_minmax_start, neighbor_minmax_finish
   use perf_mod,               only: t_startf, t_stopf, t_barrierf
   use cam_abortutils,         only: endrun
-  use thread_mod,             only: horz_num_threads, tracer_num_threads
+  use thread_mod,             only: horz_num_threads, vert_num_threads, tracer_num_threads
 
   implicit none
 
@@ -64,7 +64,7 @@ contains
 
 
   subroutine Prim_Advec_Init1(par, elem)
-    use dimensions_mod, only : nlev, qsize, nelemd
+    use dimensions_mod, only : nlev, qsize, nelemd,ntrac
     use parallel_mod,   only : parallel_t, boundaryCommMethod
     type(parallel_t)    :: par
     type (element_t)    :: elem(:)
@@ -75,24 +75,34 @@ contains
     ! threads. But in this case we want shared pointers.
     real(kind=r8), pointer :: buf_ptr(:) => null()
     real(kind=r8), pointer :: receive_ptr(:) => null()
+    integer       :: advec_remap_num_threads 
 
 
+    !
+    ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
+    !
+    if (ntrac>0) then 
+       advec_remap_num_threads = vert_num_threads
+    else
+       advec_remap_num_threads = tracer_num_threads
+    endif
     ! this might be called with qsize=0
     ! allocate largest one first
     ! Currently this is never freed. If it was, only this first one should
     ! be freed, as only it knows the true size of the buffer.
     call initEdgeBuffer(par,edgeAdvp1,elem,qsize*nlev + nlev,bndry_type=boundaryCommMethod,&
-                         nthreads=horz_num_threads*tracer_num_threads)
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     call initEdgeBuffer(par,edgeAdv,elem,qsize*nlev,bndry_type=boundaryCommMethod, &
-                         nthreads=horz_num_threads*tracer_num_threads)
-    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
-    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
-
+                         nthreads=horz_num_threads*advec_remap_num_threads)
     ! This is a different type of buffer pointer allocation
     ! used for determine the minimum and maximum value from
     ! neighboring  elements
     call initEdgeSBuffer(par,edgeAdvQminmax,elem,qsize*nlev*2,bndry_type=boundaryCommMethod, &
-                        nthreads=horz_num_threads*tracer_num_threads)
+                        nthreads=horz_num_threads*advec_remap_num_threads)
+
+    call initEdgeBuffer(par,edgeAdv1,elem,nlev,bndry_type=boundaryCommMethod)
+    call initEdgeBuffer(par,edgeveloc,elem,2*nlev,bndry_type=boundaryCommMethod)
+
 
     ! Don't actually want these saved, if this is ever called twice.
     nullify(buf_ptr)
