@@ -9,7 +9,7 @@ module fvm_consistent_se_cslam
   use time_mod,               only: timelevel_t
   use element_mod,            only: element_t
   use fvm_control_volume_mod, only: fvm_struct
-  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges
+  use hybrid_mod,             only: hybrid_t, config_thread_region, get_loop_ranges, threadOwnsVertLevel
   use perf_mod,               only: t_startf, t_stopf 
   implicit none
   private
@@ -70,6 +70,7 @@ contains
     integer :: klev               ! total number of vertical levels in the JET region  
     integer :: region_num_threads
     logical :: inJetCall
+    logical :: ActiveJetThread
   
 
     llimiter = .true.
@@ -86,7 +87,7 @@ contains
     call omp_set_nested(.true.)
     !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), & 
     !$OMP PRIVATE(hybridnew,kblk,ie,k,kmin,gspts,inv_dp_area,itr), &
-    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer)
+    !$OMP PRIVATE(kmin_jet_local,kmax,kmax_jet_local,kptr,q,ctracer,ActiveJetThread)
     call gauss_points(ngpc,gsweights,gspts) !set gauss points/weights
     gspts = 0.5_r8*(gspts+1.0_r8) !shift location so in [0:1] instead of [-1:1]
 
@@ -191,17 +192,20 @@ contains
       !  call endrun('ERROR: kmax_jet must be .le. kmax passed to run_consistent_se_cslam')
       !end if      
       ! Determine the extent of the JET that is owned by this thread
+      ActiveJetThread = threadOwnsVertLevel(hybridnew,kmin_jet) .or. threadOwnsVertLevel(hybridnew,kmax_jet)
       kmin_jet_local = max(kmin_jet,kmin)
       kmax_jet_local = min(kmax_jet,kmax)
       klev = kmax_jet-kmin_jet+1
-      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev)
+      call fill_halo_fvm(ghostbufQ1,elem,fvm,hybridnew,nets,nete,1,kmin_jet_local,kmax_jet_local,klev,active=ActiveJetThread)
       !call t_stopf('fvm:fill_halo_fvm:large_Courant')
       !call t_startf('fvm:large_Courant_number_increment')
-      do ie=nets,nete
-        do k=kmin_jet,kmax_jet !1,nlev
-          call large_courant_number_increment(fvm(ie),k)
+      if(ActiveJetThread) then 
+        do k=kmin_jet_local,kmax_jet_local !1,nlev
+          do ie=nets,nete
+            call large_courant_number_increment(fvm(ie),k)
+          end do
         end do
-      end do
+      endif
       !call t_stopf('fvm:large_Courant_number_increment')
     end if
 

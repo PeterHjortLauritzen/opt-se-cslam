@@ -104,7 +104,7 @@ contains
     if(FVM_TIMERS) call t_stopf('FVM:freebuf')
   end subroutine fill_halo_fvm_noprealloc
 
-subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize)
+subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,kmin,kmax,ksize,active)
     use perf_mod, only : t_startf, t_stopf ! _EXTERNAL
     use dimensions_mod, only: nc, ntrac, nlev
     implicit none
@@ -118,15 +118,23 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     integer,intent(in)                        :: ndepth     ! depth of halo
     integer,intent(in)                        :: kmin,kmax  ! min and max vertical level 
     integer,intent(in)                        :: ksize      ! the total number of vertical 
+    logical, optional                         :: active     ! indicates if te current thread is active 
     integer                                   :: ie,i1,i2,kblk,q,kptr
     !
     !
+    logical :: lactive
 
+    if(present(active)) then 
+       lactive = active
+    else
+       lactive = active
+    endif
 !    call t_startf('FVM:initbuf')
     i1=1-ndepth
     i2=nc+ndepth
     kblk = kmax-kmin+1
     if(FVM_TIMERS) call t_startf('FVM:pack')
+    if(lactive) then 
     do ie=nets,nete
        kptr = kmin-1
        call ghostpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
@@ -135,12 +143,14 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
           call ghostpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q) ,kblk,kptr,ie)
        enddo
     end do
+    endif
     if(FVM_TIMERS) call t_stopf('FVM:pack')
     if(FVM_TIMERS) call t_startf('FVM:Communication')
     call ghost_exchange(hybrid,cellghostbuf,location='fill_halo_fvm_prealloc')
     if(FVM_TIMERS) call t_stopf('FVM:Communication')
     !-----------------------------------------------------------------------------------!                        
     if(FVM_TIMERS) call t_startf('FVM:Unpack')
+    if(lactive) then 
     do ie=nets,nete
        kptr = kmin-1
        call ghostunpack(cellghostbuf, fvm(ie)%dp_fvm(i1:i2,i1:i2,kmin:kmax),kblk, kptr,ie)
@@ -149,6 +159,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
           call ghostunpack(cellghostbuf, fvm(ie)%c(i1:i2,i1:i2,kmin:kmax,q), kblk,kptr,ie)
        enddo
     enddo
+    endif
     if(FVM_TIMERS) call t_stopf('FVM:Unpack')
 
   end subroutine fill_halo_fvm_prealloc

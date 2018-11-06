@@ -455,14 +455,14 @@ contains
 
       call t_startf('prim_advec_tracers_remap')
       if(ntrac>0) then 
-         region_num_threads = vert_num_threads
+         region_num_threads = 1
       else
          region_num_threads = tracer_num_threads
       endif
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
       if(ntrac>0) then 
-         hybridnew = config_thread_region(hybrid,'vertical')
+         hybridnew = config_thread_region(hybrid,'serial')
       else
          hybridnew = config_thread_region(hybrid,'tracer')
       endif

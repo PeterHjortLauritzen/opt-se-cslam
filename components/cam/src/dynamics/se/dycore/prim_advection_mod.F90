@@ -82,7 +82,7 @@ contains
     ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
     !
     if (ntrac>0) then 
-       advec_remap_num_threads = vert_num_threads
+       advec_remap_num_threads = 1
     else
        advec_remap_num_threads = tracer_num_threads
     endif
@@ -1048,7 +1048,7 @@ contains
         end do
         call endrun('negative moist layer thickness.  timestep or remap time too large')
       endif
-      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry,hybrid=hybrid)
+      call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
       !
       ! compute moist reference pressure level thickness
       !
