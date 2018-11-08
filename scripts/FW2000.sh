@@ -13,8 +13,8 @@ set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
-set res="ne30pg3_ne30pg3_mg17" #cslam
-#set res="ne30_ne30_mg17"        #no cslam
+#set res="ne30pg3_ne30pg3_mg17" #cslam
+set res="ne30_ne30_mg17"        #no cslam
 
 #set climateRun="True"
 set climateRun="False"
@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=bugfree_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_debug
+    set caze=new_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -70,9 +70,11 @@ cd /glade/scratch/$USER/$caze
 if ($test_tracers == "True") then
     ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug -nadv_tt=5"
 else
-    ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+   if ($res == "ne30pg3_ne30pg3_mg17") then
+      ./xmlchange --append CAM_CONFIG_OPTS="-cppdefs -Dwaccm_debug"
+   endif
 endif
-./xmlchange DEBUG=TRUE #xxxx
+#./xmlchange DEBUG=TRUE #xxxx
 #
 ./xmlchange NTHRDS=$NTHRDS
 ## timing detail
@@ -120,8 +122,16 @@ if ($climateRun == "True") then
     else
 	echo "empty_htapes       = .true."   >> user_nl_cam
     echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
-#  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
-    echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
+   if ($res =="ne30_ne30_mg17") then
+     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
+   endif
+   if ($res =="ne30pg3_ne30pg3_mg17") then
+     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
+    endif
+   if ($res =="f09_f09_mg17") then
+     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ'  ">> user_nl_cam
+    endif
+
     endif
     echo "avgflag_pertape(1) = 'A'"                                                    >> user_nl_cam
     echo "avgflag_pertape(2) = 'A'"                                                    >> user_nl_cam
@@ -198,11 +208,11 @@ if ($cset == "FW2000") then
 #  echo "se_nsplit = 4" >> user_nl_cam
 #  echo "se_fvm_supercycling     = 7" >> user_nl_cam
 #  echo "se_fvm_supercycling_jet = 7" >> user_nl_cam
-  if ($res == "ne30pg3_ne30pg3_mg17") then
+#  if ($res == "ne30pg3_ne30pg3_mg17") then
     echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
-  else
-    echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
-  endif
+#  else
+#    echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
+#  endif
 endif
 if ($cset == "FKESSLER") then
   echo "ncdata = '$inic/trunk-F2000climo-30yrs-C60topo.cam.i.0023-02-01-00000.nc'"   >> user_nl_cam

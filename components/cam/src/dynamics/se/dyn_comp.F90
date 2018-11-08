@@ -1718,6 +1718,9 @@ subroutine read_phis(dyn_in)
       phis_phys_tmp = 0.0_r8
       do ie=1,nelemd
         elem(ie)%sub_elem_mass_flux=0.0_r8
+#ifdef waccm_debug
+        fvm(ie)%CSLAM_gamma = 0.0_r8
+#endif    
       end do
    end if
 

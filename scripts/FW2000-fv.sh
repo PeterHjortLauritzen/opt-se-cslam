@@ -1,5 +1,6 @@
 #!/bin/tcsh
-setenv PBS_ACCOUNT "NTDD0004"
+#setenv PBS_ACCOUNT "NTDD0004"
+setenv PBS_ACCOUNT "P03010039"
 # P03010039
 # P93300042
 # P03010083
@@ -9,7 +10,7 @@ setenv PBS_ACCOUNT "NTDD0004"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam"
+set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
@@ -60,7 +61,8 @@ if ($test_tracers == "True") then
 else
     set caze=${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}_debug
 endif
-/glade/u/home/$USER/PEL/master/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+#dennis /glade/u/home/$USER/PEL/master/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
+/glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
 ./xmlchange STOP_OPTION=$stopoption,STOP_N=$steps
 ./xmlchange DOUT_S=FALSE
@@ -117,74 +119,20 @@ echo "fincl8 = 'PS'" >> user_nl_cam #to avoid errors
 
 if ($climateRun == "True") then
 #    echo "se_statefreq       = 244"        >> user_nl_cam
-    if ($cset == "FHS94") then
-    else
-	echo "empty_htapes       = .true."   >> user_nl_cam
+    echo "empty_htapes       = .true."   >> user_nl_cam
     echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
-#  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
-    echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
-    endif
     echo "avgflag_pertape(1) = 'A'"                                                    >> user_nl_cam
     echo "avgflag_pertape(2) = 'A'"                                                    >> user_nl_cam
     echo "avgflag_pertape(3) = 'A'"                                                    >> user_nl_cam
     echo "avgflag_pertape(4) = 'A'"                                                    >> user_nl_cam
     echo "nhtfrq             = 0,0,0,0                                             ">> user_nl_cam
-!    echo "interpolate_output = .true.,.true.,.false.,.true."       	   >> user_nl_cam
     echo "ndens              = 2,2,1,2                                            ">> user_nl_cam
-    if ($cset == "FHS94") then
-	echo "fincl3 =   'SE_pBF','KE_pBF', ">> user_nl_cam
-	echo "           'SE_pBP','KE_pBP', ">> user_nl_cam
-	echo "           'SE_pAP','KE_pAP', ">> user_nl_cam
-	echo "           'SE_pAM','KE_pAM', ">> user_nl_cam
-	echo "           'SE_dED','KE_dED', ">> user_nl_cam
-	echo "           'SE_dAF','KE_dAF', ">> user_nl_cam
-	echo "           'SE_dBD','KE_dBD', ">> user_nl_cam
-	echo "           'SE_dAD','KE_dAD', ">> user_nl_cam
-	echo "           'SE_dAR','KE_dAR', ">> user_nl_cam
-	echo "           'SE_dBF','KE_dBF', ">> user_nl_cam
-	echo "           'SE_dBH','KE_dBH', ">> user_nl_cam
-	echo "           'SE_dCH','KE_dCH', ">> user_nl_cam
-	echo "           'SE_dAH','KE_dAH', ">> user_nl_cam
-	echo "           'SE_p2d','KE_p2d' ">> user_nl_cam
-    else
-	echo "fincl3 =   'WV_pBF','WL_pBF','WI_pBF','KE_pBF', ">> user_nl_cam
-	echo "           'WV_pBP','WL_pBP','WI_pBP','KE_pBP', ">> user_nl_cam
-	echo "           'WV_pAP','WL_pAP','WI_pAP','KE_pAP', ">> user_nl_cam
-	echo "           'WV_pAM','WL_pAM','WI_pAM','KE_pAM', ">> user_nl_cam
-	echo "           'WV_dED','WL_dED','WI_dED','KE_dED', ">> user_nl_cam
-	echo "           'WV_dAF','WL_dAF','WI_dAF','KE_dAF', ">> user_nl_cam
-	echo "           'WV_dBD','WL_dBD','WI_dBD','KE_dBD', ">> user_nl_cam
-	echo "           'WV_dAD','WL_dAD','WI_dAD','KE_dAD', ">> user_nl_cam
-	echo "           'WV_dAR','WL_dAR','WI_dAR','KE_dAR', ">> user_nl_cam
-	echo "           'WV_dBF','WL_dBF','WI_dBF','KE_dBF', ">> user_nl_cam
-	echo "           'WV_dBH','WL_dBH','WI_dBH','KE_dBH', ">> user_nl_cam
-	echo "           'WV_dCH','WL_dCH','WI_dCH','KE_dCH', ">> user_nl_cam
-	echo "           'WV_dAH','WL_dAH','WI_dAH','KE_dAH', ">> user_nl_cam
-	echo "           'WV_p2d','WL_p2d','WI_p2d','KE_p2d', ">> user_nl_cam
-	echo "           'WV_PDC','WL_PDC','WI_PDC'                    ">> user_nl_cam
-    endif
-#  echo "fincl4 =   'WV_pBF','WL_pBF','WI_pBF','SE_pBF','KE_pBF', ">> user_nl_cam
-#  echo "           'WV_pBP','WL_pBP','WI_pBP','SE_pBP','KE_pBP', ">> user_nl_cam
-#  echo "           'WV_pAP','WL_pAP','WI_pAP','SE_pAP','KE_pAP', ">> user_nl_cam
-#  echo "           'WV_pAM','WL_pAM','WI_pAM','SE_pAM','KE_pAM', ">> user_nl_cam
-#  echo "           'WV_dED','WL_dED','WI_dED','SE_dED','KE_dED', ">> user_nl_cam
-#  echo "           'WV_dAF','WL_dAF','WI_dAF','SE_dAF','KE_dAF', ">> user_nl_cam
-#  echo "           'WV_dBD','WL_dBD','WI_dBD','SE_dBD','KE_dBD', ">> user_nl_cam
-#  echo "           'WV_dAD','WL_dAD','WI_dAD','SE_dAD','KE_dAD', ">> user_nl_cam
-#  echo "           'WV_dAR','WL_dAR','WI_dAR','SE_dAR','KE_dAR', ">> user_nl_cam
-#  echo "           'WV_dBF','WL_dBF','WI_dBF','SE_dBF','KE_dBF', ">> user_nl_cam
-#  echo "           'WV_dBH','WL_dBH','WI_dBH','SE_dBH','KE_dBH', ">> user_nl_cam
-#  echo "           'WV_dCH','WL_dCH','WI_dCH','SE_dCH','KE_dCH', ">> user_nl_cam
-#  echo "           'WV_dAH','WL_dAH','WI_dAH','SE_dAH','KE_dAH', ">> user_nl_cam
-#  echo "           'WV_p2d','WL_p2d','WI_p2d','SE_p2d','KE_p2d', ">> user_nl_cam
-#  echo "           'WV_PDC','WL_PDC','WI_PDC'                    ">> user_nl_cam
     echo "inithist           = 'YEARLY'"   >> user_nl_cam
 else
   echo "inithist           = 'DAILY'"   >> user_nl_cam
-#  echo "se_statefreq       = 1"        >> user_nl_cam
   echo "empty_htapes       = .true."   >> user_nl_cam
   echo "fincl1             = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',  "   >> user_nl_cam
-  echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
+  echo "                    'PTTEND','OMEGAT','CLDTOT','TMQ'  ">> user_nl_cam
   if ($test_tracers == "True") then
     echo "fincl2 = 'TT_LW', 'TT_MD', 'TT_HI', 'TTRMD' , 'TT_UN'" >> user_nl_cam
   endif
@@ -195,36 +143,8 @@ else
   #echo "interpolate_output = .true.,.true." >> user_nl_cam
 endif
 
-if ($cset == "FW2000") then
-#  echo "se_nsplit = 4" >> user_nl_cam
-#  echo "se_fvm_supercycling     = 7" >> user_nl_cam
-#  echo "se_fvm_supercycling_jet = 7" >> user_nl_cam
-#  if ($res == "ne30pg3_ne30pg3_mg17") then
-    echo "ncdata = '$inic/waccm.i.spinup.nc'" >> user_nl_cam
-#  else
-#    echo "ncdata = '$inic/20180516waccm_se_spinup_pe720_10days.cam.i.1974-01-02-00000.nc'"   >> user_nl_cam
-#  endif
-endif
 if ($cset == "FKESSLER") then
   echo "ncdata = '$inic/trunk-F2000climo-30yrs-C60topo.cam.i.0023-02-01-00000.nc'"   >> user_nl_cam
 endif
-
-
-
-
-
-#
-# spinup
-#
-#echo "se_nsplit = 120" >> user_nl_cam
-#echo "inithist='6-HOURLY'" >> user_nl_cam
-#echo "se_hypervis_on_plevs = .false." >> user_nl_cam
-#echo "se_nu_top =  1.0e6"   >> user_nl_cam
-#
-#echo "se_nu     =  0.1E17" >> user_nl_cam
-#echo "se_nu_div =  0.1E17" >> user_nl_cam
-#echo "se_nu_p   =  0.1E17" >> user_nl_cam
-#echo "se_hypervis_subcycle = 3" >> user_nl_cam
-
 qcmd -- ./case.build
 ./case.submit
