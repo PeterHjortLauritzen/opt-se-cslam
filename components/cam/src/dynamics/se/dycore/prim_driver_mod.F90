@@ -454,20 +454,8 @@ contains
     if (qsize > 0) then
 
       call t_startf('prim_advec_tracers_remap')
-#if 0
-      if(qsize>tracer_num_threads) then 
-         call omp_set_nested(.true.)
-         !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
-         hybridnew = config_thread_region(hybrid,'tracer')
-!         call PrintHybrid(hybridnew,'before call to Tracers_remap')
-         call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
-         !$OMP END PARALLEL
-         call omp_set_nested(.false.)
-      else 
-         call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybrid,dt_q,tl,nets,nete)
-      endif
-#else
       if(ntrac>0) then 
+        ! Deactivate threading in the tracer dimension if this is a CSLAM run
         region_num_threads = 1
       else
         region_num_threads=tracer_num_threads
@@ -475,6 +463,7 @@ contains
       call omp_set_nested(.true.)
       !$OMP PARALLEL NUM_THREADS(region_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew)
       if(ntrac>0) then 
+        ! Deactivate threading in the tracer dimension if this is a CSLAM run
         hybridnew = config_thread_region(hybrid,'serial')
       else
         hybridnew = config_thread_region(hybrid,'tracer')
@@ -482,7 +471,6 @@ contains
       call Prim_Advec_Tracers_remap(elem, deriv,hvcoord,hybridnew,dt_q,tl,nets,nete)
       !$OMP END PARALLEL
       call omp_set_nested(.false.)
-#endif
       call t_stopf('prim_advec_tracers_remap')
     end if
     !
