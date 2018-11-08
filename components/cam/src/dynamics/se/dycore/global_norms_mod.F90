@@ -695,7 +695,7 @@ contains
             if(nu_top>0) then
               write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
                    dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-              if (dt_max_hypervis>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
+              if (dt_max_hypervis<dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable'
             end if
           end if
         end do        
