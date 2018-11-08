@@ -471,7 +471,8 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
   !
   ! output: remaped Qdp, conserving mass
   !
-  use control_mod, only        : vert_remap_q_alg
+  use control_mod, only : vert_remap_q_alg
+
   implicit none
   integer,intent(in) :: nx,qstart,qstop,qsize
   real (kind=r8), intent(inout) :: Qdp(nx,nx,nlev,qsize)

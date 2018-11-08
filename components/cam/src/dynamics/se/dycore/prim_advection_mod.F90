@@ -81,7 +81,7 @@ contains
     !
     ! Set the number of threads used in the subroutine Prim_Advec_tracers_remap()
     !
-    if (ntrac>0) then 
+    if (ntrac>0) then
        advec_remap_num_threads = 1
     else
        advec_remap_num_threads = tracer_num_threads
@@ -182,6 +182,7 @@ contains
     integer              , intent(in   ) :: nete
 
 
+    !print *,'prim_Advec_Tracers_remap: qsize: ',qsize
     call Prim_Advec_Tracers_remap_rk2( elem , deriv , hvcoord , hybrid , dt , tl , nets , nete )
   end subroutine Prim_Advec_Tracers_remap
 
@@ -954,7 +955,7 @@ contains
     
     use hybvcoord_mod, only          : hvcoord_t
     use vertremap_mod,          only : remap1, remap1_nofilter
-    use hybrid_mod            , only : hybrid_t!, set_region_num_threads
+    use hybrid_mod            , only : hybrid_t, config_thread_region,get_loop_ranges, PrintHybrid
     use fvm_control_volume_mod, only : fvm_struct
     use control_mod,            only : se_prescribed_wind_2d
     use dimensions_mod        , only : ntrac
@@ -976,6 +977,8 @@ contains
     real (kind=r8), dimension(np,np,nlev)  :: internal_energy_star
     real (kind=r8), dimension(np,np,nlev,2):: ttmp
     real(r8), parameter                    :: rad2deg = 180.0_r8/pi
+    integer :: region_num_threads,qbeg,qend
+    type (hybrid_t) :: hybridnew,hybridnew2 
     
     ! reference levels:
     !   dp(k) = (hyai(k+1)-hyai(k))*ps0 + (hybi(k+1)-hybi(k))*ps(i,j)
@@ -1048,6 +1051,19 @@ contains
         end do
         call endrun('negative moist layer thickness.  timestep or remap time too large')
       endif
+! For some reason there is a bug in the threading when threading over tracers is activiated for this loop 
+!      print *,'vertical_remap: qsize: ',qsize
+!      if(qsize>tracer_num_threads) then 
+!        call omp_set_nested(.true.)
+!        !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
+!        hybridnew = config_thread_region(hybrid,'tracer')
+!        call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
+!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,qbeg,qend,qsize,dp_star_dry,dp_dry)
+!        !$OMP END PARALLEL
+!        call omp_set_nested(.false.)
+!      else
+!        call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
+!      endif
       call remap1(elem(ie)%state%Qdp(:,:,:,1:qsize,np1_qdp),np,1,qsize,qsize,dp_star_dry,dp_dry)
       !
       ! compute moist reference pressure level thickness
@@ -1120,15 +1136,15 @@ contains
           enddo
         endif
       endif
-      
-      
-      if (ntrac>0) then
-        do i=1,nc
-          do j=1,nc
-            !
-            ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
-            !
-            do k=1,nlev
+    enddo
+    if (ntrac>0) then
+      do ie=nets,nete
+        do k=1,nlev
+         do j=1,nc
+           do i=1,nc
+              !
+              ! compute source (cdp) and target (dpc) pressure grids for vertical remapping
+              !
               dpc(i,j,k) = (hvcoord%hyai(k+1) - hvcoord%hyai(k))*hvcoord%ps0 + &
                    (hvcoord%hybi(k+1) - hvcoord%hybi(k))*fvm(ie)%psc(i,j)
               cdp(i,j,k,1:ntrac)=fvm(ie)%c(i,j,k,1:ntrac)*fvm(ie)%dp_fvm(i,j,k)
@@ -1136,7 +1152,17 @@ contains
           end do
         end do
         dpc_star=fvm(ie)%dp_fvm(1:nc,1:nc,:)
-        call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+        if(ntrac>tracer_num_threads) then 
+          call omp_set_nested(.true.)
+          !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew2,qbeg,qend)
+          hybridnew2 = config_thread_region(hybrid,'ctracer')
+          call get_loop_ranges(hybridnew2, qbeg=qbeg, qend=qend)
+          call remap1(cdp,nc,qbeg,qend,ntrac,dpc_star,dpc)
+          !$OMP END PARALLEL 
+          call omp_set_nested(.false.)
+        else
+          call remap1(cdp,nc,1,ntrac,ntrac,dpc_star,dpc)
+        endif
         do k=1,nlev
           do j=1,nc
             do i=1,nc
@@ -1145,9 +1171,8 @@ contains
             end do
           end do
         end do
-      end if
-      !         call remap_velocityC(np1,dt,elem,fvm,hvcoord,ie)
-    enddo
+      enddo
+    end if
   end subroutine vertical_remap
 
 end module prim_advection_mod
