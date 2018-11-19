@@ -12,11 +12,12 @@ set NTHRDS="1"
 #
 # run with CSLAM or without
 #
-set res="ne30pg3_ne30pg3_mg17" #cslam
+set res="ne30pg2_ne30pg2_mg17" #cslam
+#set res="ne30pg3_ne30pg3_mg17" #cslam
 #set res="ne30_ne30_mg17"        #no cslam
 
-set stopoption="nsteps"
-set steps="5"
+set stopoption="ndays"
+set steps="15"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #

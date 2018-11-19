@@ -13,8 +13,8 @@ set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
-#set res="ne30pg3_ne30pg3_mg17" #cslam
-set res="ne30_ne30_mg17"        #no cslam
+set res="ne30pg3_ne30pg3_mg17" #cslam
+#set res="ne30_ne30_mg17"        #no cslam
 
 set climateRun="True"
 #set climateRun="False"
@@ -24,8 +24,8 @@ set test_tracers="False"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
-#set cset="FW2000"
-set cset="F2000climo"
+set cset="FW2000"
+#set cset="F2000climo"
 #set cset="FHS94"
 #
 # mapping files (not in cime yet)
@@ -39,11 +39,11 @@ echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
 if ($climateRun == "True") then
-  set walltime="00:35:00"
+  set walltime="12:00:00"
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="2700"
+  set pecount="5400"
   set NTHRDS="1"
   set stopoption="nmonths"
   set steps="13"
@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=phl_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=1year_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
