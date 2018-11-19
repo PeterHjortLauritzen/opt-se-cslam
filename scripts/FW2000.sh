@@ -16,16 +16,16 @@ set src="opt-se-cslam-master"
 #set res="ne30pg3_ne30pg3_mg17" #cslam
 set res="ne30_ne30_mg17"        #no cslam
 
-#set climateRun="True"
-set climateRun="False"
+set climateRun="True"
+#set climateRun="False"
 #set energyConsistency="True"
 set energyConsistency="False"
 set test_tracers="False"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
-set cset="FW2000"
-#set cset="F2000climo"
+#set cset="FW2000"
+set cset="F2000climo"
 #set cset="FHS94"
 #
 # mapping files (not in cime yet)
@@ -39,11 +39,11 @@ echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
 if ($climateRun == "True") then
-  set walltime="04:30:00"
+  set walltime="00:35:00"
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="1800"
+  set pecount="2700"
   set NTHRDS="1"
   set stopoption="nmonths"
   set steps="13"
@@ -57,7 +57,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=new_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=phl_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -122,13 +122,13 @@ if ($climateRun == "True") then
     else
 	echo "empty_htapes       = .true."   >> user_nl_cam
     echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
-   if ($res =="ne30_ne30_mg17") then
+   if ($res == "ne30_ne30_mg17") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
    endif
-   if ($res =="ne30pg3_ne30pg3_mg17") then
+   if ($res == "ne30pg3_ne30pg3_mg17") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
     endif
-   if ($res =="f09_f09_mg17") then
+   if ($res == "f09_f09_mg17") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ'  ">> user_nl_cam
     endif
 

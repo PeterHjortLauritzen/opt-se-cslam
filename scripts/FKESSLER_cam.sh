@@ -52,7 +52,7 @@ else
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-  set pecount="900"
+  set pecount="450"
   set compiler="intel"
 endif
 
@@ -104,7 +104,7 @@ cat >> $scratch/$USER/$caze/SourceMods/src.cam/dctest_baro_kessler.xml <<EOF
 EOF
 endif
 
-echo "se_statefreq       = 1"        >> user_nl_cam
+echo "se_statefreq       = 240"        >> user_nl_cam
 echo "avgflag_pertape(1) = 'I'" >> user_nl_cam
 echo "nhtfrq             = -24,-24 " >> user_nl_cam
 echo "interpolate_output = .true.,.true." >> user_nl_cam
@@ -117,8 +117,7 @@ if ($cset == "FKESSLER") then
 endif
 echo "se_statefreq       = 244"   >> user_nl_cam
 #echo "se_nsplit          = 10"   >> user_nl_cam
-echo "inithist           = 'DAILY'"   >> user_nl_cam
-echo "se_hypervis_subcycle = 1"   >> user_nl_cam
+#echo "inithist           = 'DAILY'"   >> user_nl_cam
 echo "interpolate_output   = .true.,.true.,.true.,.true.,.true.,.true.,.true."   >> user_nl_cam
 
 #
