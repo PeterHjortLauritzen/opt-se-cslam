@@ -644,7 +644,7 @@ contains
                      rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
               enddo
             enddo
-          if (nu_top>0 .and. nu_scale_top(k)>0.0_r8) then
+          if (nu_top>0 .and. k.le.ksponge_end) then
               call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
               elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                    rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
