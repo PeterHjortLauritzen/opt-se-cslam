@@ -127,7 +127,7 @@ subroutine fill_halo_fvm_prealloc(cellghostbuf,elem,fvm,hybrid,nets,nete,ndepth,
     if(present(active)) then 
        lactive = active
     else
-       lactive = active
+       lactive = .true.
     endif
 !    call t_startf('FVM:initbuf')
     i1=1-ndepth
