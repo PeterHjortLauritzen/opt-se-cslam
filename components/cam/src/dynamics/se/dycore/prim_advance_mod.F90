@@ -1,4 +1,3 @@
-!xxx #define phl_thread
 module prim_advance_mod
   use shr_kind_mod,   only: r8=>shr_kind_r8
   use edgetype_mod,   only: EdgeBuffer_t
@@ -487,17 +486,10 @@ contains
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dptens
     real (kind=r8), dimension(np,np,nlev,nets:nete)        :: dptens_ref,dp3d_ref
-#ifdef phl_thread
-     real (kind=r8), dimension(0:np+1,0:np+1,nlev,nets:nete):: corners
-     real (kind=r8), dimension(2,2,2,nets:nete)             :: cflux
-     real (kind=r8)                     :: temp(np,np,nlev,nets:nete)
-     real (kind=r8)                     :: tempflux(nc,nc,4,nets:nete)
-#else
     real (kind=r8), dimension(0:np+1,0:np+1,nlev)          :: corners
     real (kind=r8), dimension(2,2,2)                       :: cflux
     real (kind=r8)                     :: temp      (np,np,nlev)
     real (kind=r8)                     :: tempflux(nc,nc,4)
-#endif
     real (kind=r8), dimension(nc,nc,4,nlev,nets:nete)      :: dpflux
     real (kind=r8), dimension(np,np,nlev)                  :: nabla4_pk,pk,inv_dpk
     type (EdgeDescriptor_t)                                :: desc    
@@ -635,21 +627,21 @@ contains
               enddo
            endif
            
-          if (ntrac>0) then
-            !OMP_COLLAPSE_SIMD
-            !DIR_VECTOR_ALIGNED
-            do j=1,nc
-              do i=1,nc
-                elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                     rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
-              enddo
-            enddo
-          if (nu_top>0 .and. k.le.ksponge_end) then
-              call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
-              elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                   rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
-            endif
-          endif
+           if (ntrac>0) then
+             !OMP_COLLAPSE_SIMD
+             !DIR_VECTOR_ALIGNED
+             do j=1,nc
+               do i=1,nc
+                 elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
+                      rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+               enddo
+             enddo
+             if (nu_top>0 .and. k.le.ksponge_end) then
+               call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
+               elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
+                    rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
+             endif
+           endif
           
           ! NOTE: we will DSS all tendicies, EXCEPT for dp3d, where we DSS the new state
           !OMP_COLLAPSE_SIMD
@@ -691,15 +683,9 @@ contains
         
         if (ntrac>0) then
           do k=kbeg,kend
-#ifdef phl_thread
-            temp(:,:,k,ie) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
-            corners(0:np+1,0:np+1,k,ie) = 0.0_r8
-            corners(1:np  ,1:np  ,k,ie) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
-#else
             temp(:,:,k) = elem(ie)%state%dp3d(:,:,k,nt) / elem(ie)%spheremp  ! STATE before DSS
             corners(0:np+1,0:np+1,k) = 0.0_r8
             corners(1:np  ,1:np  ,k) = elem(ie)%state%dp3d(1:np,1:np,k,nt) ! fill in interior data of STATE*mass
-#endif
           enddo
         endif
         kptr = kbeg - 1 + 3*nlev
@@ -709,28 +695,6 @@ contains
           desc = elem(ie)%desc
           
           kptr = kbeg - 1 + 3*nlev
-#ifdef phl_thread
-          call edgeDGVunpack(edge3,corners(:,:,kbeg:kend,ie),kblk,kptr,ie)
-          do k=kbeg,kend
-            corners(:,:,k,ie) = corners(:,:,k,ie)/dt !note: array size is 0:np+1
-            do j=1,np
-              do i=1,np
-                temp(i,j,k,ie) =  (elem(ie)%rspheremp(i,j)*elem(ie)%state%dp3d(i,j,k,nt) - temp(i,j,k,ie))/dt
-!                temp(i,j,k) =  temp(i,j,k)/dt
-              enddo
-            enddo
-            call distribute_flux_at_corners(cflux(:,:,:,ie), corners(:,:,k,ie), elem(ie)%desc%getmapP)
-
-            cflux(1,1,:,ie)   = elem(ie)%rspheremp(1,  1) * cflux(1,1,:,ie)
-            cflux(2,1,:,ie)   = elem(ie)%rspheremp(np, 1) * cflux(2,1,:,ie)
-            cflux(1,2,:,ie)   = elem(ie)%rspheremp(1, np) * cflux(1,2,:,ie)
-            cflux(2,2,:,ie)   = elem(ie)%rspheremp(np,np) * cflux(2,2,:,ie)
-            
-            call subcell_dss_fluxes(temp(:,:,k,ie), np, nc, elem(ie)%metdet,cflux(:,:,:,ie),tempflux(:,:,:,ie))
-            elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
-                 rhypervis_subcycle*eta_ave_w*tempflux(:,:,:,ie)
-          end do
-#else
           call edgeDGVunpack(edge3,corners(:,:,kbeg:kend),kblk,kptr,ie)
           do k=kbeg,kend
             corners(:,:,k) = corners(:,:,k)/dt !note: array size is 0:np+1
@@ -754,7 +718,6 @@ contains
             elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                  rhypervis_subcycle*eta_ave_w*tempflux
           end do
-#endif
         endif
         
         ! apply inverse mass matrix, accumulate tendencies

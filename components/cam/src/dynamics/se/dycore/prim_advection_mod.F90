@@ -963,6 +963,7 @@ contains
     use dimensions_mod,         only : lcp_moist,qsize_condensate_loading_cp
     use cam_logfile,            only : iulog
     use physconst,              only : pi
+    use thread_mod            , only : omp_set_nested
     type (hybrid_t),  intent(in)    :: hybrid  ! distributed parallel structure (shared)
     type(fvm_struct), intent(inout) :: fvm(:)
     type (element_t), intent(inout) :: elem(:)
