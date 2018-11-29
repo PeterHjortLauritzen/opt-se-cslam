@@ -1793,7 +1793,7 @@
 <se_nu waccm_phys="1" hgrid="ne30np4">1E15</se_nu>
 
 <se_nu_div> -1 </se_nu_div>
-<se_nu_div waccm_phys="1" hgrid="ne30np4">3E15</se_nu_div>
+<se_nu_div waccm_phys="1" hgrid="ne30np4">2E15</se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="tensor" > 15.8e-8 </se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_div>
 
