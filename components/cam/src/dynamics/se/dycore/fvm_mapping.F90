@@ -1,5 +1,7 @@
 !#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
 !#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
+#define mass_check
+#define trunk
 module fvm_mapping
   use shr_kind_mod,           only: r8=>shr_kind_r8
   use dimensions_mod,         only: irecons_tracer
@@ -982,14 +984,20 @@ contains
             q_prev = save_q_overlap(h,jx,jy,k,m_cnst,ie)   
 #ifndef skip_high_order_fq_map
             save_q_overlap(h,jx,jy,k,m_cnst,ie) = save_q_overlap(h,jx,jy,k,m_cnst,ie)+fq_phys_overlap(h,jx,jy)
-            if (fq_phys_overlap(h,jx,jy)<0.0_r8) then
-              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MAX(save_q_overlap(h,jx,jy,k,m_cnst,ie),phys_cdp_min(jx,jy))            
-            elseif (fq_phys_overlap(h,jx,jy)>0.0_r8) then
-              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MIN(save_q_overlap(h,jx,jy,k,m_cnst,ie),phys_cdp_max(jx,jy))
-            end if
+!            if (fq_phys_overlap(h,jx,jy)<0.0_r8) then
+!              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MAX(save_q_overlap(h,jx,jy,k,m_cnst,ie),phys_cdp_min(jx,jy))
+!            elseif (fq_phys_overlap(h,jx,jy)>0.0_r8) then
+!              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MIN(save_q_overlap(h,jx,jy,k,m_cnst,ie),phys_cdp_max(jx,jy))
+            !            end if
+
+!            if (fq_phys_overlap(h,jx,jy)<0.0_r8) then
+!              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MAX(q_prev,phys_cdp_min(jx,jy))
+!            elseif (fq_phys_overlap(h,jx,jy)>0.0_r8) then
+!              save_q_overlap(h,jx,jy,k,m_cnst,ie) = MIN(save_q_overlap(h,jx,jy,k,m_cnst,ie),phys_cdp_max(jx,jy))
+!            end if
             mass_forcing = (save_q_overlap(h,jx,jy,k,m_cnst,ie)-q_prev)*save_air_mass_overlap(h,jx,jy,k,ie)
             mass_forcing_phys = mass_forcing_phys + mass_forcing
-            fqdp_fvm(jdx,jdy,m_cnst) = fqdp_fvm(jdx,jdy,m_cnst)+mass_forcing 
+            fqdp_fvm(jdx,jdy,m_cnst) = fqdp_fvm(jdx,jdy,m_cnst)+mass_forcing
 #endif
             !
             ! prepare for mass fixing algorithm
@@ -1003,7 +1011,8 @@ contains
       end do
       !
       ! let physics mass tendency remove excess mass (as defined above) first proportional to how much is availabe
-      ! 
+      !
+#ifdef trunkx      
       do jy=1,fv_nphys
         do jx=1,fv_nphys
           !
@@ -1044,6 +1053,7 @@ contains
           end if
         end do
       end do
+#endif      
       !
       ! convert to mass per unit area
       !
@@ -1105,7 +1115,7 @@ contains
 
     real (kind=r8), intent(inout)        :: fq_phys(1-nhc_phys:fv_nphys+nhc_phys,1-nhc_phys:fv_nphys+nhc_phys,num_trac)
     real (kind=r8)                       :: recons_q  (irecons_tracer,fv_nphys,fv_nphys,num_trac)
-
+    integer                              :: num_overlap(fv_nphys,fv_nphys)
     logical                              :: llimiter_q(num_trac)
     integer                              :: h,jx,jy,m_cnst
     real (kind=r8)                       :: dp_tmp, dp_phys_tmp
@@ -1118,10 +1128,13 @@ contains
     ! Nair and Lauritzen, 2010: A Class of Deformational Flow Test Cases for Linear Transport Problems on the Sphere.
     ! J. Comput. Phys.: Vol. 229, Issue 23, pp. 8868-8887, DOI:10.1016/j.jcp.2010.08.014.
     !
+    num_overlap = 0
+#ifdef trunk    
     do h=1,jall_fvm2phys(ie)
        jx  = weights_lgr_index_all_fvm2phys(h,1,ie)
        jy  = weights_lgr_index_all_fvm2phys(h,2,ie)
-       idx = save_num_overlap(jx,jy,k,ie) != num_overlap(jx,jy)+1
+       num_overlap(jx,jy) = num_overlap(jx,jy)+1
+       idx = num_overlap(jx,jy)
        dp_phys_tmp = save_dp_phys(jx,jy,k,ie) !dp_phys(jx,jy,1)
        dp_tmp = save_air_mass_overlap(idx,jx,jy,k,ie)-dp_phys_tmp*weights_all_fvm2phys(h,1,ie)
        do m_cnst=1,num_trac
@@ -1134,6 +1147,23 @@ contains
 #endif
        end do
      end do
+#else
+    do h=1,jall_fvm2phys(ie)
+       jx  = weights_lgr_index_all_fvm2phys(h,1,ie)
+       jy  = weights_lgr_index_all_fvm2phys(h,2,ie)
+       num_overlap(jx,jy) = num_overlap(jx,jy)+1
+       idx = num_overlap(jx,jy)
+       dp_phys_tmp = save_dp_phys(jx,jy,k,ie) !dp_phys(jx,jy,1)
+       dp_tmp = save_air_mass_overlap(idx,jx,jy,k,ie)-dp_phys_tmp*weights_all_fvm2phys(h,1,ie)
+       do m_cnst=1,num_trac
+         fq_phys_overlap(idx,jx,jy,m_cnst) = &
+              weights_all_fvm2phys(h,1,ie)*fq_phys(jx,jy,m_cnst)
+!         fq_phys_overlap(idx,jx,jy,m_cnst) = &
+!              SUM(weights_all_fvm2phys(h,:,ie)*recons_q(:,jx,jy,m_cnst))
+       end do
+     end do
+     
+#endif
   end subroutine get_fq_overlap
 
   subroutine phys2fvm_scalar(ie,fvm,q_phys,dp_q_fvm)
