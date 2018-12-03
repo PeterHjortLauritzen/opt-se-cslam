@@ -1826,15 +1826,10 @@
 <se_rsplit waccm_phys="1" npg="2">  6 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="3">  6 </se_rsplit>
 
-<se_fvm_supercycling                   >3</se_fvm_supercycling>
-<se_fvm_supercycling_jet               >3</se_fvm_supercycling_jet>
-<se_fvm_supercycling     waccm_phys="1">6</se_fvm_supercycling>
-<se_fvm_supercycling_jet waccm_phys="1">6</se_fvm_supercycling_jet>
+<se_fvm_supercycling>-1</se_fvm_supercycling>
+<se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>
 <se_kmin_jet>-1</se_kmin_jet>
 <se_kmax_jet>-1</se_kmax_jet>
-<se_kmin_jet waccm_phys="1">1 </se_kmin_jet>
-<se_kmax_jet waccm_phys="1">30</se_kmax_jet>
-
 
 <se_statediag_numtrac>3</se_statediag_numtrac>
 

@@ -289,6 +289,10 @@ subroutine dyn_readnl(NLFileName)
    ! Initialize the SE structure that holds the MPI decomposition information
    par = initmpi(se_npes)
    call initomp()
+
+
+   if (se_fvm_supercycling < 0) se_fvm_supercycling = rsplit
+   if (se_fvm_supercycling_jet < 0) se_fvm_supercycling_jet = rsplit
    !
    ! automatically set viscosity coefficients
    !
