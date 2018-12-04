@@ -24,8 +24,8 @@ set test_tracers="False"
 #
 # DO NOT MODIFY BELOW THIS LINE
 #
-set cset="FW2000"
-#set cset="F2000climo"
+#set cset="FW2000"
+set cset="F2000climo"
 #set cset="FHS94"
 #
 # mapping files (not in cime yet)
@@ -39,14 +39,17 @@ echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
 if ($climateRun == "True") then
-  set walltime="12:00:00"
+#xxx  set walltime="12:00:00"
+  set walltime="06:00:00"
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
   set pecount="5400"
+#  set pecount="2700"
   set NTHRDS="1"
   set stopoption="nmonths"
   set steps="13"
+#  set steps="2"
 else
   set walltime="00:15:00"
   set pecount="450"
@@ -57,6 +60,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
+#xxx    set caze=1year_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
     set caze=1year_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
@@ -126,7 +130,7 @@ if ($climateRun == "True") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
    endif
    if ($res == "ne30pg3_ne30pg3_mg17") then
-     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma'  ">> user_nl_cam
+     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma','FU','FV'  ">> user_nl_cam
     endif
    if ($res == "f09_f09_mg17") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ'  ">> user_nl_cam
@@ -140,6 +144,7 @@ if ($climateRun == "True") then
     echo "nhtfrq             = 0,0,0,0                                             ">> user_nl_cam
     echo "interpolate_output = .true.,.true.,.false.,.true."       	   >> user_nl_cam
     echo "ndens              = 2,2,1,2                                            ">> user_nl_cam
+    echo "restart_n = 1" >> user_nl_cam
     if ($cset == "FHS94") then
 	echo "fincl3 =   'SE_pBF','KE_pBF', ">> user_nl_cam
 	echo "           'SE_pBP','KE_pBP', ">> user_nl_cam
