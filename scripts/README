@@ -18,3 +18,14 @@ FW2000.sh:
 
 WACCM
 
+
+
+
+
+#
++# To restart a simulation but with namelist or code changes:
++#
++# ./xmlchange RUN_TYPE=branch,RUN_REFCASE=1year_climateRunTrue_energyConsistencyFalse_opt-se-cslam-master_FW2000_ne30pg3_ne30pg3_mg17_5400_NTHRDS1_13nmonths,RUN_REFDATE=0001-06-23
++#
+
+
