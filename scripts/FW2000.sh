@@ -9,12 +9,12 @@ setenv PBS_ACCOUNT "P03010039"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam-master"
+set src="opt-se-cslam"
 #
 # run with CSLAM or without
 #
 set res="ne30pg3_ne30pg3_mg17" #cslam
-#set res="ne30_ne30_mg17"        #no cslam
+#set res="ne30_ne30_mg17"      #no cslam
 
 set climateRun="True"
 #set climateRun="False"
@@ -39,16 +39,16 @@ echo "Do CSLAM mods in clm and cime:"
 source clm_and_cime_mods_for_cslam.sh
 echo "Done"
 if ($climateRun == "True") then
-#  set walltime="10:00:00"
-  set walltime="00:40:00"
+  set walltime="09:00:00"
+#  set walltime="02:00:00"
   #
   # 900, 1800, 2700, 5400 (pecount should divide 6*30*30 evenly)
   #
-#  set pecount="5400"
-  set pecount="2700"
+  set pecount="5400"
+#  set pecount="2700"
   set NTHRDS="1"
-  set stopoption="ndays"
-  set steps="30"
+  set stopoption="nmonths"
+  set steps="13"
 #  set steps="2"
 else
   set walltime="00:15:00"
@@ -60,9 +60,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-#xxx    set caze=1year_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
-#    set caze=adj_nsplit_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
-    set caze=short_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
