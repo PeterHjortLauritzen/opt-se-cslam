@@ -230,7 +230,7 @@ contains
     !
     ! initialize variables for computing vertical Courant number
     !
-    if (variable_nsplit.or.compute_diagnostics) then
+    if (nsubstep==1.or.(compute_diagnostics.and..not.variable_nsplit)) then
       if (nsubstep==1) then
         do ie=nets,nete
           omega_cn(1,ie) = 0.0_r8
