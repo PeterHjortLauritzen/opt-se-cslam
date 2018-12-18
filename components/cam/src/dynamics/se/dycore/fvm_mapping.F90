@@ -1,5 +1,5 @@
 !#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
-!#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
+#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
 #define mass_check
 #define trunk
 module fvm_mapping
@@ -1012,7 +1012,7 @@ contains
       !
       ! let physics mass tendency remove excess mass (as defined above) first proportional to how much is availabe
       !
-#ifdef trunkx      
+#ifdef trunk      
       do jy=1,fv_nphys
         do jx=1,fv_nphys
           !

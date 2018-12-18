@@ -106,7 +106,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
    use control_mod,    only: topology, tasknum
-   use control_mod,    only: remap_type
+   use control_mod,    only: remap_type, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
@@ -164,6 +164,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_fvm_supercycling_jet
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
+   logical                      :: se_variable_nsplit
 
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
@@ -208,7 +209,8 @@ subroutine dyn_readnl(NLFileName)
       se_fvm_supercycling,         &
       se_fvm_supercycling_jet,     &
       se_kmin_jet,                 &
-      se_kmax_jet      
+      se_kmax_jet,                 &
+      se_variable_nsplit
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -281,6 +283,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_fvm_supercycling_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_variable_nsplit, 1, mpi_logical, masterprocid, mpicom, ierr)
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -291,8 +294,8 @@ subroutine dyn_readnl(NLFileName)
    call initomp()
 
 
-   if (se_fvm_supercycling < 0) se_fvm_supercycling = rsplit
-   if (se_fvm_supercycling_jet < 0) se_fvm_supercycling_jet = rsplit
+   if (se_fvm_supercycling < 0) se_fvm_supercycling = se_rsplit
+   if (se_fvm_supercycling_jet < 0) se_fvm_supercycling_jet = se_rsplit
    !
    ! automatically set viscosity coefficients
    !
@@ -375,7 +378,7 @@ subroutine dyn_readnl(NLFileName)
    fvm_supercycling_jet     = se_fvm_supercycling_jet
    kmin_jet                 = se_kmin_jet
    kmax_jet                 = se_kmax_jet   
-   
+   variable_nsplit          = se_variable_nsplit
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -434,39 +437,40 @@ subroutine dyn_readnl(NLFileName)
    if (se_kmax_jet<0            ) kmax_jet             = nlev
    
    if (masterproc) then
-      write(iulog, '(a,i0)') 'dyn_readnl: se_ftype               = ',ftype
-      write(iulog, '(a,i0)') 'dyn_readnl: se_statediag_numtrac   = ',statediag_numtrac
-      write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_subcycle   = ',se_hypervis_subcycle
-      write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_subcycle_q = ',se_hypervis_subcycle_q
-      write(iulog, '(a,l4)') 'dyn_readnl: se_large_Courant_incr  = ',se_large_Courant_incr
-      write(iulog, '(a,i0)') 'dyn_readnl: se_limiter_option      = ',se_limiter_option
+      write(iulog, '(a,i0)')   'dyn_readnl: se_ftype                    = ',ftype
+      write(iulog, '(a,i0)')   'dyn_readnl: se_statediag_numtrac        = ',statediag_numtrac
+      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle        = ',se_hypervis_subcycle
+      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
+      write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
+      write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
       if (.not. se_refined_mesh) then
-         write(iulog, '(a,i0)') 'dyn_readnl: se_ne = ',se_ne
+         write(iulog, '(a,i0)')'dyn_readnl: se_ne                       = ',se_ne
       end if
-      write(iulog, '(a,i0)') 'dyn_readnl: se_npes = ',se_npes
-      write(iulog, '(a,i0)') 'dyn_readnl: se_nsplit = ',se_nsplit
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu = ',se_nu
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div = ',se_nu_div
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p = ',se_nu_p
+      write(iulog, '(a,i0)')   'dyn_readnl: se_npes                     = ',se_npes
+      write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
+      write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
       write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer inconsistency'
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top = ',se_nu_top
-      write(iulog, '(a,i0)') 'dyn_readnl: se_qsplit = ',se_qsplit
-      write(iulog, '(a,i0)') 'dyn_readnl: se_rsplit = ',se_rsplit
-      write(iulog, '(a,i0)') 'dyn_readnl: se_statefreq = ',se_statefreq
-      write(iulog, '(a,i0)') 'dyn_readnl: se_tstep_type = ',se_tstep_type
-      write(iulog, '(a,i0)') 'dyn_readnl: se_vert_remap_q_alg = ',se_vert_remap_q_alg
-      write(iulog, '(a,i0)') 'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
-      write(iulog, '(a,l4)') ' dyn_readnl: hypervis_on_plevs = ',hypervis_on_plevs
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                   = ',se_nu_top
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                   = ',se_qsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                   = ',se_rsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                = ',se_statefreq
+      write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type               = ',se_tstep_type
+      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg         = ',se_vert_remap_q_alg
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
+      write(iulog, '(a,l4)')   'dyn_readnl: hypervis_on_plevs           = ',hypervis_on_plevs
       if (hypervis_on_plevs.and.nu_p>0) then
          write(iulog, *) 'FYI: nu_p>0 and hypervis_on_plevs=T => hypervis is applied to dp-dp_ref'
       else if (hypervis_on_plevs.and.nu_p==0) then
          write(iulog, *) 'FYI: hypervis_on_plevs=T and nu_p=0'
       end if
-      write(iulog, '(a,l4)') 'dyn_readnl: lcp_moist = ',lcp_moist
-      write(iulog, '(a,i0)') 'dyn_readnl: se_fvm_supercycling     = ',fvm_supercycling
-      write(iulog, '(a,i0)') 'dyn_readnl: se_fvm_supercycling_jet = ',fvm_supercycling_jet
-      write(iulog, '(a,i0)') 'dyn_readnl: se_kmin_jet             = ',kmin_jet
-      write(iulog, '(a,i0)') 'dyn_readnl: se_kmax_jet             = ',kmax_jet
+      write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                   = ',lcp_moist
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling         = ',fvm_supercycling
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet     = ',fvm_supercycling_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                 = ',kmin_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                 = ',kmax_jet      
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
@@ -553,7 +557,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
    use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
    use dimensions_mod,     only: qsize_condensate_loading_cp, ksponge_end
-   use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll
+   use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
    use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
    use prim_driver_mod,    only: prim_init2
    use time_mod,           only: time_at
@@ -843,7 +847,7 @@ subroutine dyn_run(dyn_state)
    integer        :: n
    integer        :: nets, nete, ithr
    integer        :: i, ie, j, k, m
-   integer        :: n0_qdp
+   integer        :: n0_qdp, nsplit_local
    logical        :: ldiag
 
    real(r8) :: ftmp(npsq,nlev,3)
@@ -858,6 +862,7 @@ subroutine dyn_run(dyn_state)
    return
 #endif
 
+   nsplit_local = nsplit
    tevolve = 0._r8
 
    if (iam >= par%nprocs) return
@@ -940,7 +945,7 @@ subroutine dyn_run(dyn_state)
    endif
 
 
-   do n = 1, nsplit
+   do n = 1, nsplit_local
 
       if (ldiag) then
          do ie = nets, nete

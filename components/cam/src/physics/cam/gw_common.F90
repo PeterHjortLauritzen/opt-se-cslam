@@ -81,7 +81,8 @@ real(r8) :: prndl
 real(r8), parameter :: taumin = 1.e-10_r8
 ! Maximum wind tendency from stress divergence (before efficiency applied).
 ! 400 m/s/day
-real(r8), parameter :: tndmax = 400._r8 / 86400._r8
+ real(r8), parameter :: tndmax = 400._r8 / 86400._r8
+!real(r8), parameter :: tndmax = 50._r8 / 86400._r8
 ! Maximum allowed change in u-c (before efficiency applied).
 real(r8), parameter :: umcfac = 0.5_r8
 ! Minimum value of (u-c)**2.

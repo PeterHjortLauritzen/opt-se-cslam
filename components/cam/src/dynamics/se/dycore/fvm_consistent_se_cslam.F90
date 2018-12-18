@@ -1549,7 +1549,7 @@ contains
     if (SUM(ABS(base_vec(:,9,i,j,iside))).NE.0) then
        gamma = displ(0,i,j,iside)*displ(7,i,j,iside)/(displ(0,i,j,iside)-displ(6,i,j,iside))
 !       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-displ(3,i,j,iside)),0.0_r8)!MWR manuscript
-       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-0.25_r8*displ(3,i,j,iside)),0.0_r8)!dbgxxx
+       gamma = MAX(MIN(gamma,displ(7,i,j,iside),-0.25_r8*displ(3,i,j,iside)),0.0_r8)
     else
        !
        ! corner case

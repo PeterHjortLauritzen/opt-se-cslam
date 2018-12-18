@@ -6173,6 +6173,14 @@ Number of dynamics steps per physics timestep.
 Default: Set by build-namelist.
 </entry>
 
+<entry id="se_variable_nsplit" type="logical" category="se"
+       group="dyn_se_inparm" valid_values="" >
+If TRUE nsplit is dynamically adjusted (increased by 2 if vertical
+velocity Courant number is large than 0.85) and reset when vertical
+velocity Courant number is less than 0.38  
+Default: FALSE
+</entry>
+
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
 Hyperviscosity coefficient for u,v, T [m^4/s].

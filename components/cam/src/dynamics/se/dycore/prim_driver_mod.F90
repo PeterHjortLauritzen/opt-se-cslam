@@ -29,10 +29,11 @@ contains
     use cam_abortutils,         only: endrun
     use parallel_mod,           only: syncmp
     use time_mod,               only: timelevel_t, tstep, phys_tscale, nsplit, TimeLevel_Qdp
+    use time_mod,               only: nsplit_baseline,rsplit_baseline
     use prim_state_mod,         only: prim_printstate
-    use control_mod,            only: runtype, &
-         topology, rsplit, qsplit, rk_stage_user,         &
-         nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q
+    use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
+                                      nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
+                                      variable_nsplit
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: test_global_integral, print_cfl
@@ -93,7 +94,10 @@ contains
     ! compute actual viscosity timesteps with subcycling
     dt_tracer_vis = dt_tracer_vis/hypervis_subcycle_q
     dt_dyn_vis = dt_dyn_vis/hypervis_subcycle
-
+    if (variable_nsplit) then
+       nsplit_baseline=nsplit
+       rsplit_baseline=rsplit
+    end if
     ! ==================================
     ! Initialize derivative structure
     ! ==================================
@@ -135,8 +139,8 @@ contains
      call TimeLevel_Qdp( tl, qsplit, n0_qdp)
      call compute_omega(hybrid,n0,n0_qdp,elem,deriv,nets,nete,tstep,hvcoord)
 
-    if (hybrid%masterthread) write(iulog,*) "initial state:"
-    call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
+     if (hybrid%masterthread) write(iulog,*) "initial state:"
+     call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
 
   end subroutine prim_init2
 
@@ -178,10 +182,10 @@ contains
 !
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
-    use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit
+    use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
     use prim_advance_mod,       only: applycamforcing
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
-    use prim_state_mod,         only: prim_printstate
+    use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
@@ -199,10 +203,11 @@ contains
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
 
     real(kind=r8)   :: dt_q, dt_remap
-    integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads
+    integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
     real (kind=r8)  :: dp_np1(np,np)
+    real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
+    real (kind=r8)  :: omega_cn(2,nets:nete) !min and max of vertical Courant number
     logical         :: compute_diagnostics
-!    type (hybrid_t) :: vybrid
 
     ! ===================================
     ! Main timestepping loop
@@ -221,8 +226,22 @@ contains
         compute_diagnostics=.true.
       endif
     end if
-
     if(disable_diagnostics) compute_diagnostics=.false.
+    !
+    ! initialize variables for computing vertical Courant number
+    !
+    if (variable_nsplit.or.compute_diagnostics) then
+      if (nsubstep==1) then
+        do ie=nets,nete
+          omega_cn(1,ie) = 0.0_r8
+          omega_cn(2,ie) = 0.0_r8
+        end do
+      end if
+      do ie=nets,nete
+        dp_start(:,:,1:nlev,ie) = elem(ie)%state%dp3d(:,:,:,tl%n0)
+        dp_start(:,:,nlev+1,ie) = elem(ie)%state%dp3d(:,:,nlev,tl%n0)
+      end do
+    endif
 
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
@@ -251,6 +270,14 @@ contains
 
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAD')
 
+    if (variable_nsplit.or.compute_diagnostics) then
+      !
+      ! initialize variables for computing vertical Courant number
+      !      
+      do ie=nets,nete
+        dp_end(:,:,:,ie) = elem(ie)%state%dp3d(:,:,:,tl%np1)
+      end do
+    end if
     call t_startf('vertical_remap')
     call vertical_remap(hybrid,elem,fvm,hvcoord,dt_remap,tl%np1,np1_qdp,nets,nete)
     call t_stopf('vertical_remap')
@@ -262,8 +289,9 @@ contains
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAR')
 
-    if (nsubstep==nsplit) &
-         call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
+    if (nsubstep==nsplit) then
+      call compute_omega(hybrid,tl%np1,np1_qdp,elem,deriv,nets,nete,dt,hvcoord)
+    end if
 
     ! now we have:
     !   u(nm1)   dynamics at  t+dt_remap - 2*dt
@@ -286,11 +314,37 @@ contains
     !   u(np1)   undefined
 
 
+    !
+    ! Compute vertical Courant numbers
+    !
+    if (variable_nsplit.or.compute_diagnostics) then
+      do ie=nets,nete
+        do k=1,nlev
+          do j=1,np
+            do i=1,np
+              if (dp_end(i,j,k,ie)<dp_start(i,j,k,ie)) then
+                omega_cn(1,ie) = MIN((dp_end(i,j,k,ie)-dp_start(i,j,k,ie))/dp_start(i,j,k,ie),omega_cn(1,ie))
+                omega_cn(2,ie) = MAX((dp_end(i,j,k,ie)-dp_start(i,j,k,ie))/dp_start(i,j,k,ie),omega_cn(2,ie))
+              else
+                omega_cn(1,ie) = MIN((dp_end(i,j,k,ie)-dp_start(i,j,k,ie))/dp_start(i,j,k+1,ie),omega_cn(1,ie))
+                omega_cn(2,ie) = MAX((dp_end(i,j,k,ie)-dp_start(i,j,k,ie))/dp_start(i,j,k+1,ie),omega_cn(2,ie))
+              end if
+            end do
+          end do
+        end do
+      end do
+      if (nsubstep==nsplit.and.variable_nsplit) then
+         call t_startf('adjust_nsplit')
+         call adjust_nsplit(elem, tl, hybrid,nets,nete, fvm, omega_cn)
+         call t_stopf('adjust_nsplit')
+      end if
+    end if
+
     ! ============================================================
     ! Print some diagnostic information
     ! ============================================================
     if (compute_diagnostics) then
-       call prim_printstate(elem, tl, hybrid,nets,nete, fvm)
+      call prim_printstate(elem, tl, hybrid,nets,nete, fvm, omega_cn)
     end if
 
     if (ntrac>0.and.nsubstep==nsplit.and.nc.ne.fv_nphys) then

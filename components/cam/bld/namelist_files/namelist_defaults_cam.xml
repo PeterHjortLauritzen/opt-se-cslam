@@ -1785,6 +1785,9 @@
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  5  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  5  </se_nsplit>
 
+<se_variable_nsplit>.false.</se_variable_nsplit>
+<se_variable_nsplit waccm_phys="1">.true.</se_variable_nsplit>
+
 <se_nsplit hgrid="ne0np4CONUS.ne30x8"> 5 </se_nsplit>
 
 <se_nu>-1</se_nu>

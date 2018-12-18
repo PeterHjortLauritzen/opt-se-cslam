@@ -550,6 +550,7 @@ contains
             inv_dpk(:,:,k) = 1.0_r8/(pk(:,:,k+1)-pk(:,:,k-1))
           end do
           inv_dpk(:,:,nlev) = 1.0_r8/(pk(:,:,nlev)-pk(:,:,nlev-1))
+!          do k=ksponge_end+1,nlev
           do k=1,nlev
             !
             ! viscosity on approximate pressure levels (section 3.3.6 in CAM5 scientific documentation; NCAR Tech. Note TN-486)
@@ -603,18 +604,18 @@ contains
               !DIR_VECTOR_ALIGNED
               do j=1,np
                  do i=1,np
-                    ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
-                    dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
-                    vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
-                    vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
+!                    ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
+!                    dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
+!                    vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
+!                    vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
                     !
                     ! code below has both del2 and del4 in sponge - if uncommenting remember to
                     ! add del4 mass flux for cslam in sponge below
                     !
-                    !     ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
-                    !     dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
-                    !     vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
-                    !     vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
+                         ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
+                         dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
+                         vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
+                         vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
                  enddo
               enddo
            else
@@ -638,6 +639,15 @@ contains
                call subcell_Laplace_fluxes(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),np,nc,laplace_fluxes)
                elem(ie)%sub_elem_mass_flux(:,:,:,k) = elem(ie)%sub_elem_mass_flux(:,:,:,k) + &
                     rhypervis_subcycle*eta_ave_w*nu_scale_top(k)*nu_top*laplace_fluxes
+               do j=1,nc
+                  do i=1,nc
+                     !
+                     ! del4 mass flux for CSLAM
+                     !
+                     elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
+                          rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+                  enddo
+               enddo
              else
                !OMP_COLLAPSE_SIMD
                !DIR_VECTOR_ALIGNED

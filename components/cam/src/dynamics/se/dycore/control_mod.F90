@@ -23,8 +23,9 @@ module control_mod
   integer, public  :: statediag_numtrac = 3          
 
   integer, public :: qsplit = 1           ! ratio of dynamics tsteps to tracer tsteps
-  integer, public :: rsplit = 3           ! for vertically lagrangian dynamics, apply remap
+  integer, public :: rsplit =-1           ! for vertically lagrangian dynamics, apply remap
                                           ! every rsplit tracer timesteps
+  logical, public :: variable_nsplit=.false.
 
   logical, public :: refined_mesh
 
@@ -106,7 +107,7 @@ module control_mod
   integer,               public :: se_met_tevolve = 0     ! switch to turn on time evolution of nudging within dynamics
   integer,               public :: prescribed_vertwind = 0
 
-  real (kind=r8), public :: initial_global_ave_dry_ps = 0 ! scale dry surface pressure to initial_global_ave_dry_ps
+  real (kind=r8), public :: initial_global_ave_dry_ps = 0._r8 ! scale dry surface pressure to initial_global_ave_dry_ps
 
   integer, public, parameter :: west  = 1
   integer, public, parameter :: east  = 2

@@ -53,7 +53,7 @@ CONTAINS
 subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,nt,nets,nete,kbeg,kend,&
      dptens2,dp3d_ref)
   use derivative_mod, only : subcell_Laplace_fluxes
-  use dimensions_mod, only : ntrac
+  use dimensions_mod, only : ntrac, nu_div_scale_top
   
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ! compute weak biharmonic operator
@@ -89,24 +89,26 @@ subroutine biharmonic_wk_dp3d(elem,dptens,dpflux,ttens,vtens,deriv,edge3,hybrid,
   var_coef1 = .true.
   if(hypervis_scaling > 0)    var_coef1 = .false.
   
-  nu_ratio1=1
-  nu_ratio2=1
-  if (nu_div/=nu) then
-    if(hypervis_scaling /= 0) then
-      ! we have a problem with the tensor in that we cant seperate
-      ! div and curl components.  So we do, with tensor V:
-      ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))
-      nu_ratio1=nu_div/nu
-      nu_ratio2=1
-    else
-      nu_ratio1=sqrt(nu_div/nu)
-      nu_ratio2=sqrt(nu_div/nu)
-    endif
-  endif
   
   do ie=nets,nete    
 !$omp parallel do num_threads(vert_num_threads) private(k,tmp)
     do k=kbeg,kend
+       nu_ratio1=1
+       nu_ratio2=1
+       if (nu_div/=nu) then
+          if(hypervis_scaling /= 0) then
+             ! we have a problem with the tensor in that we cant seperate
+             ! div and curl components.  So we do, with tensor V:
+             ! nu * (del V del ) * ( nu_ratio * grad(div) - curl(curl))             
+             nu_ratio1=nu_div_scale_top(k)*nu_div/nu
+             nu_ratio2=1
+          else
+             nu_ratio1=sqrt(nu_div_scale_top(k)*nu_div/nu)
+             nu_ratio2=sqrt(nu_div_scale_top(k)*nu_div/nu)
+          endif
+       endif
+
+
       tmp=elem(ie)%state%T(:,:,k,nt) 
       call laplace_sphere_wk(tmp,deriv,elem(ie),ttens(:,:,k,ie),var_coef=var_coef1)
       if (present(dptens2)) then 
