@@ -734,14 +734,17 @@ subroutine dyn_init(dyn_in, dyn_out)
        irecons_tracer_lev(k) = 1
        ksponge_end = k
      else if (nu_scale_top(k).ge.1.0_r8) then
-       irecons_tracer_lev(k) = 3
-       ksponge_end = k
+        irecons_tracer_lev(k) = 3
+        ksponge_end = k
+     else if (nu_scale_top(k).ge.0.15_r8) then
+        irecons_tracer_lev(k) = irecons_tracer
+        ksponge_end = k
      else
-       irecons_tracer_lev(k) = irecons_tracer
+        irecons_tracer_lev(k) = irecons_tracer
      end if
      
      if (masterproc) then
-       if (nu_scale_top(k)>1.0_r8) then
+       if (nu_scale_top(k)>0.15_r8) then
          write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
          if (ntrac>0) then
            if (irecons_tracer_lev(k)==3) &

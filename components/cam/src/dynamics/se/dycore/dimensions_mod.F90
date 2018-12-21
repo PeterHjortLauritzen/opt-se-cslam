@@ -74,9 +74,10 @@ module dimensions_mod
   integer, public :: fvm_supercycling    
   integer, public :: fvm_supercycling_jet
   
+  real(r8), public :: max_nu_scale_del4 !for sponge viscosity - maximum nu can be scaled with and still be theoretically stable (computed in global_norms_mod.F90)
   real(r8), public :: nu_scale_top(PLEV)!scaling of del2 viscosity in sopnge layer (initialized in dyn_comp)
   integer,  public :: ksponge_end       !sponge is active k=1,ksponge_end
-  real(r8), public :: nu_div_scale_top(PLEV) = 1.0_r8 !scaling of viscosity in sopnge layer (set in prim_state; if applicate)
+  real(r8), public :: nu_div_scale_top(PLEV) = 1.0_r8 !scaling of viscosity in sponge layer (set in prim_state; if applicable)
 
   integer,  public :: nhc_phys 
   integer,  public :: nhe_phys 

@@ -29,7 +29,7 @@ contains
   !
   subroutine phys2dyn_forcings_fvm(elem, fvm, hybrid,nets,nete,no_cslam, tl_f, tl_qdp)
     use dimensions_mod,         only: np, nc,nlev
-    use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc
+    use dimensions_mod,         only: fv_nphys, nhc_phys,ntrac,nhc,ksponge_end, nu_scale_top
     use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx
     use hybrid_mod,             only: hybrid_t
     use cam_abortutils,         only: endrun
@@ -41,9 +41,10 @@ contains
     logical, intent(in)            :: no_cslam
     integer, intent(in)            :: nets, nete, tl_f, tl_qdp
 
-    integer                                             :: ie, k, m_cnst,nq
+    integer                                             :: ie,i,j,k,m_cnst,nq
     real (kind=r8), dimension(:,:,:,:,:)  , allocatable :: fld_phys, fld_gll, fld_fvm
     real (kind=r8), dimension(np,np,nlev,qsize_condensate_loading,nets:nete) :: qgll
+    real (kind=r8)  :: element_ave
     !
     ! for tensor product Lagrange interpolation
     !
@@ -185,8 +186,25 @@ contains
                   fvm(ie)%fc_phys(1:fv_nphys,1:fv_nphys,k,qsize_condensate_loading_idx(m_cnst))
            end do
          end do
-       end do
-       !
+
+         !
+         ! extra smoothing in sponge for fu,fv,ft
+         !
+         do m_cnst=1,3
+            do k=1,ksponge_end
+               if (nu_scale_top(k).ge.1.0_r8) then !only in top 3 levels (WACCM and CAM)
+                  element_ave = 0.0_r8
+                  do j=1,fv_nphys
+                     do i=1,fv_nphys
+                        element_ave = element_ave+fld_phys(i,j,k,m_cnst,ie)
+                     end do
+                  end do
+                  fld_phys(1:fv_nphys,1:fv_nphys,k,m_cnst,ie) = element_ave/(dble(fv_nphys*fv_nphys))
+               end if
+            end do
+         end do
+      end do
+         !
        ! do mapping
        !
        call phys2dyn(hybrid,elem,fld_phys,fld_gll,nets,nete,nlev,nflds,fvm,llimiter,2)

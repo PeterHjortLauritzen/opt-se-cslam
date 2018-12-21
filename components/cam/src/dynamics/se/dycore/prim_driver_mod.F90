@@ -190,7 +190,7 @@ contains
     use thread_mod,             only: omp_get_thread_num
     use perf_mod   ,            only: t_startf, t_stopf
     use fvm_mod    ,            only: fill_halo_fvm, ghostBufQnhc_h
-    use dimensions_mod,         only: ntrac,fv_nphys
+    use dimensions_mod,         only: ntrac,fv_nphys, ksponge_end
 
     type (element_t) , intent(inout) :: elem(:)
     type(fvm_struct), intent(inout)  :: fvm(:)
@@ -333,6 +333,7 @@ contains
           end do
         end do
       end do
+
       if (nsubstep==nsplit.and.variable_nsplit) then
          call t_startf('adjust_nsplit')
          call adjust_nsplit(elem, tl, hybrid,nets,nete, fvm, omega_cn)

@@ -337,6 +337,7 @@ contains
     use hybrid_mod,     only: hybrid_t, PrintHybrid
     use element_mod,    only: element_t
     use dimensions_mod, only: np,ne,nelem,nelemd,nc,nhe,qsize,ntrac,nu_scale_top,nlev,large_Courant_incr
+    use dimensions_mod, only: max_nu_scale_del4
     use quadrature_mod, only: gausslobatto, quadrature_t
     
     use reduction_mod,  only: ParallelMin,ParallelMax
@@ -612,24 +613,24 @@ contains
       ! time-step information
       !
       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      if (hybrid%masterthread) then
+      !
+      ! S=time-step stability region (i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)
+      !
+      if (tstep_type==1) then
+        S_rk   = 2.0_r8
+        rk_str = '  * RK2-SSP 3 stage (same as tracers)'
+      elseif (tstep_type==2) then         
+        S_rk   = 2.0_r8
+        rk_str = '  * classic RK3'
+      elseif (tstep_type==3) then
+        S_rk   = 2.0_r8
+        rk_str = '  * Kinnmark&Gray RK4'
+      elseif (tstep_type==4) then
+        S_rk   = 3.0_r8
+        rk_str = '  * Kinnmark&Gray RK3 5 stage (3rd order)'
+      end if
+      if (hybrid%masterthread) then        
         write(iulog,'(a,f12.8,a)') 'Model top is ',ptop,'Pa'
-        !
-        ! S=time-step stability region (i.e. advection w/leapfrog: S=1, viscosity w/forward Euler: S=2)
-        !
-        if (tstep_type==1) then
-          S_rk   = 2.0_r8
-          rk_str = '  * RK2-SSP 3 stage (same as tracers)'
-        elseif (tstep_type==2) then         
-          S_rk   = 2.0_r8
-          rk_str = '  * classic RK3'
-        elseif (tstep_type==3) then
-          S_rk   = 2.0_r8
-          rk_str = '  * Kinnmark&Gray RK4'
-        elseif (tstep_type==4) then
-          S_rk   = 3.0_r8
-          rk_str = '  * Kinnmark&Gray RK3 5 stage (3rd order)'
-        end if
         write(iulog,'(a)') ' '
         write(iulog,'(a)') 'Timestepping methods used in dynamical core:'
         write(iulog,'(a)') 
@@ -639,32 +640,34 @@ contains
         if (ntrac>0) then
           write(iulog,'(a)') '   * CSLAM uses two time-levels backward trajectory method'
         end if
+      end if
+      S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
+      S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
+      S_rk_tracer = 2.0_r8
+      !
+      ! estimate max winds
+      !
+      if (ptop>100.0_r8) then
+        umax = 120.0_r8
+      else
+        umax = 600.0_r8
+      end if
+      ugw = 342.0_r8 !max gravity wave speed
+      
+      dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
+      dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
+      dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
+      if (large_Courant_incr) then
+        dt_max_tracer_fvm      = dble(nhe)*(4.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
+      else
+        dt_max_tracer_fvm      = dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
+      end if
+      dt_max_hypervis        = s_hypervis/(MAX(nu_div,nu)*normDinv_hypervis)
+      dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
+      dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
 
-        S_laplacian = 2.0_r8 !using forward Euler for sponge diffusion
-        S_hypervis  = 2.0_r8 !using forward Euler for hyperviscosity
-        S_rk_tracer = 2.0_r8
-        !
-        ! estimate max winds
-        !
-        if (ptop>100.0_r8) then
-          umax = 120.0_r8
-        else
-          umax = 600.0_r8
-        end if
-        ugw = 342.0_r8 !max gravity wave speed
-
-        dt_max_adv             = S_rk/(umax*max_normDinv*lambda_max*ra)
-        dt_max_gw              = S_rk/(ugw*max_normDinv*lambda_max*ra)
-        dt_max_tracer_se       = S_rk_tracer*min_gw/(umax*max_normDinv*ra)
-        if (large_Courant_incr) then
-          dt_max_tracer_fvm      = dble(nhe)*(4.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
-        else
-          dt_max_tracer_fvm      = dble(nhe)*(2.0_r8*pi*Rearth/dble(4.0_r8*ne*nc))/umax
-        end if
-        dt_max_hypervis        = s_hypervis/(MAX(nu_div,nu)*normDinv_hypervis)
-        dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
-        dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
-
+      max_nu_scale_del4=max(0.9_r8*dt_max_hypervis/dt_dyn_visco_actual,1.0)
+      if (hybrid%masterthread) then        
         write(iulog,'(a,f10.2,a)') ' '
         write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
         write(iulog,'(a,f12.8,a)') '(assume max wind is ',umax,'m/s)'
@@ -691,17 +694,17 @@ contains
         end if
 
         do k=1,nlev
-          if (nu_scale_top(k)>1.0_r8) then
+          if (nu_scale_top(k)>0.15_r8) then
             if(nu_top>0) then
               write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
                    dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-              if (dt_max_hypervis>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
+              if (dt_dyn_visco_actual>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
             end if
           end if
         end do        
 
         write(iulog,*) ' '
-
+        write(iulog,'(a,f10.2)') 'Regular del4 viscosity will be increased by a maximum of (max_nu_scale_del4=)',max_nu_scale_del4
         if (hypervis_power /= 0) then
           write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
                nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)

@@ -157,7 +157,7 @@ subroutine d_p_coupling(phys_state, phys_tend,  pbuf2d, dyn_out)
          do ie = 1, nelemd
             uv_tmp(:,:,:,ie) = &
                dyn2phys_vector(elem(ie)%state%v(:,:,:,:,tl_f),elem(ie))
-          end do
+         end do
          call t_stopf('dyn2phys')
       else
 
@@ -535,7 +535,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                      phys_state(lchnk)%q(icol,ilyr,m) = factor*phys_state(lchnk)%q(icol,ilyr,m)
                   end if
                   cbuffer(cpter(icol,ilyr)+3+m) = (phys_state(lchnk)%q(icol,ilyr,m) - &
-                       q_prev(icol,ilyr,m,lchnk))
+                                                   q_prev(icol,ilyr,m,lchnk))
                end do
             end do
           end do

@@ -456,6 +456,7 @@ contains
     !
     use dimensions_mod, only: np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_on_plevs,nu_scale_top,ksponge_end
+    use dimensions_mod, only: max_nu_scale_del4
     use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top, hypervis_scaling
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
@@ -505,7 +506,7 @@ contains
     real (kind=r8)                     :: v1,v2,dt,heating
     real (kind=r8)                     :: laplace_fluxes(nc,nc,4)
     real (kind=r8)                     :: rhypervis_subcycle
-    real (kind=r8)                     :: nu_ratio1
+    real (kind=r8)                     :: nu_ratio1,nu_scale_del4_top
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
 
     if (hypervis_on_plevs.and.nu_p>0)&
@@ -550,7 +551,6 @@ contains
             inv_dpk(:,:,k) = 1.0_r8/(pk(:,:,k+1)-pk(:,:,k-1))
           end do
           inv_dpk(:,:,nlev) = 1.0_r8/(pk(:,:,nlev)-pk(:,:,nlev-1))
-!          do k=ksponge_end+1,nlev
           do k=1,nlev
             !
             ! viscosity on approximate pressure levels (section 3.3.6 in CAM5 scientific documentation; NCAR Tech. Note TN-486)
@@ -592,13 +592,16 @@ contains
               call laplace_sphere_wk(elem(ie)%state%dp3d(:,:,k,nt),deriv,elem(ie),lap_dp,var_coef=.false.)
               ! increased second-order divergence damping
               nu_ratio1=1.0_r8
-!              if(hypervis_scaling /= 0) then
-!                 nu_ratio1=2.0_r8!max(nu_scale_top(k),1.0_r8)
-!              else
-!                 nu_ratio1=sqrt(2.0_r8)!max(sqrt(nu_scale_top(k),1.0_r8)
-!              endif
               call vlaplace_sphere_wk(elem(ie)%state%v(:,:,:,k,nt),deriv,elem(ie),lap_v, var_coef=.false.,&
                    nu_ratio=nu_ratio1)
+
+              nu_scale_del4_top=1.0_r8
+              if (k.le.ksponge_end) then
+                 !
+                 ! increase del4 damping in sponge
+                 !
+                nu_scale_del4_top=MIN(1.0_r8+nu_scale_top(k),max_nu_scale_del4)
+              end if
            
               !OMP_COLLAPSE_SIMD
               !DIR_VECTOR_ALIGNED
@@ -612,10 +615,10 @@ contains
                     ! code below has both del2 and del4 in sponge - if uncommenting remember to
                     ! add del4 mass flux for cslam in sponge below
                     !
-                         ttens(i,j,k,ie)   = (-nu_s*ttens(i,j,k,ie) + nu_scale_top(k)*nu_top*lap_t(i,j)  )
-                         dptens(i,j,k,ie)  = (-nu_p*dptens(i,j,k,ie)+ nu_scale_top(k)*nu_top*lap_dp(i,j) )
-                         vtens(i,j,1,k,ie) = (-nu*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
-                         vtens(i,j,2,k,ie) = (-nu*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
+                    ttens(i,j,k,ie)   = (-nu_s*nu_scale_del4_top*ttens(i,j,k,ie)   + nu_scale_top(k)*nu_top*lap_t(i,j)  )
+                    dptens(i,j,k,ie)  = (-nu_p*nu_scale_del4_top*dptens(i,j,k,ie)  + nu_scale_top(k)*nu_top*lap_dp(i,j) )
+                    vtens(i,j,1,k,ie) = (-nu  *nu_scale_del4_top*vtens(i,j,1,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,1))
+                    vtens(i,j,2,k,ie) = (-nu  *nu_scale_del4_top*vtens(i,j,2,k,ie) + nu_scale_top(k)*nu_top*lap_v(i,j,2))
                  enddo
               enddo
            else
@@ -645,7 +648,7 @@ contains
                      ! del4 mass flux for CSLAM
                      !
                      elem(ie)%sub_elem_mass_flux(i,j,:,k) = elem(ie)%sub_elem_mass_flux(i,j,:,k) - &
-                          rhypervis_subcycle*eta_ave_w*nu_p*dpflux(i,j,:,k,ie)
+                          rhypervis_subcycle*eta_ave_w*nu_p*nu_scale_del4_top*dpflux(i,j,:,k,ie)
                   enddo
                enddo
              else

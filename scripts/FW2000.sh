@@ -9,7 +9,7 @@ setenv PBS_ACCOUNT "P03010039"
 #
 # source code (assumed to be in /glade/u/home/$USER/src)
 #
-set src="opt-se-cslam"
+set src="opt-se-cslam-master"
 #
 # run with CSLAM or without
 #
@@ -48,7 +48,7 @@ if ($climateRun == "True") then
 #  set pecount="2700"
   set NTHRDS="1"
   set stopoption="nmonths"
-  set steps="13"
+  set steps="12"
 #  set steps="2"
 else
   set walltime="00:15:00"
@@ -60,7 +60,7 @@ endif
 if ($test_tracers == "True") then
     set caze=nadv_climateRun${climateRun}_energyConsistency${energyConsistency}_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 else
-    set caze=${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
+    set caze=regular_del4_above40_${src}_${cset}_${res}_${pecount}_NTHRDS${NTHRDS}_${steps}${stopoption}
 endif
 /glade/u/home/$USER/src/$src/cime/scripts/create_newcase --case /glade/scratch/$USER/$caze --compset $cset --res $res  --q regular --walltime $walltime --pecount $pecount  --project $PBS_ACCOUNT --run-unsupported
 cd /glade/scratch/$USER/$caze
@@ -105,6 +105,10 @@ endif
 #  echo "fsurdat='/glade/p/cesmdata/cseg/inputdata/lnd/clm2/surfdata_map/surfdata_ne30np4_simyr2000_c110801.nc'">>user_nl_clm
 #endif
 #echo "se_hypervis_subcycle = 2"   >> user_nl_cam
+#echo " se_variable_nsplit = .false."   >> user_nl_cam #xxx
+
+#echo " se_nsplit = 5"   >> user_nl_cam #xxx
+#echo " se_rsplit = 6"   >> user_nl_cam #xxx
 
 if ($energyConsistency == "True") then
   echo "se_ftype =  1	">>user_nl_cam
@@ -126,7 +130,7 @@ if ($climateRun == "True") then
 	echo "empty_htapes       = .true."   >> user_nl_cam
     echo "fincl1            = 'PS','PSDRY','PSL','OMEGA','OMEGA500','OMEGA850','PRECL','PRECC',     ">> user_nl_cam
    if ($res == "ne30_ne30_mg17") then
-     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt'  ">> user_nl_cam
+     echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','FU','FV','U','V','T'  ">> user_nl_cam
    endif
    if ($res == "ne30pg3_ne30pg3_mg17") then
      echo "                    'PTTEND','FT','OMEGAT','CLDTOT','TMQ','ABS_dPSdt','CSLAM_gamma','FU','FV','U','V','T'  ">> user_nl_cam

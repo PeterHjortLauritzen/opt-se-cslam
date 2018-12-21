@@ -323,7 +323,7 @@ CONTAINS
 
     do ie=nets,nete
       do k=1,nlev
-        max_local(ie,k)  = MAXVAL(fvm(ie)%CSLAM_gamma(:,:,k,1))
+         max_local(ie,k)  = MAXVAL(fvm(ie)%CSLAM_gamma(:,:,k,1))
       end do
     end do
     !JMD This is a Thread Safe Reduction
@@ -365,7 +365,7 @@ CONTAINS
     real (kind=r8), dimension(1) :: max_o
     real (kind=r8)               :: dtime
     character(len=128)           :: errmsg
-    real (kind=r8)               :: threshold=0.9_r8
+    real (kind=r8)               :: threshold=0.85_r8
     real (kind=r8)               :: max_abs_omega_cn(nets:nete)
     real (kind=r8)               :: min_abs_omega_cn(nets:nete)
 
@@ -398,10 +398,12 @@ CONTAINS
        fvm_supercycling_jet = rsplit
        nu_top=2.0_r8*nu_top
        
-       nu_div_scale_top(1:ksponge_end+2) = 2.0_r8
-       nu_div_scale_top(ksponge_end  +3) = 1.75_r8
-       nu_div_scale_top(ksponge_end  +4) = 1.5_r8
-       nu_div_scale_top(ksponge_end  +5) = 1.25_r8
+!       nu_div_scale_top(1:ksponge_end  ) = 2.0_r8
+!       nu_div_scale_top(ksponge_end  +1) = 2.00_r8
+!       nu_div_scale_top(ksponge_end  +2) = 1.75_r8
+!       nu_div_scale_top(ksponge_end  +3) = 1.5_r8
+!       nu_div_scale_top(ksponge_end  +4) = 1.25_r8
+
       !
       ! write diagnostics to log file
       !
@@ -425,9 +427,9 @@ CONTAINS
        rsplit=rsplit_baseline
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
-       nu_top=0.5_r8*nu_top
+       nu_top=nu_top/2.0_r8
        
-       nu_div_scale_top(:) = 1.0_r8
+!       nu_div_scale_top(:) = 1.0_r8
        
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)
