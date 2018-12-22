@@ -365,7 +365,7 @@ CONTAINS
     real (kind=r8), dimension(1) :: max_o
     real (kind=r8)               :: dtime
     character(len=128)           :: errmsg
-    real (kind=r8)               :: threshold=0.85_r8
+    real (kind=r8)               :: threshold=0.90_r8
     real (kind=r8)               :: max_abs_omega_cn(nets:nete)
     real (kind=r8)               :: min_abs_omega_cn(nets:nete)
 
