@@ -6,7 +6,7 @@ use shr_kind_mod,           only: r8=>shr_kind_r8, shr_kind_cl
 use physconst,              only: pi
 use spmd_utils,             only: iam, masterproc
 use constituents,           only: pcnst, cnst_get_ind, cnst_name, cnst_longname, &
-                                  cnst_read_iv, qmin, cnst_type
+                                  cnst_read_iv, qmin, cnst_type, tottnam
 use cam_control_mod,        only: initial_run
 use cam_initfiles,          only: initial_file_get_id, topo_file_get_id, pertlim
 use phys_control,           only: use_gw_front, use_gw_front_igw
@@ -563,7 +563,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use time_mod,           only: time_at
    use control_mod,        only: runtype
    use test_fvm_mapping,   only: test_mapping_addfld
-
+   use phys_control,       only: phys_getopts
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -613,6 +613,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len=108) :: str1, str2, str3
    integer, parameter :: qcondensate_max = 6
    character(len=*), parameter :: subname = 'dyn_init'
+   logical :: history_budget      ! output tendencies and state variables for budgets
+   integer :: budget_hfile_num
    !----------------------------------------------------------------------------
 
    if (qsize_condensate_loading > qcondensate_max) then
@@ -756,6 +758,7 @@ subroutine dyn_init(dyn_in, dyn_out)
      end if
    end do
    ksponge_end = MAX(ksponge_end,1)
+   if (masterproc) write(iulog,*) "ksponge_end = ",ksponge_end
 
    if (iam < par%nprocs) then
       call prim_advance_init(par,elem)
@@ -825,6 +828,29 @@ subroutine dyn_init(dyn_in, dyn_out)
          end if
       end do
    end do
+
+   !
+   ! add dynamical core tracer tendency output
+   !
+   if (ntrac>0) then
+     do m = 1, pcnst
+       call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
+            gridname='FVM')
+     end do
+   else
+     do m = 1, pcnst
+       call addfld(tottnam(m),(/ 'lev' /),'A','kg/kg/s',trim(cnst_name(m))//' horz + vert',  &
+            gridname='GLL')
+     end do     
+   end if
+   call phys_getopts(history_budget_out=history_budget, history_budget_histfile_num_out=budget_hfile_num)   
+   if ( history_budget ) then
+      call cnst_get_ind('CLDLIQ', ixcldliq)
+      call cnst_get_ind('CLDICE', ixcldice)
+      call add_default(tottnam(       1), budget_hfile_num, ' ')
+      call add_default(tottnam(ixcldliq), budget_hfile_num, ' ')
+      call add_default(tottnam(ixcldice), budget_hfile_num, ' ')
+   end if
 
    call test_mapping_addfld
 end subroutine dyn_init
