@@ -13,18 +13,7 @@
 <mfilt                                            scam="1"  >   1500     </mfilt>
 <nhtfrq                                           scam="1"  >   9        </nhtfrq>
 <stop_option                                      scam="1"  >   nsteps   </stop_option>
-<fincl1                                           scam="1"  dyn="fv">   'CLDST', 'CNVCLD',
-        'ICWMR','ICIMR','FREQL','FREQI','LANDFRAC','CDNUMC','FICE','WSUB','CCN3','ICLDIWP',
-        'CDNUMC', 'AQSNOW',  'WSUB', 'CCN3', 'FREQI', 'FREQL', 'FREQR', 'FREQS', 'CLDLIQ', 'CLDICE', 
-        'FSDS', 'FLDS','AREL','AREI','NSNOW','QSNOW','DSNOW',  
-        'FLNT','FLNTC','FSNT','FSNTC','FSNS','FSNSC','FLNT','FLNTC','QRS','QRSC','QRL','QRLC',
-        'LWCF','SWCF', 'NCAI', 'NCAL', 'NIHF','NIDEP','NIIMM','NIMEY','ICLDIWP','ICLDTWP', 'CONCLD', 
-        'QCSEVAP', 'QISEVAP', 'QVRES', 'CMELIQ', 'CMEIOUT', 'EVAPPREC', 'EVAPSNOW', 'TAQ', 
-        'ICLMRCU', 'ICIMRCU' ,'ICWMRSH' ,'ICWMRDP', 'ICLMRTOT' , 'ICIMRTOT' , 'SH_CLD' ,  'DP_CLD', 
-        'LIQCLDF','ICECLDF', 'ICWMRST', 'ICIMRST', 'EFFLIQ', 'EFFICE','ADRAIN','ADSNOW','WSUBI', 
-        'TGCLDLWP','GCLDLWP' </fincl1>
-
-<fincl1                                           scam="1"  dyn="se">   'CLDST', 'CNVCLD',
+<fincl1                                           scam="1"  >   'CLDST', 'CNVCLD',
         'ICWMR','ICIMR','FREQL','FREQI','LANDFRAC','CDNUMC','FICE','WSUB','CCN3','ICLDIWP',
         'CDNUMC', 'AQSNOW',  'WSUB', 'CCN3', 'FREQI', 'FREQL', 'FREQR', 'FREQS', 'CLDLIQ', 'CLDICE', 
         'FSDS', 'FLDS','AREL','AREI','NSNOW','QSNOW','DSNOW',  

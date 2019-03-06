@@ -21,7 +21,7 @@ use hycoef,           only: init_restart_hycoef, write_restart_hycoef, &
                             hyai, hybi, ps0
 use ref_pres,         only: ptop_ref
 
-use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_double, &
+use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_int, pio_double, &
                             pio_seterrorhandling, pio_bcast_error, pio_noerr, &
                             file_desc_t, var_desc_t, io_desc_t, &
                             pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, &
@@ -29,7 +29,7 @@ use pio,              only: pio_global, pio_unlimited, pio_offset_kind, pio_doub
                             pio_enddef, &
                             pio_initdecomp, pio_freedecomp, pio_setframe, &
                             pio_put_att, pio_put_var, pio_write_darray, &
-                            pio_get_att, pio_read_darray
+                            pio_get_att, pio_get_var, pio_read_darray
 
 use cam_pio_utils,    only: pio_subsystem, cam_pio_handle_error
 use cam_grid_support, only: cam_grid_header_info_t, cam_grid_id, cam_grid_write_attr, &
@@ -43,11 +43,11 @@ use cam_abortutils,   only: endrun
 
 use parallel_mod,     only: par
 use thread_mod,       only: horz_num_threads
-use control_mod,      only: qsplit
+use control_mod,      only: qsplit, rsplit, nu_top
 use dimensions_mod,   only: np, npsq, ne, nlev, qsize, nelemd, nc, ntrac
 use dof_mod,          only: UniquePoints
 use element_mod,      only: element_t
-use time_mod,         only: tstep, TimeLevel_Qdp
+use time_mod,         only: tstep, TimeLevel_Qdp, nsplit
 
 use edge_mod,         only: initEdgeBuffer, edgeVpack, edgeVunpack, FreeEdgeBuffer
 use edgetype_mod,     only: EdgeBuffer_t
@@ -70,6 +70,7 @@ type(var_desc_t)              :: psdry_desc, udesc, vdesc, tdesc
 type(var_desc_t), allocatable :: qdesc_dp(:)
 type(var_desc_t)              :: dp_fvm_desc
 type(var_desc_t), pointer     :: c_fvm_desc(:)
+type(var_desc_t)              :: nsplit_desc, rsplit_desc, nu_top_desc
 
 integer, private :: nelem_tot = -1 ! Correct total number of elements
 
@@ -116,6 +117,11 @@ subroutine init_restart_dynamics(file, dyn_out)
    call init_nelem_tot()
    call init_restart_hycoef(file, vdimids)
    nlev_dimid = vdimids(1)
+
+   ! control variables that may be adjusted at run time
+   ierr = pio_def_var(File, 'nsplit', pio_int,    nsplit_desc)
+   ierr = pio_def_var(File, 'rsplit', pio_int,    rsplit_desc)
+   ierr = pio_def_var(File, 'nu_top', pio_double, nu_top_desc)
 
    call pio_seterrorhandling(File, pio_bcast_error, err_handling)
 
@@ -203,6 +209,11 @@ subroutine write_restart_dynamics(File, dyn_out)
    !----------------------------------------------------------------------------
 
    call write_restart_hycoef(File)
+
+   ! control variables that may be adjusted at run time
+   ierr = pio_put_var(File, nsplit_desc, nsplit)
+   ierr = pio_put_var(File, rsplit_desc, rsplit)
+   ierr = pio_put_var(File, nu_top_desc, nu_top)
 
    tl = timelevel%n0
    call TimeLevel_Qdp(timelevel, qsplit, tlQdp)
@@ -572,6 +583,30 @@ subroutine read_restart_dynamics(File, dyn_in, dyn_out)
       write(iulog,*) 'Restart file nlev does not match model. nlev (file, namelist):', &
                      fnlev, nlev
       call endrun(sub//': Restart file nlev does not match model.')
+   end if
+
+   ! control variables that may be adjusted at run time.  Do not require these to
+   ! allow backwards compatibility with older restart files
+   ierr = pio_inq_varid(File, 'nsplit', nsplit_desc)
+   if (ierr == PIO_NOERR) then
+      ierr = pio_get_var(File, nsplit_desc, nsplit)
+      if (ierr /= PIO_NOERR) then
+         call endrun(sub//': reading nsplit.')
+      end if
+   end if
+   ierr = pio_inq_varid(File, 'rsplit', rsplit_desc)
+   if (ierr == PIO_NOERR) then
+      ierr = pio_get_var(File, rsplit_desc, rsplit)
+      if (ierr /= PIO_NOERR) then
+         call endrun(sub//': reading rsplit.')
+      end if
+   end if
+   ierr = pio_inq_varid(File, 'nu_top', nu_top_desc)
+   if (ierr == PIO_NOERR) then
+      ierr = pio_get_var(File, nu_top_desc, nu_top)
+      if (ierr /= PIO_NOERR) then
+         call endrun(sub//': reading nu_top.')
+      end if
    end if
 
    ! variable descriptors of required dynamics fields

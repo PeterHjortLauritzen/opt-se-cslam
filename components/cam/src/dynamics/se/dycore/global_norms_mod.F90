@@ -666,7 +666,7 @@ contains
       dt_max_hypervis_tracer = s_hypervis/(nu_q*normDinv_hypervis)
       dt_max_laplacian_top   = 1.0_r8/(nu_top*((ra*max_normDinv)**2)*lambda_vis)
 
-      max_nu_scale_del4=max(0.9_r8*dt_max_hypervis/dt_dyn_visco_actual,1.0)
+      max_nu_scale_del4=max(0.9_r8*dt_max_hypervis/dt_dyn_visco_actual,1.0_r8)
       if (hybrid%masterthread) then        
         write(iulog,'(a,f10.2,a)') ' '
         write(iulog,'(a,f10.2,a)') 'Estimates for maximum stable and actual time-steps for different aspects of algorithm:'
@@ -698,13 +698,15 @@ contains
             if(nu_top>0) then
               write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
                    dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-              if (dt_dyn_visco_actual>dt_max_laplacian_top/nu_scale_top(k)) write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
+              if (dt_dyn_visco_actual>dt_max_laplacian_top/nu_scale_top(k)) &
+                 write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
             end if
           end if
         end do        
 
         write(iulog,*) ' '
-        write(iulog,'(a,f10.2)') 'Regular del4 viscosity will be increased by a maximum of (max_nu_scale_del4=)',max_nu_scale_del4
+        write(iulog,'(a,f10.2)') 'In sponge del4 viscosity will be increased by a maximum of (max_nu_scale_del4=)', &
+                                 max_nu_scale_del4
         if (hypervis_power /= 0) then
           write(iulog,'(a,3e11.4)')'Hyperviscosity (dynamics): ave,min,max = ', &
                nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)

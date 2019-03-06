@@ -741,6 +741,7 @@ contains
     use solar_data,         only: solar_data_init
     use dadadj_cam,         only: dadadj_init
     use cam_abortutils,     only: endrun
+    use nudging,            only: Nudge_Model, nudging_init
 
     ! Input/output arguments
     type(physics_state), pointer       :: phys_state(:)
@@ -905,6 +906,10 @@ contains
     dlfzm_idx = pbuf_get_index('DLFZM', ierr)
 
     call phys_getopts(prog_modal_aero_out=prog_modal_aero)
+
+    ! Initialize Nudging Parameters
+    !--------------------------------
+    if(Nudge_Model) call nudging_init
 
     if (clim_modal_aero) then
 
@@ -1254,6 +1259,9 @@ contains
     use unicon_cam,         only: unicon_cam_org_diags
     use cam_history,        only: hist_fld_active
     use qneg_module,        only: qneg4
+    use co2_cycle,          only: co2_cycle_set_ptend
+    use nudging,            only: Nudge_Model,Nudge_ON,nudging_timestep_tend
+
     !
     ! Arguments
     !
@@ -1382,6 +1390,9 @@ contains
     call physics_update(state, ptend, ztodt, tend)
     call check_tracers_chng(state, tracerint, "aoa_tracers_timestep_tend", nstep, ztodt,   &
          cam_in%cflx)
+
+    call co2_cycle_set_ptend(state, pbuf, ptend)
+    call physics_update(state, ptend, ztodt, tend)
 
     !===================================================
     ! Chemistry and MAM calculation
@@ -1517,6 +1528,14 @@ contains
 
     call t_stopf  ( 'iondrag' )
 
+    ! Update Nudging values, if needed
+    !----------------------------------
+    if((Nudge_Model).and.(Nudge_ON)) then
+      call nudging_timestep_tend(state,ptend)
+      call physics_update(state,ptend,ztodt,tend)
+      call check_energy_chng(state, tend, "nudging", nstep, ztodt, zero, zero, zero, zero)
+    endif
+
     !-------------- Energy budget checks vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
     ! Save total energy for global fixer in next timestep (FV and SE dycores)
@@ -1590,7 +1609,7 @@ contains
           if (cam_in%ocnfrac(i) /= 1._r8) labort = .true.
        end do
        if (labort) then
-          call endrun ('TPHYSAC error:  grid contains non-ocean point')
+          call endrun ('TPHYSAC error: in aquaplanet mode, but grid contains non-ocean point')
        endif
     endif
 
@@ -2218,7 +2237,7 @@ contains
     !===================================================
 
     call t_startf('bc_history_write')
-    call diag_phys_writeout(state, cam_out%psl)
+    call diag_phys_writeout(state, pbuf)
     call diag_conv(state, ztodt, pbuf)
 
     call t_stopf('bc_history_write')
@@ -2303,6 +2322,7 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
   use mo_apex,             only: mo_apex_init
   use epp_ionization,      only: epp_ionization_active
   use iop_forcing,         only: scam_use_iop_srf
+  use nudging,             only: Nudge_Model, nudging_timestep_init
 
   implicit none
 
@@ -2367,6 +2387,10 @@ subroutine phys_timestep_init(phys_state, cam_in, cam_out, pbuf2d)
 
   ! age of air tracers
   call aoa_tracers_timestep_init(phys_state)
+
+  ! Update Nudging values, if needed
+  !----------------------------------
+  if(Nudge_Model) call nudging_timestep_init(phys_state)
 
 end subroutine phys_timestep_init
 

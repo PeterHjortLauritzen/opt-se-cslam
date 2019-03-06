@@ -484,7 +484,8 @@ contains
           inv_darea_dp_fvm = 1.0_r8/inv_darea_dp_fvm
           
           T_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%state%T(:,:,k,tl),elem(ie)%metdet(:,:),inv_area),SHAPE(T_phys(:,k,ie)))
-          Omega_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%derived%omega(:,:,k),elem(ie)%metdet(:,:),inv_area),SHAPE(Omega_phys(:,k,ie)))
+          Omega_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%derived%omega(:,:,k),elem(ie)%metdet(:,:),inv_area), &
+                                       SHAPE(Omega_phys(:,k,ie)))
           call fvm2phys(ie,k,fvm(ie),fvm(ie)%dp_fvm(:,:,k),fvm(ie)%c(:,:,k,:),q_phys_tmp,num_trac)
           dp3d_phys(:,k,ie) = RESHAPE(save_dp_phys(:,:,k,ie),SHAPE(dp3d_phys(:,k,ie)))
           ps_phys(:,ie) = ps_phys(:,ie)+RESHAPE(save_dp_phys(:,:,k,ie),SHAPE(ps_phys(:,ie)))
@@ -498,7 +499,8 @@ contains
           inv_darea_dp_phys = inv_area/dp3d_tmp
           T_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%state%T(:,:,k,tl)*elem(ie)%state%dp3d(:,:,k,tl),elem(ie)%metdet(:,:),&
                inv_darea_dp_phys),SHAPE(T_phys(:,k,ie)))
-          Omega_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%derived%OMEGA(:,:,k),elem(ie)%metdet(:,:),inv_area),SHAPE(Omega_phys(:,k,ie)))
+          Omega_phys(:,k,ie) = RESHAPE(dyn2phys(elem(ie)%derived%OMEGA(:,:,k),elem(ie)%metdet(:,:),inv_area), &
+                                       SHAPE(Omega_phys(:,k,ie)))
           !
           ! no mapping needed - just copy fields into physics structure
           !

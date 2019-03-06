@@ -562,7 +562,8 @@ contains
 !                           vtens(:,:,2,k,ie) = vtens(:,:,2,k,ie) -nabla4_pk(:,:,k)*(&
 !                                inv_dpk(:,:,k)*(elem(ie)%state%v(:,:,2,MIN(k+1,nlev),nt)-elem(ie)%state%v(:,:,2,MAX(k-1,1),nt)))
           end do
-          if (nu_p>0) dptens(:,:,:,ie) = dptens_ref(:,:,:,ie) !pressure damping will only be on difference between smoothed dp3d and dp3d
+          if (nu_p>0) dptens(:,:,:,ie) = dptens_ref(:,:,:,ie) ! pressure damping will only be on
+                                                              ! difference between smoothed dp3d and dp3d
         endif! done correction term
         
         ! compute mean flux

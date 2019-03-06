@@ -30,19 +30,20 @@ save
 ! Public interfaces
 
 public :: &
-   diag_readnl,        &! read namelist options
-   diag_register,      &! register pbuf space
-   diag_init,          &! initialization
-   diag_allocate,      &! allocate memory for module variables
-   diag_deallocate,    &! deallocate memory for module variables
-   diag_conv_tend_ini, &! initialize convective tendency calcs
-   diag_phys_writeout, &! output diagnostics of the dynamics
-   diag_phys_tend_writeout, & ! output physics tendencies
-   diag_state_b4_phys_write,& ! output state before physics execution
-   diag_conv,          &! output diagnostics of convective processes
-   diag_surf,          &! output diagnostics of the surface
-   diag_export,        &! output export state
-   diag_physvar_ic
+   diag_readnl,              &! read namelist options
+   diag_register,            &! register pbuf space
+   diag_init,                &! initialization
+   diag_allocate,            &! allocate memory for module variables
+   diag_deallocate,          &! deallocate memory for module variables
+   diag_conv_tend_ini,       &! initialize convective tendency calcs
+   diag_phys_writeout,       &! output diagnostics of the dynamics
+   diag_phys_tend_writeout,  &! output physics tendencies
+   diag_state_b4_phys_write, &! output state before physics execution
+   diag_conv,                &! output diagnostics of convective processes
+   diag_surf,                &! output diagnostics of the surface
+   diag_export,              &! output export state
+   diag_physvar_ic,          &
+   nsurf
 
 
 ! Private data
@@ -74,7 +75,10 @@ logical          :: history_budget                 ! output tendencies and state
 integer          :: history_budget_histfile_num    ! output history file number for budget fields
 logical          :: history_waccm                  ! outputs typically used for WACCM
 
-!Physics buffer indices
+! Physics buffer indices
+
+integer  ::      psl_idx    = 0 
+integer  ::      relhum_idx = 0 
 integer  ::      qcwat_idx  = 0 
 integer  ::      tcwat_idx  = 0 
 integer  ::      lcwat_idx  = 0 
@@ -140,6 +144,9 @@ contains
 !==============================================================================
 
   subroutine diag_register_dry()
+
+    call pbuf_add_field('PSL', 'physpkg', dtype_r8, (/pcols/), psl_idx)
+
     ! Request physics buffer space for fields that persist across timesteps.
     call pbuf_add_field('T_TTEND', 'global', dtype_r8, (/pcols,pver,dyn_time_lvls/), t_ttend_idx)
   end subroutine diag_register_dry
@@ -507,15 +514,20 @@ contains
     ! outfld calls in diag_phys_tend_writeout
 
     call addfld (ptendnam(       1),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(       1))//' total physics tendency '      )
-    call addfld (ptendnam(ixcldliq),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldliq))//' total physics tendency '      )
+
+    if (ixcldliq > 0) then
+       call addfld (ptendnam(ixcldliq),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldliq))//' total physics tendency '      )
+    end if
     if (ixcldice > 0) then
       call addfld (ptendnam(ixcldice),(/ 'lev' /), 'A', 'kg/kg/s',trim(cnst_name(ixcldice))//' total physics tendency ')
     end if
     if ( dycore_is('LR') )then
       call addfld (dmetendnam(       1),(/ 'lev' /), 'A','kg/kg/s', &
            trim(cnst_name(       1))//' dme adjustment tendency (FV) ')
-      call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
-           trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
+      if (ixcldliq > 0) then
+         call addfld (dmetendnam(ixcldliq),(/ 'lev' /), 'A','kg/kg/s', &
+            trim(cnst_name(ixcldliq))//' dme adjustment tendency (FV) ')
+      end if
       if (ixcldice > 0) then
         call addfld (dmetendnam(ixcldice),(/ 'lev' /), 'A','kg/kg/s', &
              trim(cnst_name(ixcldice))//' dme adjustment tendency (FV) ')
@@ -597,13 +609,17 @@ contains
       call add_default (cnst_name(1), history_budget_histfile_num, ' ')
       call add_default ('PTTEND'          , history_budget_histfile_num, ' ')
       call add_default (ptendnam(       1), history_budget_histfile_num, ' ')
-      call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
+      if (ixcldliq > 0) then
+         call add_default (ptendnam(ixcldliq), history_budget_histfile_num, ' ')
+      end if
       if (ixcldice > 0) then
         call add_default (ptendnam(ixcldice), history_budget_histfile_num, ' ')
       end if
       if ( dycore_is('LR') )then
         call add_default(dmetendnam(1)       , history_budget_histfile_num, ' ')
-        call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
+        if (ixcldliq > 0) then
+           call add_default(dmetendnam(ixcldliq), history_budget_histfile_num, ' ')
+        end if
         if (ixcldice > 0) then
           call add_default(dmetendnam(ixcldice), history_budget_histfile_num, ' ')
         end if
@@ -670,6 +686,7 @@ contains
     end if
 
     ! Pbuf field indices for collecting output data
+    relhum_idx = pbuf_get_index('RELHUM',  errcode=ierr)
     qcwat_idx  = pbuf_get_index('QCWAT',  errcode=ierr)
     tcwat_idx  = pbuf_get_index('TCWAT',  errcode=ierr)
     lcwat_idx  = pbuf_get_index('LCWAT',  errcode=ierr)
@@ -870,7 +887,7 @@ contains
 
 !===============================================================================
 
-  subroutine diag_phys_writeout_dry(state, p_surf_t, psl)
+  subroutine diag_phys_writeout_dry(state, pbuf, p_surf_t)
 
     !-----------------------------------------------------------------------
     !
@@ -881,7 +898,6 @@ contains
     use time_manager,       only: get_nstep
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use cam_control_mod,    only: moist_physics
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
@@ -890,15 +906,14 @@ contains
     ! Arguments
     !
     type(physics_state), intent(inout) :: state
+    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8),            intent(out)   :: p_surf_t(pcols, nsurf)  ! data interpolated to a pressure surface
-    real(r8), optional , intent(out)   :: psl(pcols)
     !
     !---------------------------Local workspace-----------------------------
     !
     real(r8) :: ftem(pcols,pver)  ! temporary workspace
     real(r8) :: ftem1(pcols,pver) ! another temporary workspace
     real(r8) :: ftem2(pcols,pver) ! another temporary workspace
-    real(r8) :: psl_tmp(pcols)    ! Sea Level Pressure
     real(r8) :: z3(pcols,pver)    ! geo-potential height
     real(r8) :: p_surf(pcols)     ! data interpolated to a pressure surface
     real(r8) :: tem2(pcols,pver)  ! temporary workspace
@@ -906,7 +921,8 @@ contains
     real(r8) :: esl(pcols,pver)   ! saturation vapor pressures
     real(r8) :: esi(pcols,pver)   !
     real(r8) :: dlon(pcols)       ! width of grid cell (meters)
-    integer  :: plon              ! number of longitudes
+
+    real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
     integer  :: i, k, m, lchnk, ncol, nstep
     !
@@ -1040,17 +1056,12 @@ contains
       call vertinterp(ncol, pcols, pver, state%pmid, 50000._r8, state%omega, p_surf)
       call outfld('OMEGA500', p_surf, pcols, lchnk)
     end if
-    !
+
     ! Sea level pressure
-    !
-    if (present(psl) .or. hist_fld_active('PSL')) then
-      call cpslec (ncol, state%pmid, state%phis, state%ps, state%t,psl_tmp, gravit, rair)
-      call outfld ('PSL     ',psl_tmp  ,pcols, lchnk     )
-      if (present(psl)) then	
-        psl(:ncol) = psl_tmp(:ncol)
-      end if
-    end if
-    !
+    call pbuf_get_field(pbuf, psl_idx, psl)
+    call cpslec(ncol, state%pmid, state%phis, state%ps, state%t, psl, gravit, rair)
+    call outfld('PSL', psl, pcols, lchnk)
+
     ! Output T,u,v fields on pressure surfaces
     !
     if (hist_fld_active('T850')) then
@@ -1213,23 +1224,24 @@ contains
 
 !===============================================================================
 
-  subroutine diag_phys_writeout_moist(state, p_surf_t)
+  subroutine diag_phys_writeout_moist(state, pbuf, p_surf_t)
 
     !-----------------------------------------------------------------------
     !
     ! Purpose: record dynamics variables on physics grid
     !
     !-----------------------------------------------------------------------
-    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa
+    use physconst,          only: gravit, rga, rair, cpair, latvap, rearth, pi, cappa, &
+                                  epsilo, rh2o
     use interpolate_data,   only: vertinterp
     use constituent_burden, only: constituent_burden_comp
-    use cam_control_mod,    only: moist_physics
     use co2_cycle,          only: c_i, co2_transport
     !-----------------------------------------------------------------------
     !
     ! Arguments
     !
     type(physics_state), intent(inout) :: state
+    type(physics_buffer_desc), pointer :: pbuf(:)
     real(r8),            intent(inout) :: p_surf_t(pcols, nsurf)  ! data interpolated to a pressure surface
     !
     !---------------------------Local workspace-----------------------------
@@ -1244,8 +1256,8 @@ contains
     real(r8) :: tem2(pcols,pver) ! temporary workspace
     real(r8) :: esl(pcols,pver)   ! saturation vapor pressures
     real(r8) :: esi(pcols,pver)   !
-    real(r8) :: dlon(pcols)      ! width of grid cell (meters)
-    integer ::  plon             ! number of longitudes
+
+    real(r8), pointer :: ftem_ptr(:,:)
 
     integer :: i, k, m, lchnk, ncol
     !
@@ -1292,10 +1304,15 @@ contains
 
     ! Relative humidity
     if (hist_fld_active('RELHUM')) then
-      call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
-           tem2(:ncol,:), ftem(:ncol,:))
-      ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
-      call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
+       if (relhum_idx > 0) then
+          call pbuf_get_field(pbuf, relhum_idx, ftem_ptr)
+          ftem(:ncol,:) = ftem_ptr(:ncol,:)
+       else
+          call qsat(state%t(:ncol,:), state%pmid(:ncol,:), &
+                    tem2(:ncol,:), ftem(:ncol,:))
+          ftem(:ncol,:) = state%q(:ncol,:,1)/ftem(:ncol,:)*100._r8
+       end if
+       call outfld ('RELHUM  ',ftem    ,pcols   ,lchnk     )
     end if
 
     if (hist_fld_active('RHW') .or. hist_fld_active('RHI') .or. hist_fld_active('RHCFMIP') ) then
@@ -1444,24 +1461,24 @@ contains
 
 !===============================================================================
 
-  subroutine diag_phys_writeout(state, psl)
+  subroutine diag_phys_writeout(state, pbuf)
 
     !-----------------------------------------------------------------------
     !
     ! Arguments
     !
     type(physics_state), intent(inout) :: state
-    real(r8), optional , intent(out)   :: psl(pcols)
+    type(physics_buffer_desc), pointer :: pbuf(:)
 
-    !
     ! Local variable
-    !
     real(r8) :: p_surf_t(pcols, nsurf)  ! data interpolated to a pressure surface
 
-    call diag_phys_writeout_dry(state, p_surf_t, psl)
+    call diag_phys_writeout_dry(state, pbuf, p_surf_t)
+
     if (moist_physics) then
-      call diag_phys_writeout_moist(state, p_surf_t)
+      call diag_phys_writeout_moist(state, pbuf, p_surf_t)
     end if
+
   end subroutine diag_phys_writeout
 
 !===============================================================================

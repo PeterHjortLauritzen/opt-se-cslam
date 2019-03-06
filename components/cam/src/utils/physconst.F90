@@ -177,7 +177,7 @@ subroutine physconst_readnl(nlfile)
          if (newrearth)  write(iulog,*)'***       REARTH    ',shr_const_rearth,rearth,'***'
          if (newtmelt)   write(iulog,*)'***       TMELT     ',shr_const_tkfrz,tmelt,'***'
          write(iulog,*)'****************************************************************************'
-       end if
+      end if
       rga         = 1._r8/gravit
       ra          = 1._r8/rearth
       omega       = 2.0_R8*pi/sday

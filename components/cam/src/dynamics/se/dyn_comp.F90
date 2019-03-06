@@ -1005,7 +1005,6 @@ subroutine read_inidat(dyn_in)
    use shr_sys_mod,         only: shr_sys_flush
    use hycoef,              only: hyai, hybi, ps0
    use const_init,          only: cnst_init_default
-   use cam_control_mod,     only: ideal_phys
 
    use element_mod,         only: timelevels
    use dimensions_mod,      only: qsize_d, qsize_condensate_loading

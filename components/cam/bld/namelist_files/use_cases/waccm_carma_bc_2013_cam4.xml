@@ -102,7 +102,7 @@
 </fincl1>
 
 <!-- Instantaneous every 10 days --> 
-<fincl2 dyn="fv">
+<fincl2>
   'PS', 'Z3', 'T', 'U', 'V',  'FLNT','PSL', 
   'OMEGA','FSDS','FSDSC','CLOUD','CONCLD','SNOWHLND','SNOWHICE',
   'CH3CL', 'CFC11', 'CFC12', 'CFC113', 'HCFC22', 'CCL4', 'CH3CCL3', 
@@ -118,21 +118,6 @@
   'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
   'VTHzm', 'WTHzm', 'UVzm', 'UWzm', 'TH', 'MSKtem'
 </fincl2>
-<fincl2 dyn="se">
-  'PS', 'Z3', 'T', 'U', 'V',  'FLNT','PSL', 
-  'OMEGA','FSDS','FSDSC','CLOUD','CONCLD','SNOWHLND','SNOWHICE',
-  'CH3CL', 'CFC11', 'CFC12', 'CFC113', 'HCFC22', 'CCL4', 'CH3CCL3', 
-  'CH3BR', 'CF3BR', 'CF2CLBR',
-  'CO', 'CO2', 'CH2O', 'CH3OOH', 'CH4',
-  'O3', 'O', 'O1D',
-  'N', 'NO', 'NO2', 'NO3', 'N2O5', 'HNO3', 'HO2NO2', 'NOX', 'NOY', 'N2O',
-  'H', 'H2', 'OH', 'HO2', 'H2O2',  'H2O',
-  'CL','CL2', 'CLO', 'OCLO', 'CL2O2', 'CLONO2', 'HOCL', 'HCL', 'CLOX', 'CLOY', 
-  'BR', 'BRO', 'HOBR', 'HBR', 'BRCL', 'BRONO2', 'BROX', 'BROY', 'TCLY',
-  'jo2_a', 'jo2_b', 'jo3_a',  'jo3_b', 'jhocl', 'jno3_b', 'jcl2o2',
-  'SAD_SULFC', 'SAD_LNAT', 'SAD_ICE','AOA1','AOA2',
-  'O2', 'CLDLIQ', 'CLDICE', 'ASDIR',
-</fincl2>
 
 <!-- Instantaneous every 10 days --> 
 <fincl3>
@@ -147,7 +132,7 @@
   'PS', 'PSL', 'U', 'V', 'T', 'Z3', 'PHIS','FRONTGF:I', 'OMEGA' 
 </fincl4>
 <!-- Daily Average --> 
-<fincl5 dyn="fv">
+<fincl5>
   'MSKtem', 'PS', 'PSL', 'VTHzm', 'UVzm', 'UWzm', 'Uzm', 'Vzm', 'THzm','Wzm', 'PHIS'
 </fincl5>
 

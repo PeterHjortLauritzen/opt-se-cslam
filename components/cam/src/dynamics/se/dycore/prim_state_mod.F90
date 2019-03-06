@@ -368,7 +368,14 @@ CONTAINS
     real (kind=r8)               :: threshold=0.90_r8
     real (kind=r8)               :: max_abs_omega_cn(nets:nete)
     real (kind=r8)               :: min_abs_omega_cn(nets:nete)
-
+    !
+    ! The threshold values for when to double nsplit are empirical.
+    ! In FW2000climo runs the Courant numbers are large in the sponge
+    !
+    ! The model was found to be stable if regular del4 is increased
+    ! in the sponge and nu_top is increased (when nsplit doubles)
+    !
+    !
     do ie=nets,nete
       max_abs_omega_cn(ie) = MAXVAL(ABS(omega_cn(:,ie)))
     end do
@@ -383,17 +390,6 @@ CONTAINS
       ! change vertical remap time-step
       !
        nsplit=2*nsplit_baseline
-!      if (mod(rsplit_baseline,2)>0) then
-!         !
-!         ! rsplit odd
-!         
-!         rsplit=rsplit_baseline/2+1
-!      else
-!         !
-!         ! rsplit even
-!         !
-!         rsplit=rsplit_baseline/2
-!      end if
        fvm_supercycling     = rsplit
        fvm_supercycling_jet = rsplit
        nu_top=2.0_r8*nu_top
@@ -412,9 +408,7 @@ CONTAINS
           !dt=tstep*qsplit
           !    dt_remap = tstep*qsplit*rsplit  ! vertical REMAP timestep
           !
-          write(iulog,*)   '  '
           write(iulog,*)   'adj. nsplit: doubling nsplit; t=',Time_at(tl%nstep)/(24*3600)," [day]; max OMEGA",max_o(1)
-          write(iulog,*)   '  '
        end if
        dtime = get_step_size()
        tstep = dtime / real(nsplit*qsplit*rsplit, r8)

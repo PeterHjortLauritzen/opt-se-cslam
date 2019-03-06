@@ -19,7 +19,7 @@ module clubb_intr
   use shr_kind_mod,  only: r8=>shr_kind_r8
   use ppgrid,        only: pver, pverp, pcols
   use phys_control,  only: phys_getopts
-  use physconst,     only: rair, cpair, gravit, latvap, latice, zvir, rh2o, karman
+  use physconst,     only: rairv, cpairv, cpair, gravit, latvap, latice, zvir, rh2o, karman
   use spmd_utils,    only: masterproc 
   use constituents,  only: pcnst, cnst_add
   use pbl_utils,     only: calc_ustar, calc_obklen
@@ -122,6 +122,7 @@ module clubb_intr
   logical            :: do_expldiff
   logical            :: clubb_do_adv
   logical            :: clubb_do_liqsupersat = .false.
+  logical            :: clubb_do_energyfix   = .true.
   logical            :: history_budget
 
   logical            :: clubb_l_lscale_plume_centered
@@ -420,7 +421,7 @@ end subroutine clubb_init_cnst
                                clubb_c_K10, clubb_c_K10h, clubb_beta, clubb_C2rt, clubb_C2thl, &
 			       clubb_C2rtthl, clubb_C8, clubb_C7, clubb_C7b, clubb_Skw_denom_coef, &
                                clubb_lambda0_stability_coef, clubb_l_lscale_plume_centered, &
-                               clubb_l_use_ice_latent, clubb_do_liqsupersat
+                               clubb_l_use_ice_latent, clubb_do_liqsupersat, clubb_do_energyfix
 
     !----- Begin Code -----
 
@@ -528,6 +529,8 @@ end subroutine clubb_init_cnst
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_l_use_ice_latent")
     call mpi_bcast(clubb_do_liqsupersat,         1, mpi_logical, mstrid, mpicom, ierr)
     if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_liqsupersat")
+    call mpi_bcast(clubb_do_energyfix,         1, mpi_logical, mstrid, mpicom, ierr)
+    if (ierr /= 0) call endrun(sub//": FATAL: mpi_bcast: clubb_do_energyfix")
 
     !  Overwrite defaults if they are true
     if (clubb_history) l_stats = .true.
@@ -1024,18 +1027,18 @@ end subroutine clubb_init_cnst
 
    use physics_types,  only: physics_state, physics_ptend, &
                              physics_state_copy, physics_ptend_init, &
-                             physics_ptend_sum, physics_update
+                             physics_ptend_sum, physics_update, set_dry_to_wet
 
    use physics_buffer, only: pbuf_get_index, pbuf_old_tim_idx, pbuf_get_field, &
                              physics_buffer_desc
 
-   use constituents,   only: cnst_get_ind
+   use constituents,   only: cnst_get_ind, cnst_type
    use camsrfexch,     only: cam_in_t
    use time_manager,   only: is_first_step   
    use cam_abortutils, only: endrun
    use cam_logfile,    only: iulog
    use tropopause,     only: tropopause_findChemTrop
-      
+
 #ifdef CLUBB_SGS
    use hb_diff,                   only: pblintd
    use scamMOD,                   only: single_column,scm_clubb_iop_name
@@ -1365,13 +1368,15 @@ end subroutine clubb_init_cnst
    call cnst_get_ind('NUMLIQ',ixnumliq)
    call cnst_get_ind('NUMICE',ixnumice)
 
- !  Copy the state to state1 array to use in this routine
-
    !  Initialize physics tendency arrays, copy the state to state1 array to use in this routine
    call physics_ptend_init(ptend_loc,state%psetcols, 'clubb', ls=.true., lu=.true., lv=.true., lq=lq)
    call physics_ptend_init(ptend_all, state%psetcols, 'clubb')
 
-   call physics_state_copy(state,state1)
+   ! Copy the state to state1 array to use in this routine
+   call physics_state_copy(state, state1)
+
+   ! constituents are all treated as wet mmr by clubb
+   call set_dry_to_wet(state1)
 
    if (clubb_do_liqsupersat) then
       npccn_idx      = pbuf_get_index('NPCCN')
@@ -1523,7 +1528,7 @@ end subroutine clubb_init_cnst
 
    do k=1,pver
      do i=1,ncol
-       exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rair/cpair))
+       exner_clubb(i,k) = 1._r8/((state1%pmid(i,k)/p0_clubb)**(rairv(i,k,lchnk)/cpairv(i,k,lchnk)))
      enddo
    enddo
    
@@ -1537,7 +1542,7 @@ end subroutine clubb_init_cnst
        rvm(i,k)     = state1%q(i,k,ixq)
        um(i,k)      = state1%u(i,k)
        vm(i,k)      = state1%v(i,k)
-       thlm(i,k)    = state1%t(i,k)*exner_clubb(i,k)-(latvap/cpair)*state1%q(i,k,ixcldliq)
+       thlm(i,k)    = state1%t(i,k)*exner_clubb(i,k)-(latvap/cpairv(i,k,lchnk))*state1%q(i,k,ixcldliq)
 
        if (clubb_do_adv) then
           if (macmic_it .eq. 1) then 
@@ -1647,7 +1652,7 @@ end subroutine clubb_init_cnst
          thv_ds_zt(k+1)       = thv(i,pver-k+1)                                      ! thetav on thermo
          rfrzm(k+1)           = state1%q(i,pver-k+1,ixcldice)   
          radf(k+1)            = radf_clubb(i,pver-k+1)
-         qrl_clubb(k+1)       = qrl(i,pver-k+1)/(cpair*state1%pdel(i,pver-k+1))
+         qrl_clubb(k+1)       = qrl(i,pver-k+1)/(cpairv(i,k,lchnk)*state1%pdel(i,pver-k+1))
       enddo
 
       !  Below computes the same stuff for the ghost point.  May or may
@@ -2036,7 +2041,7 @@ end subroutine clubb_init_cnst
       
       ! Compute static energy using CLUBB's variables
       do k=1,pver
-         clubb_s(k) = cpair*((thlm(i,k)+(latvap/cpair)*rcm(i,k))/exner_clubb(i,k))+ &
+         clubb_s(k) = cpairv(i,k,lchnk)*((thlm(i,k)+(latvap/cpairv(i,k,lchnk))*rcm(i,k))/exner_clubb(i,k))+ &
                       gravit*state1%zm(i,k)+state1%phis(i)      
       enddo      
       
@@ -2065,23 +2070,23 @@ end subroutine clubb_init_cnst
       apply_to_surface = .false.
       if (tw_upper_diss .lt. 0._r8) then
         do k=clubbtop+1,pver
-	  rtm_test = (rtm(i,k) + tw_upper_diss*gravit) - rcm(i,k)
+          rtm_test = (rtm(i,k) + tw_upper_diss*gravit) - rcm(i,k)
           if (rtm_test .lt. 0._r8) then
-	    apply_to_surface = .true.
-	  endif
+            apply_to_surface = .true.
+          endif
         enddo
       endif
       
       if (apply_to_surface) then
         tw_upper_diss = (tw_upper_a - tw_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
-	se_upper_diss = (se_upper_a - se_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
+        se_upper_diss = (se_upper_a - se_upper_b)/(state1%pint(i,pverp)-state1%pint(i,pver))
         rtm(i,pver) = rtm(i,pver) + tw_upper_diss*gravit
-	if (apply_to_heat) clubb_s(pver) = clubb_s(pver) + se_upper_diss*gravit
+        if (apply_to_heat) clubb_s(pver) = clubb_s(pver) + se_upper_diss*gravit
       else
         ! Apply the disbalances above to layers where CLUBB is active
         do k=clubbtop+1,pver
           rtm(i,k) = rtm(i,k) + tw_upper_diss*gravit
-	  if (apply_to_heat) clubb_s(k) = clubb_s(k) + se_upper_diss*gravit
+        if (apply_to_heat) clubb_s(k) = clubb_s(k) + se_upper_diss*gravit
         enddo
       endif      
       
@@ -2130,9 +2135,15 @@ end subroutine clubb_init_cnst
       ! Fix the total energy coming out of CLUBB so it achieves enery conservation.
       ! Apply this fixer throughout the column evenly, but only at layers where 
       ! CLUBB is active.
-      do k=clubbtop+1,pver
-         clubb_s(k) = clubb_s(k) - se_dis*gravit
-      enddo           
+      !
+      ! NOTE: The energy fixer seems to cause the climate to change significantly
+      ! when using specified dynamics, so allow this to be turned off via a namelist
+      ! variable.
+      if (clubb_do_energyfix) then
+        do k=clubbtop+1,pver
+           clubb_s(k) = clubb_s(k) - se_dis*gravit
+        enddo
+      endif           
 
       !  Now compute the tendencies of CLUBB to CAM, note that pverp is the ghost point
       !  for all variables and therefore is never called in this loop
@@ -2279,7 +2290,8 @@ end subroutine clubb_init_cnst
  
       ! Write output for tendencies:
       !        oufld: QVTENDICE,QCTENDICE,NCTENDICE,FQTENDICE
-      call outfld( 'TTENDICE',  stend/cpair, pcols, lchnk )
+      temp2d(:ncol,:pver) =  stend(:ncol,:pver)/cpairv(:ncol,:pver,lchnk)
+      call outfld( 'TTENDICE', temp2d, pcols, lchnk )
       call outfld( 'QVTENDICE', qvtend, pcols, lchnk )
       call outfld( 'QCTENDICE', qctend, pcols, lchnk )
       call outfld( 'NCTENDICE', inctend, pcols, lchnk )
@@ -2374,11 +2386,23 @@ end subroutine clubb_init_cnst
    call outfld( 'DPDLFLIQ', ptend_loc%q(:,:,ixcldliq), pcols, lchnk)
    call outfld( 'DPDLFICE', ptend_loc%q(:,:,ixcldice), pcols, lchnk)
    
-   temp2dp(:ncol,:pver) =  ptend_loc%s(:ncol,:pver)/cpair
-   call outfld( 'DPDLFT',   temp2dp, pcols, lchnk)
+   temp2d(:ncol,:pver) =  ptend_loc%s(:ncol,:pver)/cpairv(:ncol,:pver, lchnk)
+   call outfld( 'DPDLFT',   temp2d, pcols, lchnk)
   
    call physics_ptend_sum(ptend_loc,ptend_all,ncol)
    call physics_update(state1,ptend_loc,hdtime)
+
+   ! ptend_all now has all accumulated tendencies.  Convert the tendencies for the
+   ! dry constituents to dry air basis.
+   do ixind = 1, pcnst
+      if (lq(ixind) .and. cnst_type(ixind).eq.'dry') then
+         do k = 1, pver
+            do i = 1, ncol
+               ptend_all%q(i,k,ixind) = ptend_all%q(i,k,ixind)*state1%pdel(i,k)/state1%pdeldry(i,k)
+            end do
+         end do
+      end if
+   end do
 
    ! ------------------------------------------------- !
    ! Diagnose relative cloud water variance            !
@@ -2408,24 +2432,24 @@ end subroutine clubb_init_cnst
    ! ------------------------------------------------- !
 
    !  density
-   rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rair*state1%t(:ncol,1:pver))
-   rho(:ncol,pverp)  = state1%ps(:ncol)/(rair*state1%t(:ncol,pver))
+   rho(:ncol,1:pver) = state1%pmid(:ncol,1:pver)/(rairv(:ncol,1:pver,lchnk)*state1%t(:ncol,1:pver))
+   rho(:ncol,pverp)  = state1%ps(:ncol)/(rairv(:ncol,pver,lchnk)*state1%t(:ncol,pver))
 
-   eps = rair/rh2o
    wpthvp(:,:) = 0.0_r8
    do k=1,pver
       do i=1,ncol
+         eps = rairv(i,k,lchnk)/rh2o
          !  buoyancy flux
          wpthvp(i,k) = (wpthlp(i,k)-(apply_const*wpthlp_const))+((1._r8-eps)/eps)*theta0* &
-                       (wprtp(i,k)-(apply_const*wprtp_const))+((latvap/cpair)* &
+                       (wprtp(i,k)-(apply_const*wprtp_const))+((latvap/cpairv(i,k,lchnk))* &
                        state1%exner(i,k)-(1._r8/eps)*theta0)*wprcp(i,k)
 
          !  total water mixing ratio
          qt_output(i,k) = state1%q(i,k,ixq)+state1%q(i,k,ixcldliq)+state1%q(i,k,ixcldice)
          !  liquid water potential temperature
-         thetal_output(i,k) = (state1%t(i,k)*state1%exner(i,k))-(latvap/cpair)*state1%q(i,k,ixcldliq)
+         thetal_output(i,k) = (state1%t(i,k)*state1%exner(i,k))-(latvap/cpairv(i,k,lchnk))*state1%q(i,k,ixcldliq)
          !  liquid water static energy
-         sl_output(i,k) = cpair*state1%t(i,k)+gravit*state1%zm(i,k)-latvap*state1%q(i,k,ixcldliq)
+         sl_output(i,k) = cpairv(i,k,lchnk)*state1%t(i,k)+gravit*state1%zm(i,k)-latvap*state1%q(i,k,ixcldliq)
       enddo
    enddo
    
