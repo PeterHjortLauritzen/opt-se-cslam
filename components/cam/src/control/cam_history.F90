@@ -2226,6 +2226,12 @@ CONTAINS
     character(len=6) :: fv_only_flds(n_fv_only) = &
        [ 'VTHzm ', 'WTHzm ', 'UVzm  ', 'UWzm  ', 'Uzm   ', 'Vzm   ', 'Wzm   ', &
          'THzm  ', 'TH    ', 'MSKtem' ]
+
+    integer :: n_vec_comp, add_fincl_idx
+    integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
+    character(len=2) :: avg_suffix
+    character(len=fieldname_len) :: vec_comp_names(nvecmax)
+    character(len=1)             :: vec_comp_avgflag(nvecmax)
     !--------------------------------------------------------------------------
 
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
@@ -2234,6 +2240,9 @@ CONTAINS
     do t=1,ptapes
 
       f = 1
+      n_vec_comp       = 0
+      vec_comp_names   = ' '
+      vec_comp_avgflag = ' '
 fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
         name = getname (fincl(f,t))
 
@@ -2263,9 +2272,53 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
              call shr_sys_flush(iulog)
           end if
           errors_found = errors_found + 1
+        else
+           if (len_trim(mastername)>0 .and. interpolate_output(t)) then
+              if (n_vec_comp >= nvecmax) call endrun('FLDLST: need to increase nvecmax')
+              ! If this is a vector component then save the name of the complement
+              avgflag = getflag(fincl(f,t))
+              if (len_trim(listentry%meridional_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              else if (len_trim(listentry%zonal_field) > 0) then
+                 n_vec_comp = n_vec_comp + 1
+                 vec_comp_names(n_vec_comp) = listentry%meridional_field
+                 vec_comp_avgflag(n_vec_comp) = avgflag
+              end if
+           end if
         end if
         f = f + 1
       end do fincls
+
+      ! Interpolation of vector components requires that both be present.  If the fincl
+      ! specifier contains any vector components, then the complement was saved in the
+      ! array vec_comp_names.  Next insure (for interpolated output only) that all complements
+      ! are also present in the fincl array.
+      
+      ! The first empty slot in the current fincl array is index f from loop above.
+      add_fincl_idx = f
+      if (f > 1 .and. interpolate_output(t)) then
+         do i = 1, n_vec_comp
+            call list_index(fincl(:,t), vec_comp_names(i), ff)
+            if (ff == 0) then
+
+               ! Add vector component to fincl.  Don't need to check whether its in the master
+               ! list since this was done at the time of registering the vector components.
+               avg_suffix = '  '
+               if (len_trim(vec_comp_avgflag(i)) > 0) avg_suffix = ':' // vec_comp_avgflag(i)
+               fincl(add_fincl_idx,t) = vec_comp_names(i) // avg_suffix
+               add_fincl_idx = add_fincl_idx + 1
+
+               write(errormsg,'(3a,1(i0,a))')'FLDLST: ', trim(vec_comp_names(i)), &
+                  ' added to fincl', t, '.  Both vector components are required for interpolated output.'
+               if (masterproc) then
+                  write(iulog,*) trim(errormsg)
+                  call shr_sys_flush(iulog)
+               end if
+            end if
+         end do
+      end if
 
       f = 1
       do while (f < pflds .and. fexcl(f,t) /= ' ')
