@@ -1832,7 +1832,6 @@
 <se_refined_mesh hgrid="ne0np4TESTONLY.ne5x4" > .true. </se_refined_mesh>
 
 <se_rsplit >                3 </se_rsplit>
-<se_rsplit waccm_phys="1">  5 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="2">  6 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="3">  6 </se_rsplit>
 

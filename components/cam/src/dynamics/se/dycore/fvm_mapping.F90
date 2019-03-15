@@ -907,7 +907,7 @@ contains
     end do
   end subroutine tensor_lagrange_interp
 
-  subroutine fvm2phys(ie,k,fvm,q_fvm,q_phys,num_trac)!rempve dp_phys?
+  subroutine fvm2phys(ie,k,fvm,q_fvm,q_phys,num_trac)
     use dimensions_mod, only: nc,nhc,fv_nphys
     !
     ! weights must be initialized in fvm2phys_init before using these functions
