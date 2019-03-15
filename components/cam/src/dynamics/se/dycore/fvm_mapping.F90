@@ -1,5 +1,14 @@
 !
-! mapping algorithm described in Herrington et al., 2019 (JAMES)
+! pg3->GLL and GLL->pg3 mapping algorithm described in:
+!
+! Adam R. Herrington, Peter H. Lauritzen, Mark A. Taylor, Steve Goldhaber, Brian Eaton, Kevin A  Reed and Paul A. Ullrich, 2018: 
+! Physics-dynamics coupling with element-based high-order Galerkin methods: quasi equal-area physics grid: 
+! Mon. Wea. Rev., DOI:MWR-D-18-0136.1
+!
+! pg2->pg3 mapping algorithm described in:
+!
+! Adam R. Herrington, Peter H. Lauritzen, Kevin A  Reed, Steve Goldhaber, and Brian Eaton, 2019: 
+! Exploring a lower resolution physics grid in CAM-SE-CSLAM. J. Adv. Model. Earth Syst. 
 !
 !#define PCoM !replace PPM with PCoM for mass variables for fvm2phys and phys2fvm
 !#define skip_high_order_fq_map !do mass and correlation preserving phys2fvm mapping but no high-order pre-mapping of fq
@@ -183,7 +192,7 @@ contains
            end do
          end do
          !
-         ! extra smoothing in sponge for fu,fv,ft
+         ! adhoc extra smoothing in sponge for fu,fv,ft
          !
 !         do m_cnst=1,3
 !            do k=1,ksponge_end
@@ -256,7 +265,7 @@ contains
     ! mapping
     !
     iwidth=2
-!    iwidth=1
+!    iwidth=1 !low-order mapping
     do ie=nets,nete
       call tensor_lagrange_interp(fvm(ie)%cubeboundary,np,nc,nhc,numlev,num_flds,fld_fvm(:,:,:,:,ie),&
            fld_gll(:,:,:,:,ie),llimiter,iwidth,fvm(ie)%norm_elem_coord)
