@@ -1557,6 +1557,7 @@ CONTAINS
     use sat_hist,            only: sat_hist_define, sat_hist_init
     use cam_grid_support,    only: cam_grid_read_dist_array, cam_grid_num_grids
     use cam_history_support, only: get_hist_coord_index, add_hist_coord
+    use constituents,        only: cnst_get_ind, cnst_get_type_byind
 
     use shr_sys_mod,         only: shr_sys_getenv
     use spmd_utils,          only: mpicom, mpi_character, masterprocid
@@ -1620,6 +1621,8 @@ CONTAINS
     integer                          :: fdims(3)         ! Field dims
     integer                          :: nfdims           ! 2 or 3 (for 2D,3D)
     integer                          :: fdecomp          ! Grid ID for field
+    integer                          :: idx
+    character(len=3)                 :: mixing_ratio
 
     !
     ! Get users logname and machine hostname
@@ -1837,6 +1840,15 @@ CONTAINS
         tape(t)%hlist(f)%field%decomp_type = decomp(f,t)
         tape(t)%hlist(f)%field%numlev = tmpnumlev(f,t)
         tape(t)%hlist(f)%hwrt_prec = tmpprec(f,t)
+
+        ! If the field is an advected constituent set the mixing_ratio attribute
+        fname_tmp = strip_suffix(tape(t)%hlist(f)%field%name)
+        call cnst_get_ind(fname_tmp, idx, abort=.false.)
+        mixing_ratio = ''
+        if (idx > 0) then
+           mixing_ratio = cnst_get_type_byind(idx)
+        end if
+        tape(t)%hlist(f)%field%mixing_ratio = mixing_ratio
 
         mdimcnt = count(allmdims(:,f,t) > 0)
         if(mdimcnt > 0) then
@@ -2230,8 +2242,8 @@ CONTAINS
     integer :: n_vec_comp, add_fincl_idx
     integer, parameter :: nvecmax = 50 ! max number of vector components in a fincl list
     character(len=2) :: avg_suffix
-    character(len=fieldname_len) :: vec_comp_names(nvecmax)
-    character(len=1)             :: vec_comp_avgflag(nvecmax)
+    character(len=max_fieldname_len) :: vec_comp_names(nvecmax)
+    character(len=1)                 :: vec_comp_avgflag(nvecmax)
     !--------------------------------------------------------------------------
 
     ! First ensure contents of fincl, fexcl, and fwrtpr are all valid names
@@ -2307,7 +2319,7 @@ fincls: do while (f < pflds .and. fincl(f,t) /= ' ')
                ! list since this was done at the time of registering the vector components.
                avg_suffix = '  '
                if (len_trim(vec_comp_avgflag(i)) > 0) avg_suffix = ':' // vec_comp_avgflag(i)
-               fincl(add_fincl_idx,t) = vec_comp_names(i) // avg_suffix
+               fincl(add_fincl_idx,t) = trim(vec_comp_names(i)) // avg_suffix
                add_fincl_idx = add_fincl_idx + 1
 
                write(errormsg,'(3a,1(i0,a))')'FLDLST: ', trim(vec_comp_names(i)), &
