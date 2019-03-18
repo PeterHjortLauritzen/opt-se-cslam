@@ -1097,7 +1097,7 @@ contains
 
 
   subroutine get_fq_overlap(ie,k,fvm,fq_phys,max_overlap,fq_phys_overlap,num_trac)
-    use dimensions_mod, only: fv_nphys,nhc_phys
+    use dimensions_mod, only: fv_nphys,nhc_phys,nc
     use dp_mapping, only: weights_lgr_index_all_fvm2phys, jall_fvm2phys
     use dp_mapping, only: weights_eul_index_all_fvm2phys
     use dp_mapping, only: weights_lgr_index_all_phys2fvm, weights_eul_index_all_phys2fvm,jall_phys2fvm
@@ -1115,7 +1115,7 @@ contains
     integer                       :: h,jx,jy,m_cnst,jdx,jdy
     real (kind=r8)                :: dp_tmp
     integer                       :: idx,jxx,jyy,jdxx,jdyy,hh
-    real(kind=r8)                 :: weights_all_phys2fvm_local(16,irecons_tracer)
+    real(kind=r8)                 :: weights_all_phys2fvm_local((nc+fv_nphys)**2,irecons_tracer)
     !
     ! could be pre-computed
     !
