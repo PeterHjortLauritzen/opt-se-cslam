@@ -166,23 +166,24 @@ subroutine stepon_run3(dtime, cam_out, phys_state, dyn_in, dyn_out)
    type (dyn_export_t), intent(inout) :: dyn_out ! Dynamics export container
 
    integer :: tl_f, tl_fQdp
+   !--------------------------------------------------------------------------------------
    
-   call t_startf ('comp_adv_tends1')
+   call t_startf('comp_adv_tends1')
    tl_f = TimeLevel%n0 
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
-   call t_stopf  ('comp_adv_tends1')
+   call t_stopf('comp_adv_tends1')
    
    call t_barrierf('sync_dyn_run', mpicom)
-   call t_startf ('dyn_run')
+   call t_startf('dyn_run')
    call dyn_run(dyn_out)
-   call t_stopf  ('dyn_run')
+   call t_stopf('dyn_run')
 
-   call t_startf ('comp_adv_tends2')
+   call t_startf('comp_adv_tends2')
    tl_f = TimeLevel%n0 
    call TimeLevel_Qdp(TimeLevel, qsplit, tl_fQdp)   
    call compute_adv_tends_xyz(dyn_in%elem,dyn_in%fvm,1,nelemd,tl_fQdp,tl_f)
-   call t_stopf  ('comp_adv_tends2')   
+   call t_stopf('comp_adv_tends2')   
 
 end subroutine stepon_run3
 
@@ -286,7 +287,7 @@ subroutine diag_dynvar_ic(elem, fvm)
    if (hist_fld_active('T_gll')) then
       do ie = 1, nelemd
          do j = 1, np
-           do i = 1, np
+            do i = 1, np
                ftmp(i+(j-1)*np,:,1) = elem(ie)%state%T(i,j,:,tl_f)
             end do
          end do

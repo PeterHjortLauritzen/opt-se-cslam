@@ -110,7 +110,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
-   use dimensions_mod, only: qsize_d, ne, npart
+   use dimensions_mod, only: ne, npart
    use dimensions_mod, only: qsize_condensate_loading, lcp_moist
    use dimensions_mod, only: hypervis_on_plevs,large_Courant_incr
    use dimensions_mod, only: fvm_supercycling, fvm_supercycling_jet
@@ -564,6 +564,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use control_mod,        only: runtype
    use test_fvm_mapping,   only: test_mapping_addfld
    use phys_control,       only: phys_getopts
+
    ! Dummy arguments:
    type(dyn_import_t), intent(out) :: dyn_in
    type(dyn_export_t), intent(out) :: dyn_out
@@ -612,9 +613,11 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
    integer, parameter :: qcondensate_max = 6
-   character(len=*), parameter :: subname = 'dyn_init'
+
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
+
+   character(len=*), parameter :: subname = 'dyn_init'
    !----------------------------------------------------------------------------
 
    if (qsize_condensate_loading > qcondensate_max) then
@@ -724,7 +727,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    !
    ! compute scaling of sponge layer damping (following cd_core.F90 in CAM-FV)
    !
-   if (masterproc) write(iulog,*) "sponge layer viscosity scaling factor"
+   if (masterproc) write(iulog,*) subname//": sponge layer viscosity scaling factor"
    do k=1,nlev
      press = (hvcoord%hyam(k)+hvcoord%hybm(k))*hvcoord%ps0
      ptop  = hvcoord%hyai(1)*hvcoord%ps0
@@ -747,18 +750,20 @@ subroutine dyn_init(dyn_in, dyn_out)
      
      if (masterproc) then
        if (nu_scale_top(k)>0.15_r8) then
-         write(iulog,*) "nu_scale_top ",k,nu_scale_top(k)
+         write(iulog,*) subname//": nu_scale_top ",k,nu_scale_top(k)
          if (ntrac>0) then
            if (irecons_tracer_lev(k)==3) &
-                write(iulog,*) "CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
+              write(iulog,*) subname//&
+              ": CSLAM reconstruction reduced to Piecewise Linear Method   in layer k=",k
            if (irecons_tracer_lev(k)==1) &
-                write(iulog,*) "CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
+              write(iulog,*) subname//&
+              ": CSLAM reconstruction reduced to Piecewise Constant Method in layer k=",k
          end if
        end if
      end if
    end do
    ksponge_end = MAX(ksponge_end,1)
-   if (masterproc) write(iulog,*) "ksponge_end = ",ksponge_end
+   if (masterproc) write(iulog,*) subname//": ksponge_end = ",ksponge_end
 
    if (iam < par%nprocs) then
       call prim_advance_init(par,elem)
@@ -1033,7 +1038,7 @@ subroutine read_inidat(dyn_in)
    use const_init,          only: cnst_init_default
 
    use element_mod,         only: timelevels
-   use dimensions_mod,      only: qsize_d, qsize_condensate_loading
+   use dimensions_mod,      only: qsize_condensate_loading
    use dimensions_mod,      only: qsize_condensate_loading_idx
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
@@ -1112,6 +1117,7 @@ subroutine read_inidat(dyn_in)
    end if
 
    allocate(qtmp(np,np,nlev,nelemd,pcnst))
+   qtmp = 0._r8
 
    ! Set mask to indicate which columns are active
    nullify(ldof)
@@ -1182,7 +1188,10 @@ subroutine read_inidat(dyn_in)
             indx = 1
             do j = 1, np
                do i = 1, np
-                  qtmp(i,j,:,ie,m_cnst) = dbuf4(indx, :, ie, m_cnst)
+                  ! Set qtmp at the unique columns only
+                  if (pmask(((ie - 1) * npsq) + indx)) then
+                     qtmp(i,j,:,ie,m_cnst) = dbuf4(indx, :, ie, m_cnst)
+                  end if
                   indx = indx + 1
                end do
             end do

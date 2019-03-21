@@ -1097,7 +1097,7 @@ contains
 
 
   subroutine get_fq_overlap(ie,k,fvm,fq_phys,max_overlap,fq_phys_overlap,num_trac)
-    use dimensions_mod, only: fv_nphys,nhc_phys,nc
+    use dimensions_mod, only: fv_nphys, nhc_phys, nc
     use dp_mapping, only: weights_lgr_index_all_fvm2phys, jall_fvm2phys
     use dp_mapping, only: weights_eul_index_all_fvm2phys
     use dp_mapping, only: weights_lgr_index_all_phys2fvm, weights_eul_index_all_phys2fvm,jall_phys2fvm
