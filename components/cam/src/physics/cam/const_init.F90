@@ -23,7 +23,7 @@ CONTAINS
 !==============================================================================
 
   subroutine cnst_init_default_col(m_cnst, latvals, lonvals, q, mask,         &
-       verbose, notfound)
+       verbose, notfound,z)
     use constituents,  only: cnst_name
     use aoa_tracers,   only: aoa_tracers_implements_cnst,   aoa_tracers_init_cnst
     use carma_intr,    only: carma_implements_cnst,         carma_init_cnst
@@ -50,6 +50,7 @@ CONTAINS
     logical, optional, intent(in)  :: mask(:)    ! Only initialize where .true.
     logical, optional, intent(in)  :: verbose    ! For internal use
     logical, optional, intent(in)  :: notfound   ! Turn off initial dataset warn
+    real(r8),optional, intent(in)  :: z(:,:)     ! height of full pressure level
 
     ! Local variables
     logical, allocatable           :: mask_use(:)
@@ -123,7 +124,11 @@ CONTAINS
         write(iulog,*) '          ', trim(name), ' initialized by "rk_stratiform_init_cnst"'
       end if
     else if (tracers_implements_cnst(trim(name))) then
-      call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q)
+      if (present(z)) then
+        call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q,z=z)
+      else
+        call tracers_init_cnst(trim(name), latvals, lonvals, mask_use, q)
+      end if
       if(masterproc .and. verbose_use) then
         write(iulog,*) '          ', trim(name), ' initialized by "tracers_init_cnst"'
       end if
@@ -141,7 +146,8 @@ CONTAINS
 
   end subroutine cnst_init_default_col
 
-  subroutine cnst_init_default_cblock(m_cnst, latvals, lonvals, q, mask)
+
+subroutine cnst_init_default_cblock(m_cnst, latvals, lonvals, q, mask)
 
     !-----------------------------------------------------------------------
     !
@@ -218,6 +224,6 @@ CONTAINS
       call endrun('cnst_init_default_cblock: Unknown q layout')
     end if
 
-  end subroutine cnst_init_default_cblock
+  end subroutine cnst_init_default_cblock  
 
 end module const_init

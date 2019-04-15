@@ -16,6 +16,7 @@
 !    test_tracer_names     description
 !    -----------------     -----------
 !    TT_SLOT               Non-smooth scalar field (slotted cylinder)
+!    TT_SLOT2              Non-smooth scalar field (slotted cylinder) slightly displaced
 !    TT_GBALL              Smooth Gaussian "ball"
 !    TT_TANH               Zonally constant, tanh function of latitude.
 !    TT_EM8                Constant field of size 1.e-8.
@@ -51,7 +52,7 @@ public :: &
    tracers_init               ! initialize history fields, datasets
 
 integer, parameter :: num_names_max = 30
-integer, parameter :: num_analytic  = 8
+integer, parameter :: num_analytic  = 12
 
 ! Data from namelist variables
 integer           :: test_tracer_num = 0
@@ -59,15 +60,21 @@ character(len=16) :: test_tracer_names(num_names_max)
 
 logical :: tracers_flag       = .false.  ! true => turn on test tracer code
 logical :: tracers_suite_flag = .false.  ! true => test tracers provided by tracers_suite module
+logical, public:: tt_slot_sum = .false.  ! running sum tracer test (Lauritzen and Thuburn, 2012; QJRMS)
+logical :: tt_mix_diag = .false.  ! mixing diagnostics (Lauritzen and Thuburn, 2012; QJRMS)
 
 integer :: ixtrct=-999                   ! index of 1st constituent
 
-character(len=16), parameter :: analytic_names(num_analytic) = &
-   (/'TT_SLOT         ', 'TT_GBALL        ', 'TT_TANH         ', &
-     'TT_EM8          ', 'TT_Y2_2         ', 'TT_Y32_16       ', &
-     'TT_LATP2        ', 'TT_LONP2        ' /)
+character(len=16), parameter :: analytic_names(num_analytic) =     &
+     (/'TT_SLOT         ', 'TT_SLOT2        ', 'TT_SLOT3        ', &
+       'TT_GBALL        ', 'TT_TANH         ', 'TT_EM8          ', &
+       'TT_Y2_2         ', 'TT_Y32_16       ', 'TT_LATP2        ', &
+       'TT_LONP2        ', 'TT_COSB         ', 'TT_CCOSB        '/)
+    
 
 logical :: analytic_tracer(num_names_max)
+
+public :: compute_TT_mixing_diagnostics
 
 !======================================================================
 contains
@@ -247,7 +254,7 @@ end function tracers_implements_cnst
 
 !===============================================================================
 
-subroutine tracers_init_cnst(name, latvals, lonvals, mask, q)
+subroutine tracers_init_cnst(name, latvals, lonvals, mask, q, z)
 
    ! Initialize test tracer mixing ratio
 
@@ -256,6 +263,7 @@ subroutine tracers_init_cnst(name, latvals, lonvals, mask, q)
    real(r8),         intent(in)  :: lonvals(:) ! lon in radians (ncol)
    logical,          intent(in)  :: mask(:)    ! Only initialize where .true.
    real(r8),         intent(out) :: q(:,:)     ! kg tracer/kg dry air (gcol, plev
+   real(r8),optional,intent(in)  :: z(:,:)     ! height of full level pressure
 
    ! Local
    integer :: m
@@ -267,39 +275,42 @@ subroutine tracers_init_cnst(name, latvals, lonvals, mask, q)
 
    found = .false.
    if (tracers_suite_flag) then
-
-      do m = 1, test_tracer_num
-         if (name ==  get_tracer_name(m))  then
-            call init_cnst_tr(m, latvals, lonvals, mask, q)
-            found = .true.
-            exit
-         endif
-      end do
-
+     
+     do m = 1, test_tracer_num
+       if (name ==  get_tracer_name(m))  then
+         call init_cnst_tr(m, latvals, lonvals, mask, q)
+         found = .true.
+         exit
+       endif
+     end do
+     
    else
-
-      do m = 1, test_tracer_num
-         if (name == test_tracer_names(m)) then
-            if (analytic_tracer(m)) then
-               call test_func_set(name, latvals, lonvals, mask, q)
-               found = .true.
-               exit
-            else
-               ! The initial values were supposed to be read from the IC file.  This
-               ! call should not have been made in that case, so it appears that a requested
-               ! tracer is not on the IC file.
-               write(iulog, *) subname//': ERROR: tracer ', trim(name), ' should be on IC file'
-               call endrun(subname//': ERROR: tracer missing from IC file')
-            end if
+     
+     do m = 1, test_tracer_num
+       if (name == test_tracer_names(m)) then
+         if (analytic_tracer(m)) then
+           if (present(z)) then
+             call test_func_set(name, latvals, lonvals, mask, q, z=z)
+           else
+             call test_func_set(name, latvals, lonvals, mask, q)               
+           end if
+           found = .true.
+           exit
+         else
+           ! The initial values were supposed to be read from the IC file.  This
+           ! call should not have been made in that case, so it appears that a requested
+           ! tracer is not on the IC file.
+           write(iulog, *) subname//': ERROR: tracer ', trim(name), ' should be on IC file'
+           call endrun(subname//': ERROR: tracer missing from IC file')
          end if
-      end do
-
+       end if
+     end do
    end if
 
    if (.not. found) then
-      ! unrecognized tracer name
-      write(iulog, *) subname//': ERROR: ', trim(name), ' not recognized'
-      call endrun(subname//': ERROR: tracer name not recognized')
+     ! unrecognized tracer name
+     write(iulog, *) subname//': ERROR: ', trim(name), ' not recognized'
+     call endrun(subname//': ERROR: tracer name not recognized')
    end if
 
 end subroutine tracers_init_cnst
@@ -311,7 +322,7 @@ subroutine tracers_init()
    ! Add tracers to history output
 
    ! Local
-   integer m, mm
+   integer m, mm, ifound
    character(len=16) :: name   ! constituent name
 
    if (.not. tracers_flag ) return
@@ -321,12 +332,43 @@ subroutine tracers_init()
       call addfld(cnst_name(mm), (/ 'lev' /), 'A', 'kg/kg', cnst_longname(mm))
       call add_default(cnst_name(mm), 1, ' ')
    end do
-
+   !
+   ! add special test tracer output (if test tracers exist)
+   !
+   ifound = 0
+   do m = 1,test_tracer_num
+     mm = ixtrct + m - 1
+     if (TRIM(cnst_name(mm))=='TT_SLOT' ) ifound=ifound+1
+     if (TRIM(cnst_name(mm))=='TT_SLOT2') ifound=ifound+1
+     if (TRIM(cnst_name(mm))=='TT_SLOT3') ifound=ifound+1
+   end do
+   if (ifound==3) then 
+     call addfld('TT_SLOT_SUM', (/ 'lev' /), 'A', 'kg/kg','Sum of TT_SLOT tracers')
+     call add_default('TT_SLOT_SUM',1, ' ')
+     tt_slot_sum = .true.
+   end if
+   
+   ifound = 0
+   do m = 1,test_tracer_num
+     mm = ixtrct + m - 1
+     ! find Cosine bell and correlated Cosine bell
+     if (TRIM(cnst_name(mm))=='TT_COSB' ) ifound=ifound+1
+     if (TRIM(cnst_name(mm))=='TT_CCOSB') ifound=ifound+1
+   end do
+   if (ifound==2) then 
+     call addfld('TT_mix_lr', (/ 'lev' /), 'A', 'kg/kg','TT real mixing diagnostic')
+     call add_default('TT_mix_lr',1, ' ')
+     call addfld('TT_mix_lo', (/ 'lev' /), 'A', 'kg/kg','TT overshooting mixing diagnostic')
+     call add_default('TT_mix_lo',1, ' ')
+     call addfld('TT_mix_lu', (/ 'lev' /), 'A', 'kg/kg','TT unmixing diagnostic')
+     call add_default('TT_mix_lu',1, ' ')     
+     tt_mix_diag = .true.
+   end if
 end subroutine tracers_init
 
 !=========================================================================================
 
-subroutine test_func_set(name, latvals, lonvals, mask, q)
+subroutine test_func_set(name, latvals, lonvals, mask, q, z)
 
    ! use test_func code to set array q
 
@@ -335,24 +377,31 @@ subroutine test_func_set(name, latvals, lonvals, mask, q)
    real(r8),         intent(in)  :: lonvals(:) ! lon in radians (ncol)
    logical,          intent(in)  :: mask(:)    ! Only initialize where .true.
    real(r8),         intent(out) :: q(:,:)     ! kg tracer/kg dry air (gcol, plev
+   real(r8),optional,intent(in)  :: z(:,:)     ! height of full level pressure
 
    ! local variables
    integer :: i, k
    !----------------------------------------------------------------------------
 
    do i = 1, size(mask)
-      if (mask(i)) then
+     if (mask(i)) then
+       if (present(z)) then       
          do k = 1, size(q, 2)
-            q(i,k) = test_func(name, latvals(i), lonvals(i), k)
+           q(i,k) = test_func(name, latvals(i), lonvals(i), k, z=z(i,k))
          end do
-      end if
+       else
+         do k = 1, size(q, 2)
+           q(i,k) = test_func(name, latvals(i), lonvals(i), k)
+         end do
+       end if
+     end if
    end do
 
 end subroutine test_func_set
 
 !=========================================================================================
 
-function test_func(name, lat, lon, k) result(fout)
+function test_func(name, lat, lon, k, z) result(fout)
 
    ! Analytic test functions.
 
@@ -363,84 +412,329 @@ function test_func(name, lat, lon, k) result(fout)
    real(r8),         intent(in) :: lon     ! radians
    real(r8),         intent(in) :: lat     ! radians
    integer,          intent(in) :: k       ! vertical index for layer mid-points
+   real(r8),optional,intent(in) :: z       ! height
 
    real(r8) :: fout
 
    real(r8), parameter :: psurf_moist = 100000.0_r8 ! moist surface pressure
    real(r8), parameter :: deg2rad = pi/180._r8
-
+   real(r8), parameter :: z0 = 4500.0_r8 !Eq 9 in Kent et al. (2012)
+   real(r8), parameter :: zz = 1000.0_r8  !Eq 9 in Kent et al. (2012)
+   
    real(r8) :: lon1, lat1, R0, Rg1
-   real(r8) :: eta, eta_c
+   real(r8) :: eta, eta_c, d1, f1, f2, c
    real(r8) :: cos_tmp, sin_tmp
+
    !----------------------------------------------------------------------------
 
    select case(name)
    case('TT_SLOT')
-      !
-      !   Non-smooth scalar field (slotted cylinder)
-      !
-      R0 = 0.25_r8
-      lon1  = 20.0_r8*deg2rad   ! longitudinal position, 20E
-      lat1  = 40.0_r8*deg2rad  ! latitudinal position, 40N
-      Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
+     !
+     !   Non-smooth scalar field (slotted cylinder)
+     !
+     R0 = 0.25_r8
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8     
+     Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
+     c = 1.0_r8/3.0_r8
+     
+     if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
+       fout = c
+     elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
+          .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
+       fout = c
+     else
+       fout = 0.1_r8
+     endif
+   case('TT_SLOT2')
+     !
+     !   Non-smooth scalar field (slotted cylinder) slightly displaced
+     !
+     R0 = 0.25_r8
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8+pi/18.0_r8
+     Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
+     c = 2.0_r8/3.0_r8
+     
+     if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
+       fout = c
+     elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
+          .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
+       fout = c
+     else
+       fout = 0.1_r8
+     endif
+   case('TT_SLOT3')
+     !
+     !   Residual of two slotted cylinders so that TT_SLOT+TT_SLOT2+TT_SLOT3=1
+     !   Lauritzen and Thuburn (2012, QJRMS)
+     !
+     R0 = 0.25_r8
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8     
+     Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
+     c = 1.0_r8/3.0_r8
+     
+     if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
+       f1 = c
+     elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
+          .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
+       f1 = c
+     else
+       f1 = 0.1_r8
+     endif     
 
-      if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
-         fout = 2.0_r8
-      elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
-         .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
-         fout = 2.0_r8
-      else
-         fout = 1.0_r8
-      endif
+     
+     R0 = 0.25_r8
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8+pi/18.0_r8
+     Rg1 = acos(sin(lat1)*sin(lat)+cos(lat1)*cos(lat)*cos(lon-lon1))
+     c = 2.0_r8/3.0_r8
+     if ((Rg1 <= R0) .AND. (abs(lon-lon1) >= R0/6)) then
+       f2 = c
+     elseif ((Rg1 <= R0) .AND. (abs(lon-lon1) < R0/6) &
+          .AND. (lat-lat1 < -5.0_r8*R0/12.0_r8)) then
+       f2 = c
+     else
+       f2 = 0.1_r8
+     endif          
 
+     fout = 1.0_r8-(f1+f2)
    case('TT_GBALL')
-      !
-      ! Smooth Gaussian "ball"
-      !
-      R0    = 10.0_r8           ! radius of the perturbation
-      lon1  = 20.0_r8*deg2rad   ! longitudinal position, 20E
-      lat1  = 40.0_r8*deg2rad  ! latitudinal position, 40N
-      eta_c = 0.6_r8
-      sin_tmp = SIN(lat1)*SIN(lat)
-      cos_tmp = COS(lat1)*COS(lat)
-      Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
-      eta =  (hyam(k)*ps0 + hybm(k)*psurf_moist)/psurf_moist
-      fout = EXP(- ((Rg1*R0)**2 + ((eta-eta_c)/0.1_r8)**2))
-      IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8
-
+     !
+     ! Smooth Gaussian "ball"
+     !
+     R0    = 10.0_r8           ! radius of the perturbation
+     lon1  = 20.0_r8*deg2rad   ! longitudinal position, 20E
+     lat1  = 40.0_r8*deg2rad  ! latitudinal position, 40N
+     eta_c = 0.6_r8
+     sin_tmp = SIN(lat1)*SIN(lat)
+     cos_tmp = COS(lat1)*COS(lat)
+     
+     Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
+     eta =  (hyam(k)*ps0 + hybm(k)*psurf_moist)/psurf_moist
+     fout = EXP(- ((Rg1*R0)**2 + ((eta-eta_c)/0.1_r8)**2))
+     IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8
+     
    case('TT_TANH')
-      !
-      !
-      !
-      fout = 0.5_r8 * ( tanh( 3.0_r8*abs(lat)-pi ) + 1.0_r8)
-
+     !
+     !
+     !
+     fout = 0.5_r8 * ( tanh( 3.0_r8*abs(lat)-pi ) + 1.0_r8)
+     
    case('TT_EM8')
-      fout = 1.0e-8_r8
-
+     fout = 1.0e-8_r8
+     
    case('TT_Y2_2')
-      !
-      ! approximately Y^2_2 spherical harmonic
-      !
-      fout = 0.5_r8 + 0.5_r8*(cos(lat)*cos(lat)*cos(2.0_r8*lon))
-
+     !
+     ! approximately Y^2_2 spherical harmonic
+     !
+     fout = 0.5_r8 + 0.5_r8*(cos(lat)*cos(lat)*cos(2.0_r8*lon))
+     
    case('TT_Y32_16')
-      !
-      ! approximately Y32_16 spherical harmonic
-      !
-      fout = 0.5_r8 + 0.5_r8*(cos(16*lon)*(sin(2_r8*lat)**16))
-
+     !
+     ! approximately Y32_16 spherical harmonic
+     !
+     fout = 0.5_r8 + 0.5_r8*(cos(16*lon)*(sin(2_r8*lat)**16))
+     
    case('TT_LATP2')
-      fout = 2.0_r8 + lat
-
+     fout = 2.0_r8 + lat
+     
    case('TT_LONP2')
-      fout = 2.0_r8 + cos(lon)
+     fout = 2.0_r8 + cos(lon)
+   case('TT_COSB')
+     !
+     ! Cosine bell (Kent et al., 2012, MWR)
+     ! https://journals.ametsoc.org/doi/pdf/10.1175/MWR-D-11-00150.1
+     !
+     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8
+     
+     sin_tmp = SIN(lat1)*SIN(lat)
+     cos_tmp = COS(lat1)*COS(lat)
+     Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
+     
+     if (present(z)) THEN
+       d1 = MIN(1.0_r8,(Rg1/R0)**2+((z-z0)/zz)**2)
+     else
+       d1 = MIN(1.0_r8,(Rg1/R0)**2)
+     end if
 
-   case default
-      call endrun("test_func: ERROR: name not recognized")
-   end select
+!     if (Rg1 < R0) then      
+       fout = 0.1_r8+0.5_r8*(1.0_r8+COS(pi*d1))
+!     else
+!       fout = 0.1_r8
+!     end if
+     
+     !      IF (ABS(fout) < 1.0E-8_r8) fout = 0.0_r8     
+     !      eta_c = 0.6_r8      
+     !      eta =  (hyam(k)*ps0 + hybm(k)*psurf_moist)/psurf_moist
+   case('TT_CCOSB')
+     !
+     ! Correlated cosine bell
+     !
+     R0    = 0.9_r8*1.0_r8/2.0_r8           ! radius of the perturbation     
+     lon1  = pi/9.0_r8
+     lat1  = 2.0_r8*pi/9.0_r8
+     
+     sin_tmp = SIN(lat1)*SIN(lat)
+     cos_tmp = COS(lat1)*COS(lat)
+     Rg1 = ACOS( sin_tmp + cos_tmp*COS(lon-lon1) )    ! great circle distance
+     
+     if (present(z)) THEN
+       d1 = MIN(1.0_r8,(Rg1/R0)**2+((z-z0)/zz)**2)
+     else
+       d1 = MIN(1.0_r8,(Rg1/R0)**2)
+     end if
 
+ !    if (Rg1 < R0) then      
+       f1 = 0.1_r8+0.5_r8*(1.0_r8+COS(pi*d1))
+ !    else
+ !      f1 = 0.1_r8
+ !    end if
+
+     fout=corr_fct(f1)
+   case default     
+     call endrun("test_func: ERROR: name not recognized")
+   end select   
 end function test_func
 
-!=========================================================================================
+!
+! correlation function
+!
+function corr_fct(x) result(out)
+  real(r8), intent(in) :: x
+  real(r8)             :: out
+  out = -0.8_r8*x**2+0.9_r8
+end function corr_fct
+!
+! Eucledian distance function
+!
+function dist_fct(x,x0,y0) result(out)
+  real(r8), intent(in) :: x,x0,y0
+  real(r8)             :: out
+  out = SQRT((x-x0)*(x-x0)/(0.9_r8**2)+(corr_fct(x)-y0)*(corr_fct(x)-y0)/(0.792_r8**2))
+end function dist_fct
+!
+! straight line line function
+!
+function line_fct(x,xmin,xmax,ymin,ymax) result(out)
+  real(r8), intent(in) :: x,xmin,xmax,ymin,ymax
+  real(r8)             :: a,b, out
+  !
+  ! line: y=a*x+b
+  !
+  a = (ymax-ymin)/(xmax-xmin)
+  b = ymin-xmin*a
+  out = a*x+b
+end function line_fct
 
+
+subroutine correlation_diag(f1,f2,lr,lu,lo,ncol,pver)
+  integer, intent(in) :: ncol, pver
+  real(r8), dimension(ncol,pver), intent(in) :: f1,f2
+  real(r8), dimension(ncol,pver), intent(out):: lr,lu,lo
+
+  real(r8) :: root, tol,q1,q2,real_mixing,overshooting,range_pres_unmixing,c
+  integer  :: i,k
+  real(r8) :: q1_min,q1_max,q2_min,q2_max,sqrt_arg  
+  real(r8), parameter :: eps = 1.0E-7_r8
+
+  q1_min = 0.1_r8
+  q1_max = 1.0_r8
+  !
+  ! Changed so that end points of line segment are (q1_min,q2_min) and (q1_max,q2_max)
+  ! Note that "q2_min > q2_max".
+  !
+  q2_min = corr_fct(q1_min)
+  q2_max = corr_fct(q1_max)
+
+  lr = 0.0_r8
+  lu = 0.0_r8
+  lo = 0.0_r8
+  
+  do k=1,pver
+    do i=1,ncol
+      q1 = f1(i,k)
+      q2 = f2(i,k)
+      if (q1.eq.q1-1) then
+        write(*,*) "qq",q1,q2
+      end if
+      if (q2.eq.q2-1) then
+        write(*,*) "qq",q1,q2
+      end if
+    
+      !! Check to make sure we are not in the (very unlikely) situation where the argument
+      !! to the sqrt (below) is negative.  This will happen if we are in a region which
+      !! the cubic has three real roots, and so we'd have to be careful about which one we pick.
+      sqrt_arg = (-1687296.0_r8 + 12168000.0_r8*q2 &
+           -29250000.0_r8*q2**2+23437500.0_r8*q2**3+29648025.0_r8*q1**2)
+      if (sqrt_arg < 0.0_r8) then
+        write(iulog, *) 'Warning : (xk,yk) data is in region where there are three possible ', &
+             'real roots to the closest point problem'
+        call endrun('Root problem in mixing diagnostics - see cam/physics/tracers.F90')
+      end if
+
+      c = (65340.0_r8*q1+12._r8*SQRT(-1687296.0_r8+12168000.0_r8*q2 &
+           -29250000.0_r8*q2**2+23437500.0_r8*q2**3+29648025.0_r8*q1**2))**(1.0_r8/3.0_r8)
+      c=c/60.0_r8
+
+      root = c-(-(13.0_r8/75.0_r8)+(5.0_r8/12.0_r8)*q2)/c
+      root = MAX(0.1_r8,root)
+      root = MIN(1.0_r8,root)
+      
+      !! Also fixed bug here : call to line_fct passed in q2 instead of q1 as argument.
+      if (q2 < corr_fct(q1)+eps.and.q2 > line_fct(q1,q1_min,q1_max,q2_min,q2_max)-eps) then
+        !
+        ! `real' mixing
+        !
+        lr(i,k) = dist_fct(root,q1,q2)
+      else if (q1 < q1_max+eps.and.q1 > q1_min-eps.and.q2 < q2_min+eps.and.q2 > q2_max-eps) then
+        !! Note that "q2_min > q2_max", so this 'if' branch had to be modifed
+        !
+        ! range-preserving unmixing
+        !
+        lr = dist_fct(root,q1,q2)
+      end if
+    end do
+  end do
+end subroutine correlation_diag
+
+!=========================================================================================
+ !
+ ! Lauritzen and Thuburn (2012, QJRMS) mixing diagnostics
+ !
+subroutine compute_TT_mixing_diagnostics(state)
+  use ppgrid,          only: pcols,pver
+  use physics_types,   only: physics_state
+  use constituents,    only: cnst_get_ind
+  use cam_history,     only: outfld
+  type(physics_state), intent(in) :: state  
+   ! use test_func code to set array q
+
+   real(r8), dimension(:,:), allocatable :: q1,q2,lr,lo,lu
+
+   ! local variables
+   integer :: i, k, lchnk,ncol, idx(2)
+   !----------------------------------------------------------------------------
+   if (.not.tt_mix_diag) return
+
+   lchnk = state%lchnk
+   ncol  = state%ncol  !note: ncol can be .le. than pcols   
+   allocate(lr(pcols,pver))
+   allocate(lu(pcols,pver))
+   allocate(lo(pcols,pver))
+
+   call cnst_get_ind('TT_COSB' ,idx(1), abort=.true.)
+   call cnst_get_ind('TT_CCOSB',idx(2), abort=.true.)
+
+   call correlation_diag(state%Q(1:ncol,1:pver,idx(1)),state%Q(1:ncol,1:pver,idx(2)),&
+        lr(1:ncol,:),lu(1:ncol,:),lo(1:ncol,:),ncol,pver)
+   call outfld('TT_mix_lr', lr, pcols, lchnk)
+   call outfld('TT_mix_lo', lo, pcols, lchnk)
+   call outfld('TT_mix_lu', lu, pcols, lchnk)         
+   deallocate(lr,lu,lo)
+ end subroutine compute_TT_mixing_diagnostics
+ 
 end module tracers
