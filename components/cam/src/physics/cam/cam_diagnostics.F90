@@ -900,8 +900,6 @@ contains
     use co2_cycle,          only: c_i, co2_transport
 
     use tidal_diag,         only: tidal_diag_write
-    use tracers,            only: tt_slot_sum
-    use tracers,            only: compute_TT_mixing_diagnostics
     !-----------------------------------------------------------------------
     !
     ! Arguments
@@ -925,7 +923,7 @@ contains
 
     real(r8), pointer :: psl(:)   ! Sea Level Pressure
 
-    integer  :: i, k, m, lchnk, ncol, nstep, idx(3)
+    integer  :: i, k, m, lchnk, ncol, nstep
     !
     !-----------------------------------------------------------------------
     !
@@ -953,14 +951,7 @@ contains
         call outfld(cnst_name(m), state%q(1,1,m), pcols, lchnk)
       end if
     end do
-    if (tt_slot_sum) then
-      ! Lauritzen and Thuburn (2012) tracer sum diagnostic
-      call cnst_get_ind('TT_SLOT' ,idx(1), abort=.true.)
-      call cnst_get_ind('TT_SLOT2',idx(2), abort=.true.)
-      call cnst_get_ind('TT_SLOT3',idx(3), abort=.true.)
-      call outfld('TT_SLOT_SUM', state%q(:,:,idx(1))+state%q(:,:,idx(2))+state%q(:,:,idx(3)), pcols, lchnk)      
-    end if
-    call compute_TT_mixing_diagnostics(state)
+
     !
     ! Add height of surface to midpoint height above surface
     !
