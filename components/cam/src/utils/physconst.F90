@@ -65,6 +65,9 @@ real(r8), public, parameter :: mwh2o2      =  34._r8
 real(r8), public, parameter :: mwdms       =  62._r8
 real(r8), public, parameter :: mwnh4       =  18._r8
 
+real(r8), public, parameter :: Tref        =  288.0_r8           ! reference temperature [K]
+real(r8), public, parameter :: lapse_rate  =  0.0065_r8          ! reference lapse rate [K/m]
+
 
 ! modifiable physical constants for aquaplanet
 
