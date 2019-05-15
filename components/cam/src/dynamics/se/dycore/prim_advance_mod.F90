@@ -1633,7 +1633,8 @@ contains
      real(kind=r8)  :: Otens(np,np  ,nlev,nets:nete), dt_hyper, sum_water(np,np,nlev)
 
      ! type (EdgeBuffer_t) :: edgeOmega
-     logical, parameter  :: del4omega = .true.
+!     logical, parameter  :: del4omega = .true.
+     logical, parameter  :: del4omega = .false.
 
      !call initEdgeBuffer(hybrid%par,edgeOmega,elem,nlev,bndry_type=HME_BNDRY_P2P, nthreads=horz_num_threads)
      do ie=nets,nete
