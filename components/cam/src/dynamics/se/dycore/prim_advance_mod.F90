@@ -520,7 +520,7 @@ contains
       ! use static reference pressure (hydrostatic balance incl. effect of topography)
       !
       do ie=nets,nete
-        ps_ref(:,:,ie) = hvcoord%ps0*exp(-elem(ie)%state%phis(:,:)/(Rair*288.0_r8))
+        ps_ref(:,:,ie) = hvcoord%ps0*exp(-elem(ie)%state%phis(:,:)/(Rair*Tref))
         do k=1,nlev
           dp3d_ref(:,:,k,ie) = ((hvcoord%hyai(k+1)-hvcoord%hyai(k))*hvcoord%ps0 + &
                (hvcoord%hybi(k+1)-hvcoord%hybi(k))*ps_ref(:,:,ie))
