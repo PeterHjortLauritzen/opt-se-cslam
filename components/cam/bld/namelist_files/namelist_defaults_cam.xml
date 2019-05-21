@@ -1796,6 +1796,7 @@
 <se_variable_nsplit                       >.false.</se_variable_nsplit>
 <se_variable_nsplit waccm_phys="1" npg="2">.true.</se_variable_nsplit>
 <se_variable_nsplit waccm_phys="1" npg="3">.true.</se_variable_nsplit>
+<se_variable_nsplit  phys="held_suarez">.true.</se_variable_nsplit>
 
 <se_nu>-1</se_nu>
 <se_nu se_refined_mesh="1" hypervis_type="tensor" > 8.0e-8 </se_nu>
@@ -1804,8 +1805,6 @@
 <se_nu_div> -1 </se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="tensor" > 15.8e-8 </se_nu_div>
 <se_nu_div se_refined_mesh="1" hypervis_type="scalar" > 1.5625e13 </se_nu_div>
-<se_nu_div waccm_phys="1" hgrid="ne30np4">2.25E15</se_nu_div>
-
 
 <se_nu_p>-1 </se_nu_p>
 <se_nu_p se_refined_mesh="1" hypervis_type="tensor" > 8.0e-8 </se_nu_p>
