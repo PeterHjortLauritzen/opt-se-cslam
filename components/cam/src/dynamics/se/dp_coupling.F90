@@ -494,8 +494,28 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   end if
                   dq_tmp(ioff,ilyr,m,ie) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                             q_prev(icol,ilyr,m,lchnk))
+                end do
 
-               end do
+!xxxxx
+!                if (lcp_moist) then
+!                  !
+!                  ! scale temperature tendency so that thermal energy increment from physics
+!                  ! matches SE
+!                  !
+!!                  sum_cp    = cpair
+!                  do nq=1,qsize_condensate_loading
+!                    m = qsize_condensate_loading_idx(nq)
+!                    sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state(lchnk)%q(icol,ilyr,m)
+!                  end do
+!                  factor = sum_cp/(cpair*(1.0_r8+phys_state(lchnk)%q(icol,ilyr,1)))
+!                  T_tmp(ioff,ilyr,ie)    = phys_tend(lchnk)%dtdt(icol,ilyr)*factor
+!                end if
+
+
+
+            
+
+                
             end do
          end do
       end do
