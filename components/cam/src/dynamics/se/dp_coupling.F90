@@ -410,6 +410,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    use fvm_mapping,            only: phys2dyn_forcings_fvm
    use test_fvm_mapping,       only: test_mapping_overwrite_tendencies
    use test_fvm_mapping,       only: test_mapping_output_mapped_tendencies
+   use dimensions_mod,         only: qsize_condensate_loading,qsize_condensate_loading_idx
+   use dimensions_mod,         only: qsize_condensate_loading_cp, lcp_moist
+   use physconst,              only: cpair
+   use control_mod,            only: phys_dyn_cp
    ! arguments
    type(physics_state), intent(inout), dimension(begchunk:endchunk) :: phys_state
    type(physics_tend),  intent(inout), dimension(begchunk:endchunk) :: phys_tend
@@ -436,11 +440,10 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
 
    real (kind=r8),  allocatable :: bbuffer(:), cbuffer(:) ! transpose buffers
 
-   real (kind=r8)               :: factor
-
+   real (kind=r8)               :: factor, sum_water, sum_cp
    integer                      :: num_trac
    integer                      :: nets,nete
-   integer                      :: kptr,ii
+   integer                      :: kptr,ii,nq
    !----------------------------------------------------------------------------
    if (iam < par%nprocs) then
       elem => dyn_in%elem
@@ -495,27 +498,8 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   dq_tmp(ioff,ilyr,m,ie) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                             q_prev(icol,ilyr,m,lchnk))
                 end do
-
-!xxxxx
-!                if (lcp_moist) then
-!                  !
-!                  ! scale temperature tendency so that thermal energy increment from physics
-!                  ! matches SE
-!                  !
-!!                  sum_cp    = cpair
-!                  do nq=1,qsize_condensate_loading
-!                    m = qsize_condensate_loading_idx(nq)
-!                    sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state(lchnk)%q(icol,ilyr,m)
-!                  end do
-!                  factor = sum_cp/(cpair*(1.0_r8+phys_state(lchnk)%q(icol,ilyr,1)))
-!                  T_tmp(ioff,ilyr,ie)    = phys_tend(lchnk)%dtdt(icol,ilyr)*factor
-!                end if
-
-
-
-            
-
-                
+                call thermodynamic_consistency(phys_state(lchnk),phys_tend(lchnk),icol,ilyr,&
+                     q_prev(icol,ilyr,1,lchnk),T_tmp(ioff,ilyr,ie))                
             end do
          end do
       end do
@@ -556,7 +540,9 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
                   end if
                   cbuffer(cpter(icol,ilyr)+3+m) = (phys_state(lchnk)%q(icol,ilyr,m) - &
                                                    q_prev(icol,ilyr,m,lchnk))
-               end do
+                end do
+                call thermodynamic_consistency(phys_state(lchnk),phys_tend(lchnk),icol,ilyr,&
+                     q_prev(icol,ilyr,1,lchnk),cbuffer(cpter(icol,ilyr)))                                
             end do
           end do
       end do
@@ -610,6 +596,7 @@ subroutine p_d_coupling(phys_state, phys_tend, dyn_in, tl_f, tl_qdp)
    end if
    call t_stopf('pd_copy')
 
+   
    if (iam < par%nprocs) then
 
       if (fv_nphys > 0) then
@@ -901,6 +888,68 @@ subroutine derived_phys_dry(phys_state, phys_tend, pbuf2d)
    end do  ! lchnk
 
 end subroutine derived_phys_dry
+
+
+subroutine thermodynamic_consistency(phys_state,phys_tend,icol,ilyr,q_prev,T_tmp)
+  use dimensions_mod,    only: qsize_condensate_loading,qsize_condensate_loading_idx
+  use dimensions_mod,    only: qsize_condensate_loading_cp, lcp_moist
+  use control_mod,       only: phys_dyn_cp
+  use physconst,         only: cpair
+  type(physics_state), intent(in)    :: phys_state
+  type(physics_tend ), intent(inout) :: phys_tend  
+  integer,  intent(in)               :: icol,ilyr
+  real(r8), intent(in)               :: q_prev
+  real(r8), intent(inout)            :: T_tmp
+  
+  integer :: nq,m
+  real(r8):: facor, sum_water, sum_cp, factor
+  !
+  !***********************************************************************************************
+  !
+  ! the code below is for different levels of thermal energy consistency
+  !
+  !***********************************************************************************************
+  !
+  if (lcp_moist) then
+    if (phys_dyn_cp>0) then
+      factor = 1.0_r8
+      sum_cp    = cpair
+      sum_water = 1.0_r8                    
+      do nq=1,qsize_condensate_loading
+        m = qsize_condensate_loading_idx(nq)
+        sum_cp  = sum_cp+qsize_condensate_loading_cp(nq)*phys_state%q(icol,ilyr,m)
+        sum_water = sum_water + phys_state%q(icol,ilyr,m)
+      end do
+      !
+      ! scale temperature tendency so that thermal energy increment from physics
+      ! matches SE (not taking into account dme adjust)
+      !                    
+      if (phys_dyn_cp==1) factor = cpair*sum_water/sum_cp
+      !
+      ! scale temperature tendency so that thermal energy increment from physics
+      ! matches SE incl. dme adjust (that incl. condensate effect)
+      !   
+      if (phys_dyn_cp==2) factor = cpair*(1.0_r8+q_prev)/sum_cp
+      T_tmp = phys_tend%dtdt(icol,ilyr)*factor
+    else
+      if (phys_dyn_cp==2) then
+        !
+        ! thermal energy between physics and dynamics are the same - only condensate effect
+        !
+        sum_water = 1.0_r8                    
+        do nq=1,qsize_condensate_loading
+          m = qsize_condensate_loading_idx(nq)
+          sum_water = sum_water + phys_state%q(icol,ilyr,m)
+        end do
+        !
+        ! dme_adjust
+        !                    
+        factor = (1.0_r8+q_prev)/sum_water
+        T_tmp = phys_tend%dtdt(icol,ilyr)*factor
+      end if
+    end if
+  end if
+end subroutine thermodynamic_consistency
 
 !=========================================================================================
 

@@ -1798,6 +1798,8 @@
 <se_variable_nsplit waccm_phys="1" npg="3">.true.</se_variable_nsplit>
 <se_variable_nsplit  phys="held_suarez">.true.</se_variable_nsplit>
 
+<se_phys_dyn_cp>0</se_phys_dyn_cp>
+
 <se_nu>-1</se_nu>
 <se_nu se_refined_mesh="1" hypervis_type="tensor" > 8.0e-8 </se_nu>
 <se_nu se_refined_mesh="1" hypervis_type="scalar" > 1.0e13 </se_nu>

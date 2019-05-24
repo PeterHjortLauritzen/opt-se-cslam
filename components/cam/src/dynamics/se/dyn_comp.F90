@@ -105,8 +105,8 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
-   use control_mod,    only: topology, tasknum
-   use control_mod,    only: remap_type, variable_nsplit
+   use control_mod,    only: topology, phys_dyn_cp
+   use control_mod,    only: remap_type, variable_nsplit, phys_dyn_cp
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
@@ -165,6 +165,7 @@ subroutine dyn_readnl(NLFileName)
    integer                      :: se_kmin_jet
    integer                      :: se_kmax_jet
    logical                      :: se_variable_nsplit
+   integer                      :: se_phys_dyn_cp   
 
    namelist /dyn_se_inparm/        &
       se_qsize_condensate_loading, &
@@ -210,7 +211,8 @@ subroutine dyn_readnl(NLFileName)
       se_fvm_supercycling_jet,     &
       se_kmin_jet,                 &
       se_kmax_jet,                 &
-      se_variable_nsplit
+      se_variable_nsplit,          &
+      se_phys_dyn_cp
    !--------------------------------------------------------------------------
 
    ! defaults for variables not set by build-namelist
@@ -284,6 +286,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_kmin_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_kmax_jet, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_variable_nsplit, 1, mpi_logical, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_phys_dyn_cp, 1, mpi_integer, masterprocid, mpicom, ierr)   
 
    if (se_npes <= 0) then
       call endrun('dyn_readnl: ERROR: se_npes must be > 0')
@@ -379,6 +382,7 @@ subroutine dyn_readnl(NLFileName)
    kmin_jet                 = se_kmin_jet
    kmax_jet                 = se_kmax_jet   
    variable_nsplit          = se_variable_nsplit
+   phys_dyn_cp              = se_phys_dyn_cp
    if (fv_nphys > 0) then
       ! Use finite volume physics grid and CSLAM for tracer advection
       nphys_pts = fv_nphys*fv_nphys
@@ -449,6 +453,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_npes                     = ',se_npes
       write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
       write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_phys_dyn_cp              = ',se_phys_dyn_cp
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p

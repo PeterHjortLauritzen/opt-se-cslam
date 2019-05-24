@@ -6575,11 +6575,20 @@ Default: Set by build-namelist.
 <entry id="se_variable_nsplit" type="logical" category="se"
        group="dyn_se_inparm" valid_values="" >
 If TRUE nsplit is dynamically adjusted (increased by 2 if vertical
-velocity Courant number is large than 0.85) and reset when vertical
+velocity Courant number is larger than 0.85) and reset when vertical
 velocity Courant number is less than 0.38  
-Default: FALSE
+Set by build-namelist.
 </entry>
 
+<entry id="se_phys_dyn_cp" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="0,1,2" >
+Scaling of temperature increment for different levels of
+thermal energy consistency.
+0: no scaling
+1: scale increment for cp consistency between dynamics and physics
+2: do 1 as well as take into account condensate effect on thermal energy
+Default: Set by build-namelist.
+</entry>
 
 <entry id="se_nu" type="real" category="se"
        group="dyn_se_inparm" valid_values="" >
