@@ -310,7 +310,8 @@ subroutine dyn_readnl(NLFileName)
    !
    ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
    !
-   uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
+!   uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
+   uniform_res_hypervis_scaling = 3.0_r8!log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
    !
    ! compute factor so that at ne30 resolution nu=1E15
    ! scale so that scaling works for other planets
