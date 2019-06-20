@@ -458,7 +458,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
-      write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer inconsistency'
+      write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer consistency'
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                   = ',se_nu_top
       write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                   = ',se_qsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                   = ',se_rsplit
