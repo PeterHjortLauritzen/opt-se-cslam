@@ -15,7 +15,7 @@ module prim_advance_mod
 
   type (EdgeBuffer_t) :: edge3p1,edgeOmega
   real (kind=r8), allocatable :: ur_weights(:)
-  
+
 contains
   
   subroutine prim_advance_init(par, elem)
@@ -450,7 +450,7 @@ contains
     !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
     !
     !
-    use physconst,      only: gravit, cappa, rair, Tref, lapse_rate, cpair
+    use physconst,      only: gravit, cappa, rair, cpair
     use dimensions_mod, only: np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_dynamic_ref_state,nu_scale_top,ksponge_end
     use dimensions_mod, only: max_nu_scale_del4
@@ -505,6 +505,10 @@ contains
     real (kind=r8)                     :: laplace_fluxes(nc,nc,4)
     real (kind=r8)                     :: rhypervis_subcycle
     real (kind=r8)                     :: nu_ratio1,nu_scale_del4_top
+
+    real(r8), parameter :: Tref        =  288.0_r8           ! reference temperature [K]
+    real(r8), parameter :: lapse_rate  =  0.0065_r8          ! reference lapse rate [K/m]
+
     if (nu_s == 0 .and. nu == 0 .and. nu_p==0 ) return;
 
     if (hypervis_dynamic_ref_state) then

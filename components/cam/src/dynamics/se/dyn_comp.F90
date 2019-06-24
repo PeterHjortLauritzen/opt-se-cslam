@@ -106,7 +106,7 @@ subroutine dyn_readnl(NLFileName)
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
    use control_mod,    only: ftype, limiter_option, partmethod
    use control_mod,    only: topology, phys_dyn_cp
-   use control_mod,    only: remap_type, variable_nsplit, phys_dyn_cp
+   use control_mod,    only: remap_type, variable_nsplit
    use control_mod,    only: fine_ne, hypervis_power, hypervis_scaling
    use control_mod,    only: max_hypervis_courant, statediag_numtrac,refined_mesh
    use control_mod,    only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
@@ -310,8 +310,7 @@ subroutine dyn_readnl(NLFileName)
    !
    ! - TAKAHASHI ET AL., 2006: GLOBAL SIMULATION OF MESOSCALE SPECTRUM 
    !
-!   uniform_res_hypervis_scaling = log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
-   uniform_res_hypervis_scaling = 3.0_r8!log(10.0_r8)/log(2.0_r8) ! (= 3.3219)
+   uniform_res_hypervis_scaling = 3.0_r8    ! 1./log(2.0_r8) = 3.3219
    !
    ! compute factor so that at ne30 resolution nu=1E15
    ! scale so that scaling works for other planets
@@ -458,7 +457,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_div                   = ',se_nu_div
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
-      write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer consistency'
+      write(iulog, '(a)') 'Note that nu_q=nu_p for  mass / tracer inconsistency'
       write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                   = ',se_nu_top
       write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                   = ',se_qsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                   = ',se_rsplit
