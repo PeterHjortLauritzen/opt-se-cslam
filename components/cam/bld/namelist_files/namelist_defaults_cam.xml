@@ -1876,11 +1876,12 @@
 
 <se_hypervis_power> 0 </se_hypervis_power>
 
-<se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" > 3 </se_hypervis_scaling>
+<se_hypervis_scaling se_refined_mesh="1" hypervis_type="tensor" > 3.32192809489 </se_hypervis_scaling>
 
 <se_hypervis_subcycle>                             2 </se_hypervis_subcycle>
 <se_hypervis_subcycle  hgrid="ne16np4">            4 </se_hypervis_subcycle>
-<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8"> 6 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" hypervis_type="scalar"> 6 </se_hypervis_subcycle>
+<se_hypervis_subcycle  hgrid="ne0np4CONUS.ne30x8" hypervis_type="tensor"> 4 </se_hypervis_subcycle>
 
 <se_hypervis_subcycle_q>1                 </se_hypervis_subcycle_q>
 <se_hypervis_subcycle_q hgrid="ne16np4">2 </se_hypervis_subcycle_q>
@@ -1901,7 +1902,7 @@
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="2">  5  </se_nsplit>
 <se_nsplit hgrid="ne30np4"  waccm_phys="1" npg="3">  5  </se_nsplit>
 
-<se_nsplit hgrid="ne0np4CONUS.ne30x8"> 5 </se_nsplit>
+<se_nsplit hgrid="ne0np4CONUS.ne30x8"> 6 </se_nsplit>
 
 <se_variable_nsplit                       >.false.</se_variable_nsplit>
 <se_variable_nsplit waccm_phys="1" npg="2">.true.</se_variable_nsplit>
@@ -1940,7 +1941,6 @@
 <se_rsplit                                           > 3 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="2"                    > 6 </se_rsplit>
 <se_rsplit waccm_phys="1" npg="3"                    > 6 </se_rsplit>
-<se_rsplit hgrid="ne0np4CONUS.ne30x8" hypervis_type="tensor"> 4 </se_rsplit>
 
 <se_fvm_supercycling>-1</se_fvm_supercycling>
 <se_fvm_supercycling_jet>-1</se_fvm_supercycling_jet>

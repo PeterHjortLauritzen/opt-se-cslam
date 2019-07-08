@@ -1107,7 +1107,8 @@ contains
                  " Max/min grid spacing (km) = ",max_min_dx,min_min_dx
           end if
           nu = nu_min*(2.0_r8*rearth/(3.0_r8*max_min_dx*1000.0_r8))**hypervis_scaling/(rearth**4)
-          write(iulog,'(a,a,a,e9.3)') "Nu_tensor",TRIM(str)," = ",nu
+          if (hybrid%masterthread) &
+               write(iulog,'(a,a,a,e9.3)') "Nu_tensor",TRIM(str)," = ",nu
         else if (hypervis_power/=0) then
           call endrun('ERROR: Automatic scaling of scalar viscosity not implemented')
         end if
