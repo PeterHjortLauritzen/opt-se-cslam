@@ -430,19 +430,19 @@ subroutine dyn_readnl(NLFileName)
         write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_p                     = ',se_nu_p
         write(iulog, '(a)') 'Note that nu_q must be the same as nu_p for  mass / tracer inconsistency'
       end if
-      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                   = ',se_nu_top
-      write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                   = ',se_qsplit
-      write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                   = ',se_rsplit
-      write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                = ',se_statefreq
-      write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type               = ',se_tstep_type
-      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg         = ',se_vert_remap_q_alg
-      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading = ',se_qsize_condensate_loading
+      write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu_top                     = ',se_nu_top
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsplit                     = ',se_qsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_rsplit                     = ',se_rsplit
+      write(iulog, '(a,i0)')   'dyn_readnl: se_statefreq                  = ',se_statefreq
+      write(iulog, '(a,i0)')   'dyn_readnl: se_tstep_type                 = ',se_tstep_type
+      write(iulog, '(a,i0)')   'dyn_readnl: se_vert_remap_q_alg           = ',se_vert_remap_q_alg
+      write(iulog, '(a,i0)')   'dyn_readnl: se_qsize_condensate_loading   = ',se_qsize_condensate_loading
       write(iulog, '(a,l4)')   'dyn_readnl: se_hypervis_dynamic_ref_state = ',hypervis_dynamic_ref_state
-      write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                   = ',lcp_moist
-      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling         = ',fvm_supercycling
-      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet     = ',fvm_supercycling_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                 = ',kmin_jet
-      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                 = ',kmax_jet      
+      write(iulog, '(a,l4)')   'dyn_readnl: lcp_moist                     = ',lcp_moist
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling           = ',fvm_supercycling
+      write(iulog, '(a,i0)')   'dyn_readnl: se_fvm_supercycling_jet       = ',fvm_supercycling_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmin_jet                   = ',kmin_jet
+      write(iulog, '(a,i0)')   'dyn_readnl: se_kmax_jet                   = ',kmax_jet      
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
@@ -452,7 +452,7 @@ subroutine dyn_readnl(NLFileName)
            write(iulog, '(a,e11.4)') 'dyn_readnl: se_max_hypervis_courant = ',se_max_hypervis_courant
          end if
          if (hypervis_scaling /= 0) then
-           write(iulog, '(a)') 'Using tensor viscosity (Guba)'
+           write(iulog, '(a)') 'Using tensor viscosity (Guba et al., 2014)'
            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
          end if
       end if
