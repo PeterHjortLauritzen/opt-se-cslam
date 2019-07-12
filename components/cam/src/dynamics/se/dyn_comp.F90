@@ -419,6 +419,9 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_nsplit                   = ',se_nsplit
       write(iulog, '(a,l4)')   'dyn_readnl: se_variable_nsplit          = ',se_variable_nsplit
       write(iulog, '(a,i0)')   'dyn_readnl: se_phys_dyn_cp              = ',se_phys_dyn_cp
+      !
+      ! se_nu<0 then coefficients are set automatically in module global_norms_mod
+      !
       if (se_nu_div>0) &      
            write(iulog, '(a,e9.2)') 'dyn_readnl: se_nu                       = ',se_nu
       if (se_nu_div>0) &
@@ -443,18 +446,15 @@ subroutine dyn_readnl(NLFileName)
       if (se_refined_mesh) then
          write(iulog, '(a)') 'dyn_readnl: Refined mesh simulation'
          write(iulog, '(a)') 'dyn_readnl: se_mesh_file = ',trim(se_mesh_file)
-         if (abs(se_hypervis_power) < 1.0e-12_r8) then
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (tensor hyperviscosity)'
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
-         else if (abs(se_hypervis_power - 3.322_r8) < 1.0e-12_r8) then
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (scalar hyperviscosity)'
-            write(iulog, '(a,i0)') 'dyn_readnl: se_fine_ne = ',se_fine_ne
-         else
-            write(iulog, '(a,i0)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
-            write(iulog, '(a,e11.4)') 'dyn_readnl: se_fine_ne = ',se_fine_ne
+         if (hypervis_power /= 0) then
+           write(iulog, '(a)') 'Using scalar viscosity (Zarzycki et al 2014 JClim)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_power = ',se_hypervis_power, ', (tensor hyperviscosity)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_max_hypervis_courant = ',se_max_hypervis_courant
          end if
-         write(iulog, '(a,e11.4)') 'dyn_readnl: se_max_hypervis_courant = ',se_max_hypervis_courant
+         if (hypervis_scaling /= 0) then
+           write(iulog, '(a)') 'Using tensor viscosity (Guba)'
+           write(iulog, '(a,e11.4)') 'dyn_readnl: se_hypervis_scaling = ',se_hypervis_scaling
+         end if
       end if
       if ((se_met_nudge_u /= 0._r8) .or. (se_met_nudge_p /= 0._r8) .or.       &
          (se_met_nudge_t /= 0._r8) .or. (se_met_tevolve /= 0)) then
