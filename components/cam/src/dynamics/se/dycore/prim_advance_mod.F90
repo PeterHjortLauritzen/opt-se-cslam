@@ -599,12 +599,12 @@ contains
                  nu_ratio=nu_ratio1)
             
             nu_scale_del4_top=1.0_r8
-            if (k.le.ksponge_end) then
-              !
-              ! increase del4 damping in sponge
-              !
-              nu_scale_del4_top=MAX(MIN(nu_scale_top(k),max_nu_scale_del4),1.0_r8)
-            end if
+!            if (k.le.ksponge_end) then
+!              !
+!              ! increase del4 damping in sponge - this is unstable with WACCM CONUS!
+!              !
+!              nu_scale_del4_top=MAX(MIN(nu_scale_top(k),max_nu_scale_del4),1.0_r8)
+!            end if
             
             !OMP_COLLAPSE_SIMD
             !DIR_VECTOR_ALIGNED

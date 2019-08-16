@@ -664,10 +664,10 @@ contains
       end do
       
       write(iulog,*) ' '
-      write(iulog,'(a,f10.2,a)') 'In sponge del4 viscosity can be increased by a maximum of (max_nu_scale_del4=)', &
-           max_nu_scale_del4,' and still be stable (theoretically)'
-      write(iulog,'(a,2f10.2)') 'In sponge del4 viscosity is increased by a maximum of ', &
-           MIN(MAXVAL(nu_scale_top(1:ksponge_end)),max_nu_scale_del4)
+!      write(iulog,'(a,f10.2,a)') 'In sponge del4 viscosity can be increased by a maximum of (max_nu_scale_del4=)', &
+!           max_nu_scale_del4,' and still be stable (theoretically)'
+!      write(iulog,'(a,2f10.2)') 'In sponge del4 viscosity is increased by a maximum of ', &
+!           MIN(MAXVAL(nu_scale_top(1:ksponge_end)),max_nu_scale_del4)
       if (hypervis_power /= 0) then
         write(iulog,'(a,3e11.4)')'Scalar hyperviscosity (dynamics): ave,min,max = ', &
              nu*(/avg_hypervis**2,min_hypervis**2,max_hypervis**2/)

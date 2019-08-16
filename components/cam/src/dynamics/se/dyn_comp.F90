@@ -1013,7 +1013,8 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-
+   use inic_analytic,       only: balance_ps_with_phis
+   
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
 
@@ -1076,7 +1077,7 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable            :: m_ind(:)
    real(r8), allocatable            :: dbuf4(:,:,:,:)
    !----------------------------------------------------------------------------
-
+   
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
 
@@ -1504,8 +1505,24 @@ subroutine read_inidat(dyn_in)
             end do
          end do
       end do
-   end if
+    end if
 
+    !    if (lbalance_ps_with_phis) then
+    if (.true.) then
+      do ie = 1, nelemd
+        call balance_ps_with_phis(elem(ie)%state%phis(:,:),hvcoord%ps0,elem(ie)%state%psdry(:,:))
+        do k = 1, nlev
+          do j = 1, np
+            do i = 1, np
+              elem(ie)%state%dp3d(i,j,k,:) = (hyai(k+1) - hyai(k))*ps0 + &
+                   (hybi(k+1) - hybi(k))*elem(ie)%state%psdry(i,j)
+            end do
+          end do
+        end do
+      end do
+    end if
+
+    
    ! scale PS to achieve prescribed dry mass following FV dycore (dryairm.F90)
 #ifndef planet_mars   
    if (runtype == 0) then
@@ -1793,7 +1810,7 @@ subroutine read_phis(dyn_in)
 
       ! Put the error handling back the way it was
       call pio_seterrorhandling(fh_topo, pio_errtype)
-
+      
    else if (analytic_ic_active() .and. (iam < par%nprocs)) then
 
       ! lat/lon needed in radians
