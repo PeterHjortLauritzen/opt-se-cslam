@@ -457,7 +457,7 @@ contains
     call t_stopf('prim_advance_exp')
 
        ! defer final timelevel update until after Q update.
-    enddo
+  enddo
 #ifdef HOMME_TEST_SUB_ELEMENT_MASS_FLUX
     if (ntrac>0.and.rstep==1) then
       do ie=nets,nete

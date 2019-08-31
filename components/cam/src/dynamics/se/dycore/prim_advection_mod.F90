@@ -1102,6 +1102,7 @@ contains
       !      
       ttmp(:,:,:,1)=elem(ie)%state%v(:,:,1,:,np1)*dp_star_moist
       ttmp(:,:,:,2)=elem(ie)%state%v(:,:,2,:,np1)*dp_star_moist
+
       call remap1(ttmp,np,1,2,2,dp_star_moist,dp_moist) ! remap with PPM filter
       !call remap1_nofilter(ttmp,np,2,dp_star_moist,dp_moist)
       
