@@ -1013,7 +1013,6 @@ subroutine read_inidat(dyn_in)
    use fvm_mapping,         only: dyn2fvm_mass_vars
    use control_mod,         only: runtype,initial_global_ave_dry_ps
    use prim_driver_mod,     only: prim_set_dry_mass
-   use inic_analytic,       only: balance_ps_with_phis
    
    ! Arguments
    type (dyn_import_t), target, intent(inout) :: dyn_in   ! dynamics import
@@ -1507,7 +1506,6 @@ subroutine read_inidat(dyn_in)
          end do
       end do
     end if
-
     if (lbalance_ps_with_phis) then
       do ie = 1, nelemd
         call balance_ps_with_phis(elem(ie)%state%phis(:,:),hvcoord%ps0,elem(ie)%state%psdry(:,:))
@@ -2229,5 +2227,19 @@ subroutine write_dyn_vars(dyn_out)
 end subroutine write_dyn_vars
 
 !=========================================================================================
+
+  !
+  ! surface pressure in hydrostatic balance with surface height (assuming isothermal atmosphere and U=V=0)
+  !
+  subroutine balance_ps_with_phis(phis,pref,ps)
+    use physconst,      only: rair
+    real(r8),         intent(in)    :: phis(:,:), pref
+    real(r8),         intent(out)   :: ps(:,:)
+    
+    integer             :: i,j
+    real(r8), parameter :: Tref = 288.0_r8           ! reference temperature [K]
+    ps(:,:) = pref*exp(-phis(:,:)/(Rair*Tref))
+  end subroutine balance_ps_with_phis
+
 
 end module dyn_comp

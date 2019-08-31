@@ -17,7 +17,6 @@ module inic_analytic
 
   public :: analytic_ic_active ! forwarded from init_analytic_utils
   public :: analytic_ic_set_ic ! Set analytic initial conditions
-  public :: balance_ps_with_phis
   
   interface analytic_ic_set_ic
     module procedure dyn_set_inic_cblock
@@ -570,17 +569,5 @@ CONTAINS
 
   end subroutine check_array_size
 #endif
-  !
-  ! surface pressure in hydrostatic balance with surface height (assuming isothermal atmosphere and U=V=0)
-  !
-  subroutine balance_ps_with_phis(phis,pref,ps)
-    use physconst,      only: rair
-    real(r8),         intent(in)    :: phis(:,:), pref
-    real(r8),         intent(out)   :: ps(:,:)
-    
-    integer             :: i,j
-    real(r8), parameter :: Tref = 288.0_r8           ! reference temperature [K]
-    ps(:,:) = pref*exp(-phis(:,:)/(Rair*Tref))
-  end subroutine balance_ps_with_phis
   
 end module inic_analytic
