@@ -1077,6 +1077,7 @@ subroutine read_inidat(dyn_in)
    integer,  allocatable            :: m_ind(:)
    real(r8), allocatable            :: dbuf4(:,:,:,:)
    !----------------------------------------------------------------------------
+   logical :: lbalance_ps_with_phis=.false.
    
    fh_ini  => initial_file_get_id()
    fh_topo => topo_file_get_id()
@@ -1507,8 +1508,7 @@ subroutine read_inidat(dyn_in)
       end do
     end if
 
-    !    if (lbalance_ps_with_phis) then
-    if (.true.) then
+    if (lbalance_ps_with_phis) then
       do ie = 1, nelemd
         call balance_ps_with_phis(elem(ie)%state%phis(:,:),hvcoord%ps0,elem(ie)%state%psdry(:,:))
         do k = 1, nlev
