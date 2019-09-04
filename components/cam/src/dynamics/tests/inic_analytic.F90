@@ -17,7 +17,7 @@ module inic_analytic
 
   public :: analytic_ic_active ! forwarded from init_analytic_utils
   public :: analytic_ic_set_ic ! Set analytic initial conditions
-  
+
   interface analytic_ic_set_ic
     module procedure dyn_set_inic_cblock
   end interface analytic_ic_set_ic
@@ -569,5 +569,5 @@ CONTAINS
 
   end subroutine check_array_size
 #endif
-  
+
 end module inic_analytic
