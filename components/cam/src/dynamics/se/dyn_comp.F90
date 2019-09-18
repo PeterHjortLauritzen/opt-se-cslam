@@ -547,6 +547,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
+   integer :: ixo2, ixn2, ixh !needed for WACCM-x
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
@@ -582,7 +583,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3
-   integer, parameter :: qcondensate_max = 6
+   integer, parameter :: qcondensate_max = 9
 
    logical :: history_budget      ! output tendencies and state variables for budgets
    integer :: budget_hfile_num
@@ -642,6 +643,29 @@ subroutine dyn_init(dyn_in, dyn_out)
    qsize_condensate_loading_idx(6) = ixgraupel
    qsize_condensate_loading_cp(6)  = cpice
    qsize_condensate_loading_R(6)   = 0.0_r8
+   !
+   ! Major species for WACCM-x
+   !
+   call cnst_get_ind('O2', ixo2, abort=.false.)
+   if (ixo2 < 1.and.qsize_condensate_loading > 6) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >6 but O2 not available')
+   qsize_condensate_loading_idx(7) = ixo2
+   qsize_condensate_loading_cp(7)  = cpice
+   qsize_condensate_loading_R(7)   = 0.0_r8
+
+   call cnst_get_ind('N2', ixn2, abort=.false.)
+   if (ixn2 < 1.and.qsize_condensate_loading > 7) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >7 but N2 not available')
+   qsize_condensate_loading_idx(8) = ixn2
+   qsize_condensate_loading_cp(8)  = cpice
+   qsize_condensate_loading_R(8)   = 0.0_r8
+   
+   call cnst_get_ind('H', ixo2, abort=.false.)
+   if (ixh < 1.and.qsize_condensate_loading > 8) &
+        call endrun(subname//': ERROR: qsize_condensate_loading >8 but H not available')
+   qsize_condensate_loading_idx(9) = ixh
+   qsize_condensate_loading_cp(9)  = cpice
+   qsize_condensate_loading_R(9)   = 0.0_r8
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
