@@ -920,7 +920,7 @@ contains
      !
      ! ===================================
      use dimensions_mod,  only: np, nc, nlev
-     use dimensions_mod,  only: qsize_condensate_loading, ntrac
+     use dimensions_mod,  only: qsize_condensate_loading, qsize_condensate_loading_R, ntrac
      use hybrid_mod,      only: hybrid_t
      use element_mod,     only: element_t
      use derivative_mod,  only: derivative_t, divergence_sphere, gradient_sphere, vorticity_sphere
@@ -930,6 +930,7 @@ contains
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
      use physconst,       only: rair, epsilo, cappa, cpair
+     use physconst,       only: rh2o!xxx
      use prim_si_mod,     only: preq_hydrostatic
      use control_mod,     only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
      
@@ -973,6 +974,7 @@ contains
      real (kind=r8) :: vtens1(np,np,nlev),vtens2(np,np,nlev),ttens(np,np,nlev)
      real (kind=r8) :: stashdp3d (np,np,nlev),tempdp3d(np,np), tempflux(nc,nc,4)
      real (kind=r8) :: inv_epsilon, ckk, term, T_v(np,np,nlev)
+     real (kind=r8) :: T_v_tmp(np,np,nlev)!xxx
      real (kind=r8), dimension(np,np,2) :: grad_exner
      real (kind=r8), dimension(np,np)   :: theta_v
 
@@ -1024,11 +1026,23 @@ contains
          do nq=1,qsize_condensate_loading
            sum_water(:,:,k) = sum_water(:,:,k) + qwater(:,:,k,nq,ie)
          end do
-         do j=1,np
-           do i=1,np
-             t_v(i,j,k)  = elem(ie)%state%T(i,j,k,n0)*(1+inv_epsilon*qwater(i,j,k,1,ie))/sum_water(i,j,k)
+
+         t_v(:,:,k)  = Rair*elem(ie)%state%T(:,:,k,n0)
+         do nq=1,qsize_condensate_loading
+           do j=1,np
+             do i=1,np
+               t_v(i,j,k)  = t_v(i,j,k)+elem(ie)%state%T(i,j,k,n0)*qsize_condensate_loading_R(nq)*qwater(i,j,k,nq,ie)
+             end do
            end do
          end do
+         do j=1,np
+           do i=1,np
+             t_v(i,j,k)  = t_v(i,j,k)/(Rair*sum_water(i,j,k))
+           end do
+         end do
+         t_v_tmp(:,:,k) = t_v(:,:,k)
+
+
          !
          ! convert to gas pressure (dry + water vapor pressure)
          ! (assumes T and q are constant in the layer)

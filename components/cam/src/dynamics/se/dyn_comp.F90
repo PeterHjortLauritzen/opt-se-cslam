@@ -517,7 +517,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    use prim_advance_mod,   only: prim_advance_init
    use dyn_grid,           only: elem, fvm
    use cam_pio_utils,      only: clean_iodesc_list
-   use physconst,          only: cpwv, cpliq, cpice
+   use physconst,          only: cpwv, cpliq, cpice,rh2o
    use cam_history,        only: addfld, add_default, horiz_only, register_vector_field
    use gravity_waves_sources, only: gws_init
 
@@ -525,7 +525,8 @@ subroutine dyn_init(dyn_in, dyn_out)
    use hybrid_mod,         only: get_loop_ranges, config_thread_region
    use dimensions_mod,     only: qsize_condensate_loading,qsize_condensate_loading_idx
    use dimensions_mod,     only: qsize_condensate_loading_idx_gll, nu_scale_top
-   use dimensions_mod,     only: qsize_condensate_loading_cp, ksponge_end
+   use dimensions_mod,     only: qsize_condensate_loading_cp, qsize_condensate_loading_R
+   use dimensions_mod,     only: ksponge_end
    use dimensions_mod,     only: cnst_name_gll, cnst_longname_gll, nu_div_scale_top
    use dimensions_mod,     only: irecons_tracer_lev,irecons_tracer
    use prim_driver_mod,    only: prim_init2
@@ -597,43 +598,50 @@ subroutine dyn_init(dyn_in, dyn_out)
    allocate(qsize_condensate_loading_idx(qcondensate_max))
    allocate(qsize_condensate_loading_idx_gll(qcondensate_max))
    allocate(qsize_condensate_loading_cp(qcondensate_max))
+   allocate(qsize_condensate_loading_R(qcondensate_max))
 
    allocate(cnst_name_gll(qsize))     ! constituent names for gll tracers
    allocate(cnst_longname_gll(qsize)) ! long name of constituents for gll tracers
 
    ! water vapor is always tracer 1
    qsize_condensate_loading_idx(1) = 1
-   qsize_condensate_loading_cp(1) = cpwv
+   qsize_condensate_loading_cp(1)  = cpwv
+   qsize_condensate_loading_R(1)   = rh2o
 
    call cnst_get_ind('CLDLIQ', ixcldliq, abort=.false.)
    if (ixcldliq < 1.and.qsize_condensate_loading > 1) &
         call endrun(subname//': ERROR: qsize_condensate_loading >1 but CLDLIQ not available')
    qsize_condensate_loading_idx(2) = ixcldliq
    qsize_condensate_loading_cp(2)  = cpliq
+   qsize_condensate_loading_R(2)   = 0.0_r8
 
    call cnst_get_ind('CLDICE', ixcldice, abort=.false.)
    if (ixcldice < 1.and.qsize_condensate_loading > 2) &
         call endrun(subname//': ERROR: qsize_condensate_loading >2 but CLDICE not available')
    qsize_condensate_loading_idx(3) = ixcldice
    qsize_condensate_loading_cp(3)  = cpice
+   qsize_condensate_loading_R(3)   = 0.0_r8
 
    call cnst_get_ind('RAINQM', ixrain, abort=.false.)
    if (ixrain < 1.and.qsize_condensate_loading > 3) &
         call endrun(subname//': ERROR: qsize_condensate_loading >3 but RAINQM not available')
    qsize_condensate_loading_idx(4) = ixrain
    qsize_condensate_loading_cp(4)  = cpliq
+   qsize_condensate_loading_R(4)   = 0.0_r8
 
    call cnst_get_ind('SNOWQM', ixsnow, abort=.false.)
    if (ixsnow < 1.and.qsize_condensate_loading > 4) &
         call endrun(subname//': ERROR: qsize_condensate_loading >4 but SNOWQM not available')
    qsize_condensate_loading_idx(5) = ixsnow
    qsize_condensate_loading_cp(5)  = cpice
+   qsize_condensate_loading_R(5)   = 0.0_r8
 
    call cnst_get_ind('GRAUQM', ixgraupel, abort=.false.)
    if (ixgraupel < 1.and.qsize_condensate_loading > 5) &
         call endrun(subname//': ERROR: qsize_condensate_loading >5 but GRAUQM not available')
    qsize_condensate_loading_idx(6) = ixgraupel
    qsize_condensate_loading_cp(6)  = cpice
+   qsize_condensate_loading_R(6)   = 0.0_r8
    !
    ! if adding more condensate loading tracers remember to increase qsize_d in dimensions_mod
    !
