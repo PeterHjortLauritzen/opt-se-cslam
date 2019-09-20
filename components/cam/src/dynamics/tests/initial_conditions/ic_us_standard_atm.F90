@@ -30,7 +30,7 @@ module ic_us_standard_atmosphere
        186.87_r8, 240._r8, 360._r8, 634.39_r8, 854.56_r8, 976.01_r8, 1.e3_r8/)
   real(r8), parameter :: lb(nreg) = & ! temperature lapse rate (K/m)
        (/-0.0065_r8, 0.0_r8, 0.001_r8, 0.0028_r8, 0.0_r8, -0.0028_r8, -0.001852_r8, 0.0_r8,       &
-       2.796_e-3_r8, 0.012_r8, 9.15e-3_r8, 4.4e-3_r8, 1.21e-3_r8, 6.e-5_r8, 0.0_r8/)
+       2.796e-3_r8, 0.012_r8, 9.15e-3_r8, 4.4e-3_r8, 1.21e-3_r8, 6.e-5_r8, 0.0_r8/)
   real(r8), parameter :: rg = 8.3144598_r8 ! universal gas constant (J/mol/K)
   real(r8), parameter :: g0 = 9.80665_r8   ! gravitational acceleration (m/s^2)
   real(r8), parameter :: mw = 0.0289644_r8 ! molar mass of dry air (kg/mol)
