@@ -18,15 +18,19 @@ module ic_us_standard_atmosphere
   ! Public interface
   public :: us_std_atm_set_ic
 
-  integer, parameter  :: nreg = 7  ! number of regions
+  integer, parameter  :: nreg = 15  ! number of regions
   real(r8), parameter :: hb(nreg) = & ! height a bottom of layer (m)
-       (/0.0_r8, 1.1e4_r8, 2.0e4_r8, 3.2e4_r8, 4.7e4_r8, 5.1e4_r8, 7.1e4_r8/)
+       (/0.0_r8, 1.1e4_r8, 2.0e4_r8, 3.2e4_r8, 4.7e4_r8, 5.1e4_r8, 7.1e4_r8, 8.6e4_r8, &
+       9.1e4_r8, 1.1e5_r8, 1.2e5_r8, 1.5e5_r8, 2.0e5_r8, 3.0e5_r8, 7.e5_r8/)
   real(r8), parameter :: pb(nreg) = & ! standard pressure (Pa)
-       (/101325._r8, 22632.1_r8, 5474.89_r8, 868.02_r8, 110.91_r8, 66.94_r8, 3.96_r8/)
+       (/101325._r8, 22632.1_r8, 5474.89_r8, 868.02_r8, 110.91_r8, 66.94_r8, 3.96_r8, 3.7e-1_r8,  &
+       1.5e-1_r8, 7.1e-3_r8, 2.5e-3_r8, 4.5e-4_r8, 8.47e-5_r8, 8.77e-6_r8, 3.19e-8_r8/)
   real(r8), parameter :: tb(nreg) = & ! standard temperature (K)
-       (/288.15_r8, 216.65_r8, 216.65_r8, 228.65_r8, 270.65_r8, 270.65_r8, 214.65_r8/)
+       (/288.15_r8, 216.65_r8, 216.65_r8, 228.65_r8, 270.65_r8, 270.65_r8, 214.65_r8, 186.87_r8,  &
+       186.87_r8, 240._r8, 360._r8, 634.39_r8, 854.56_r8, 976.01_r8, 1.e3_r8/)
   real(r8), parameter :: lb(nreg) = & ! temperature lapse rate (K/m)
-       (/-0.0065_r8, 0.0_r8, 0.001_r8, 0.0028_r8, 0.0_r8, -0.0028_r8, -0.002_r8/)
+       (/-0.0065_r8, 0.0_r8, 0.001_r8, 0.0028_r8, 0.0_r8, -0.0028_r8, -0.001852_r8, 0.0_r8,       &
+       2.796_e-3_r8, 0.012_r8, 9.15e-3_r8, 4.4e-3_r8, 1.21e-3_r8, 6.e-5_r8, 0.0_r8/)
   real(r8), parameter :: rg = 8.3144598_r8 ! universal gas constant (J/mol/K)
   real(r8), parameter :: g0 = 9.80665_r8   ! gravitational acceleration (m/s^2)
   real(r8), parameter :: mw = 0.0289644_r8 ! molar mass of dry air (kg/mol)
