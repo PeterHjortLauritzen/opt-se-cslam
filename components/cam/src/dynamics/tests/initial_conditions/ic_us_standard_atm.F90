@@ -134,6 +134,7 @@ CONTAINS
             call std_atm_height(ztmp(:), ptmp(:))
             ! given height get temperature
             call std_atm_temp(ztmp(:), T(i:i,k))
+            if (i==1) write(*,*) "k,ztmp",k,ztmp,ptmp,T(i,k)
           end if
         end do
       end do
@@ -250,7 +251,7 @@ CONTAINS
       ! find region containing height
       found_region = .false.
       find_region: do i = 1,nreg
-        if (pstd(k) < pb(i)) then
+        if (pstd(k) > pb(i)) then
           ii = i
           found_region = .true.
           exit find_region
@@ -263,7 +264,7 @@ CONTAINS
       end if
       
       if (lb(ii) /= 0._r8) then
-        height(k)  =  (tb(ii)*(pstd(k)/pb(ii))**(-lb(ii)/c1) - tb(ii))/lb(ii)+hb(ii)
+        height(k)  =         (tb(ii)*(pstd(k)/pb(ii))**(-lb(ii)/c1) - tb(ii))/lb(ii)+hb(ii)
       else
         height(k) = -(tb(ii)/c1)*log(pstd(k)/pb(ii))+ hb(ii)        
       end if
