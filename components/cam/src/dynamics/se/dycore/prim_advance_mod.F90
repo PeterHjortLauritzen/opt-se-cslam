@@ -298,7 +298,7 @@ contains
   end subroutine prim_advance_exp
 
 
-  subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_q,nets,nete,nsubstep)
+  subroutine applyCAMforcing(elem,fvm,np1,np1_qdp,dt_dribble,dt_phys,nets,nete,nsubstep)
     use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, nelemd
     use element_mod,            only: element_t
     use time_mod,               only: nsplit
@@ -307,7 +307,7 @@ contains
     
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
-    real (kind=r8), intent(in) :: dt_q
+    real (kind=r8), intent(in) :: dt_dribble, dt_phys
     integer,  intent(in) :: np1,nets,nete,np1_qdp,nsubstep
     
     ! local
@@ -317,6 +317,8 @@ contains
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
 
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+    
     if (ntrac>0) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
 
     if (ftype==0) then
@@ -325,17 +327,17 @@ contains
       !                       add adjustments to state after each
       !                       vertical remap
       !
-      dt_local            = dt_q
-      dt_local_tracer     = dt_q
-      dt_local_tracer_fvm = dt_q
+      dt_local            = dt_dribble
+      dt_local_tracer     = dt_dribble
+      dt_local_tracer_fvm = dt_dribble
     else if (ftype==1) then
       !
       ! CAM-FV-stype forcing, i.e. equivalent to updating state once in the
       ! beginning of dynamics
       !
-      dt_local            = nsplit*dt_q
-      dt_local_tracer     = nsplit*dt_q
-      dt_local_tracer_fvm = nsplit*dt_q
+      dt_local            = dt_phys
+      dt_local_tracer     = dt_phys
+      dt_local_tracer_fvm = dt_phys
       if (nsubstep.ne.1) then
         !
         ! do nothing
@@ -348,16 +350,16 @@ contains
       !
       ! do state-update for tracers and "dribbling" forcing for u,v,T
       !
-      dt_local            = dt_q
+      dt_local            = dt_dribble
       if (ntrac>0) then
-        dt_local_tracer     = dt_q
-        dt_local_tracer_fvm = nsplit*dt_q
+        dt_local_tracer     = dt_dribble
+        dt_local_tracer_fvm = dt_phys
         if (nsubstep.ne.1) then
           dt_local_tracer_fvm = 0.0_r8
         end if
       else
-        dt_local_tracer     = nsplit*dt_q
-        dt_local_tracer_fvm = nsplit*dt_q
+        dt_local_tracer     = dt_phys
+        dt_local_tracer_fvm = dt_phys
         if (nsubstep.ne.1) then
           dt_local_tracer     = 0.0_r8
           dt_local_tracer_fvm = 0.0_r8

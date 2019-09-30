@@ -198,7 +198,7 @@ contains
     integer, intent(in)              :: nsubstep  ! nsubstep = 1 .. nsplit
     real (kind=r8)    , intent(inout):: omega_cn(2,nets:nete) !min and max of vertical Courant number    
 
-    real(kind=r8)   :: dt_q, dt_remap
+    real(kind=r8)   :: dt_q, dt_remap, dt_phys
     integer         :: ie, q,k,n0_qdp,np1_qdp,r, nstep_end,region_num_threads,i,j
     real (kind=r8)  :: dp_np1(np,np)
     real (kind=r8)  :: dp_start(np,np,nlev+1,nets:nete),dp_end(np,np,nlev,nets:nete)
@@ -208,10 +208,10 @@ contains
     ! Main timestepping loop
     ! ===================================
     dt_q = dt*qsplit
-    dt_remap = dt_q
     nstep_end = tl%nstep + qsplit
     dt_remap=dt_q*rsplit
     nstep_end = tl%nstep + qsplit*rsplit  ! nstep at end of this routine
+    dt_phys   = nsplit*dt_remap
 
     ! compute diagnostics for STDOUT
     compute_diagnostics=.false.
@@ -241,15 +241,10 @@ contains
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
-    call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,nets,nete,nsubstep)
-
-
-    ! loop over rsplit vertically lagrangian timesteps
-    call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,1)
-    do r=2,rsplit
-       call TimeLevel_update(tl,"leapfrog")
-       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+    do r=1,rsplit
+      if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
+      call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt,dt_phys,nets,nete,rsplit*(nsubstep-1)+r)
+      call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
     enddo
     ! defer final timelevel update until after remap and diagnostics
 
