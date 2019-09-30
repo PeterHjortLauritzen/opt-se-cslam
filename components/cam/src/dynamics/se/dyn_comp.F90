@@ -100,7 +100,7 @@ subroutine dyn_readnl(NLFileName)
 
    use control_mod,    only: TRACERTRANSPORT_SE_GLL, tracer_transport_type
    use control_mod,    only: TRACERTRANSPORT_CONSISTENT_SE_FVM
-   use control_mod,    only: hypervis_subcycle
+   use control_mod,    only: hypervis_subcycle, hypervis_subcycle_sponge
    use control_mod,    only: hypervis_subcycle_q, statefreq, runtype
    use control_mod,    only: nu, nu_div, nu_p, nu_q, nu_top, qsplit, rsplit
    use control_mod,    only: vert_remap_q_alg, tstep_type, rk_stage_user
@@ -136,6 +136,7 @@ subroutine dyn_readnl(NLFileName)
    real(r8)                     :: se_hypervis_power
    real(r8)                     :: se_hypervis_scaling
    integer                      :: se_hypervis_subcycle
+   integer                      :: se_hypervis_subcycle_sponge   
    integer                      :: se_hypervis_subcycle_q
    integer                      :: se_limiter_option
    real(r8)                     :: se_max_hypervis_courant
@@ -176,6 +177,7 @@ subroutine dyn_readnl(NLFileName)
       se_hypervis_power,           &
       se_hypervis_scaling,         &
       se_hypervis_subcycle,        &
+      se_hypervis_subcycle_sponge, &      
       se_hypervis_subcycle_q,      &
       se_limiter_option,           &
       se_max_hypervis_courant,     &
@@ -249,6 +251,7 @@ subroutine dyn_readnl(NLFileName)
    call MPI_bcast(se_hypervis_power, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_scaling, 1, mpi_real8, masterprocid, mpicom, ierr)
    call MPI_bcast(se_hypervis_subcycle, 1, mpi_integer, masterprocid, mpicom, ierr)
+   call MPI_bcast(se_hypervis_subcycle_sponge, 1, mpi_integer, masterprocid, mpicom, ierr)   
    call MPI_bcast(se_hypervis_subcycle_q, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_limiter_option, 1, mpi_integer, masterprocid, mpicom, ierr)
    call MPI_bcast(se_max_hypervis_courant, 1, mpi_real8, masterprocid, mpicom, ierr)
@@ -322,6 +325,11 @@ subroutine dyn_readnl(NLFileName)
    hypervis_power           = se_hypervis_power
    hypervis_scaling         = se_hypervis_scaling
    hypervis_subcycle        = se_hypervis_subcycle
+   if (hypervis_subcycle_sponge<0) then
+     hypervis_subcycle_sponge = hypervis_subcycle
+   else
+     hypervis_subcycle_sponge = se_hypervis_subcycle_sponge
+   end if
    hypervis_subcycle_q      = se_hypervis_subcycle_q
    limiter_option           = se_limiter_option
    max_hypervis_courant     = se_max_hypervis_courant
@@ -409,6 +417,7 @@ subroutine dyn_readnl(NLFileName)
       write(iulog, '(a,i0)')   'dyn_readnl: se_ftype                    = ',ftype
       write(iulog, '(a,i0)')   'dyn_readnl: se_statediag_numtrac        = ',statediag_numtrac
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle        = ',se_hypervis_subcycle
+      write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_sponge = ',se_hypervis_subcycle_sponge      
       write(iulog, '(a,i0)')   'dyn_readnl: se_hypervis_subcycle_q      = ',se_hypervis_subcycle_q
       write(iulog, '(a,l4)')   'dyn_readnl: se_large_Courant_incr       = ',se_large_Courant_incr
       write(iulog, '(a,i0)')   'dyn_readnl: se_limiter_option           = ',se_limiter_option
@@ -551,17 +560,22 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(10) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'p2d'/)
-   character (len = 70),dimension(10) :: stage_txt = (/&
+   character (len = 3), dimension(15) :: stage = (/"dED","dAF","dBB","dBD","dBK","dAK","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
+   character (len = 70),dimension(15) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
+      " state before applying CAM forcing                  ",& !dBB - state before applyCAMforcing
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
+      " state before RK time-stepping                      ",& !dBK - state before RK time-stepping
+      " state after RK time-stepping                       ",& !dAK - state after RK time-stepping      
       " before vertical remapping                          ",& !dAD - state before vertical remapping
       " after vertical remapping                           ",& !dAR - state at end of nsplit loop
       " state passed to parameterizations                  ",& !dBF
       " state before hypervis                              ",& !dBH
       " state after hypervis but before adding heating term",& !dCH
       " state after hypervis                               ",& !dAH
+      " state before sponge layer diffusion                ",& !dBS - state before sponge del2
+      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2      
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)

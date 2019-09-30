@@ -6860,6 +6860,12 @@ Number of hyperviscosity subcycles per dynamics timestep.
 Default: Set by build-namelist
 </entry>
 
+<entry id="se_hypervis_subcycle_sponge" type="integer" category="se"
+       group="dyn_se_inparm" valid_values="" >
+Number of hyperviscosity subcycles per dynamics timestep in sponge del2 diffusion.
+Default: Set by build-namelist
+</entry>
+
 <entry id="se_hypervis_subcycle_q" type="integer" category="se"
        group="dyn_se_inparm" valid_values="" >
 Number of hyperviscosity subcycles done in tracer advection code.

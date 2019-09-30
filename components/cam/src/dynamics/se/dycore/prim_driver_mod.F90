@@ -240,11 +240,19 @@ contains
 
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
-
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     do r=1,rsplit
-      if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
+      if (r.ne.1) then
+        call TimeLevel_update(tl,"leapfrog")
+        call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)        
+      end if
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBB')      
       call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt,dt_phys,nets,nete,rsplit*(nsubstep-1)+r)
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
+
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBK')
       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
+      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAK')      
     enddo
     ! defer final timelevel update until after remap and diagnostics
 

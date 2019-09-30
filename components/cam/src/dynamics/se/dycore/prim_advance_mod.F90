@@ -317,7 +317,6 @@ contains
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
 
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     
     if (ntrac>0) allocate(ftmp_fvm(nc,nc,nlev,ntrac,nets:nete))
 
@@ -457,7 +456,7 @@ contains
     use dimensions_mod, only: np, nlev, nc, ntrac
     use dimensions_mod, only: hypervis_dynamic_ref_state,nu_scale_top,ksponge_end
     use dimensions_mod, only: max_nu_scale_del4
-    use control_mod,    only: nu, nu_s, hypervis_subcycle, nu_p, nu_top, hypervis_scaling
+    use control_mod,    only: nu, nu_s, hypervis_subcycle,hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
     use hybrid_mod,     only: hybrid_t!, get_loop_ranges
     use element_mod,    only: element_t
     use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
@@ -754,8 +753,9 @@ contains
     !
     !***************************************************************
     !
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dBS')    
     kblk = ksponge_end    
-    do ic=1,hypervis_subcycle      
+    do ic=1,hypervis_subcycle_sponge      
       rhypervis_subcycle=1.0_r8/real(hypervis_subcycle,kind=r8)
       do ie=nets,nete
         do k=1,ksponge_end
@@ -894,6 +894,7 @@ contains
         enddo
       end do       
     end do
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
   end subroutine advance_hypervis_dp
    
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&

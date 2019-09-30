@@ -78,6 +78,7 @@ module control_mod
   real (kind=r8), public :: nu_p    = 0.0D5           ! default = 0    ps equ. viscosity
   real (kind=r8), public :: nu_top  = 0.0D5           ! top-of-the-model viscosity
   integer, public :: hypervis_subcycle=1    ! number of subcycles for hyper viscsosity timestep
+  integer, public :: hypervis_subcycle_sponge=1    ! number of subcycles for hyper viscsosity timestep in sponge
   integer, public :: hypervis_subcycle_q=1  ! number of subcycles for hyper viscsosity timestep on TRACERS
   integer, public :: psurf_vis = 0        ! 0 = use laplace on eta surfaces
                                           ! 1 = use (approx.) laplace on p surfaces
