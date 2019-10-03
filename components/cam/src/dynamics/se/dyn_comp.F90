@@ -885,7 +885,7 @@ subroutine dyn_run(dyn_state)
    use dimensions_mod,   only: cnst_name_gll
    use time_mod,         only: tstep, nsplit, timelevel_qdp
    use hybrid_mod,       only: config_thread_region, get_loop_ranges
-   use control_mod,      only: qsplit ,rsplit
+   use control_mod,      only: qsplit ,rsplit, ftype_conserve
    use thread_mod,       only: horz_num_threads
    use time_mod,         only: tevolve
 
@@ -895,13 +895,13 @@ subroutine dyn_run(dyn_state)
    integer        :: tl_f
    integer        :: n
    integer        :: nets, nete, ithr
-   integer        :: i, ie, j, k, m
+   integer        :: i, ie, j, k, m, nq,m_cnst
    integer        :: n0_qdp, nsplit_local
    logical        :: ldiag
 
    real(r8) :: ftmp(npsq,nlev,3)
    real(r8) :: dtime
-   real(r8) :: rec2dt
+   real(r8) :: rec2dt,pdel
 
    real(r8), allocatable, dimension(:,:,:) :: ps_before
    real(r8), allocatable, dimension(:,:,:) :: abs_ps_tend
@@ -932,7 +932,8 @@ subroutine dyn_run(dyn_state)
    rec2dt = 1._r8/dtime
 
    tl_f = TimeLevel%n0   ! timelevel which was adjusted by physics
-
+   call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
+   
    ! output physics forcing
    if (hist_fld_active('FU') .or. hist_fld_active('FV') .or.hist_fld_active('FT')) then
       do ie = nets, nete
@@ -961,7 +962,9 @@ subroutine dyn_run(dyn_state)
      end if
    end do
 
-   ! convert elem(ie)%derived%fq to tendency
+
+   
+   ! convert elem(ie)%derived%fq to mass tendency
    do ie = nets, nete
       do m = 1, qsize
          do k = 1, nlev
@@ -975,6 +978,25 @@ subroutine dyn_run(dyn_state)
       end do
    end do
 
+
+   if (ftype_conserve>0) then
+     do ie = nets, nete
+       do k=1,nlev
+         do j=1,np
+           do i = 1, np
+             pdel     = dyn_state%elem(ie)%state%dp3d(i,j,k,tl_f)
+             do nq=1,qsize_condensate_loading
+               m_cnst = qsize_condensate_loading_idx_gll(nq)
+               pdel = pdel + (dyn_state%elem(ie)%state%qdp(i,j,k,m_cnst,n0_qdp)+dyn_state%elem(ie)%derived%FQ(i,j,k,m_cnst)*dtime)
+             end do             
+             dyn_state%elem(ie)%derived%FDP(i,j,k) = pdel
+           end do           
+         end do
+       end do       
+     end do
+   end if
+
+   
    if (ntrac > 0) then
       do ie = nets, nete
          do m = 1, ntrac
@@ -1024,7 +1046,7 @@ subroutine dyn_run(dyn_state)
       end do
    end if
 
-   call TimeLevel_Qdp(TimeLevel, qsplit, n0_qdp)!get n0_qdp for diagnostics call
+
    call calc_tot_energy_dynamics(dyn_state%elem,dyn_state%fvm, nets, nete, tl_f, n0_qdp,'dBF')
    !$OMP END PARALLEL
 

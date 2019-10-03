@@ -302,18 +302,18 @@ contains
     use dimensions_mod,         only: np, nc, nlev, qsize, ntrac, nelemd
     use element_mod,            only: element_t
     use time_mod,               only: nsplit
-    use control_mod,            only: ftype
+    use control_mod,            only: ftype, ftype_conserve
     use fvm_control_volume_mod, only: fvm_struct
-    
+    use dimensions_mod,         only: qsize_condensate_loading, qsize_condensate_loading_idx_gll    
     type (element_t)     , intent(inout) :: elem(:)
     type(fvm_struct)     , intent(inout) :: fvm(:)
     real (kind=r8), intent(in) :: dt_dribble, dt_phys
     integer,  intent(in) :: np1,nets,nete,np1_qdp,nsubstep
     
     ! local
-    integer :: i,j,k,ie,q
-    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp
-    real (kind=r8) :: dt_local_tracer_fvm
+    integer :: i,j,k,ie,q,m_cnst,nq
+    real (kind=r8) :: v1,dt_local, dt_local_tracer,tmp,stmp
+    real (kind=r8) :: dt_local_tracer_fvm,pdel
     real (kind=r8) :: ftmp(np,np,nlev,qsize,nets:nete) !diagnostics
     real (kind=r8), allocatable :: ftmp_fvm(:,:,:,:,:) !diagnostics
 
@@ -366,12 +366,7 @@ contains
       end if
     end if
 
-    do ie=nets,nete
-       elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
-            dt_local*elem(ie)%derived%FT(:,:,:)
-       elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
-            dt_local*elem(ie)%derived%FM(:,:,:,:)
-      
+    do ie=nets,nete      
       !
       ! tracers
       !
@@ -430,13 +425,51 @@ contains
       else
         if (ntrac>0) ftmp_fvm(:,:,:,:,ie) = 0.0_r8
       end if
+      
+      
+      if (ftype_conserve==1) then
+        do k=1,nlev
+          do j=1,np
+            do i = 1,np
+              pdel     = elem(ie)%state%dp3d(i,j,k,np1)
+              do nq=1,qsize_condensate_loading
+                m_cnst = qsize_condensate_loading_idx_gll(nq)
+                pdel = pdel + elem(ie)%state%Qdp(i,j,k,m_cnst,np1_qdp)
+              end do
+              pdel=elem(ie)%derived%FDP(i,j,k)/pdel
+
+              elem(ie)%state%T(i,j,k,np1) = elem(ie)%state%T(i,j,k,np1) + &
+                   dt_local*elem(ie)%derived%FT(i,j,k)*pdel
+              !
+              ! momentum conserving: dp*u
+              !
+              elem(ie)%state%v(i,j,1,k,np1) = elem(ie)%state%v(i,j,1,k,np1) + &
+                   dt_local*elem(ie)%derived%FM(i,j,1,k)*pdel!elem(ie)%state%dp3d(i,j,k,np1)
+              elem(ie)%state%v(i,j,2,k,np1) = elem(ie)%state%v(i,j,2,k,np1) + &
+                   dt_local*elem(ie)%derived%FM(i,j,2,k)*pdel!/elem(ie)%state%dp3d(i,j,k,np1)
+              !
+              ! attempt at kinetic energt conserving
+              !              
+!              tmp  = elem(ie)%derived%FM(i,j,1,k)*SQRT(pdel*dt_local/dt_phys)
+!              elem(ie)%state%v(i,j,1,k,np1) = elem(ie)%state%v(i,j,1,k,np1) + tmp  
+!
+!              tmp  = elem(ie)%derived%FM(i,j,2,k)*SQRT(pdel*dt_local/dt_phys)              
+!              elem(ie)%state%v(i,j,2,k,np1) = elem(ie)%state%v(i,j,2,k,np1) + tmp
+            end do
+          end do
+        end do
+      else
+        elem(ie)%state%T(:,:,:,np1) = elem(ie)%state%T(:,:,:,np1) + &
+             dt_local*elem(ie)%derived%FT(:,:,:)
+        elem(ie)%state%v(:,:,:,:,np1) = elem(ie)%state%v(:,:,:,:,np1) + &
+             dt_local*elem(ie)%derived%FM(:,:,:,:)
+      end if
     end do
     if (ntrac>0) then
       call output_qdp_var_dynamics(ftmp_fvm(:,:,:,:,:),nc,ntrac,nets,nete,'PDC')
     else
       call output_qdp_var_dynamics(ftmp(:,:,:,:,:),np,qsize,nets,nete,'PDC')
     end if
-    call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'dBD')
     if (ftype==1.and.nsubstep==1) call calc_tot_energy_dynamics(elem,fvm,nets,nete,np1,np1_qdp,'p2d')
     if (ntrac>0) deallocate(ftmp_fvm)
   end subroutine applyCAMforcing
