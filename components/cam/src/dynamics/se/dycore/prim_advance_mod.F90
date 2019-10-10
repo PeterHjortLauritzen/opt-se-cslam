@@ -12,6 +12,7 @@ module prim_advance_mod
   save
   
   public :: prim_advance_exp, prim_advance_init, applyCAMforcing, calc_tot_energy_dynamics, compute_omega
+  public :: del2_sponge_uvt_tendencies
 
   type (EdgeBuffer_t) :: edge3,edgeOmega,edgeSponge
   real (kind=r8), allocatable :: ur_weights(:)
@@ -929,7 +930,138 @@ contains
     end do
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,nt,qn0,'dAS')        
   end subroutine advance_hypervis_dp
-   
+
+  subroutine del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    !
+    !  take one timestep of:
+    !          u(:,:,:,np) = u(:,:,:,np) +  dt2*nu*laplacian**order ( u )
+    !          T(:,:,:,np) = T(:,:,:,np) +  dt2*nu_s*laplacian**order ( T )
+    !
+    !
+    !  For correct scaling, dt2 should be the same 'dt2' used in the leapfrog advace
+    !
+    !
+    use dimensions_mod, only: np, nlev, nc, ntrac
+    use dimensions_mod, only: nu_scale_top,ksponge_end
+    use control_mod,    only: nu, nu_s, hypervis_subcycle_sponge, nu_p, nu_top, hypervis_scaling
+    use hybrid_mod,     only: hybrid_t!, get_loop_ranges
+    use element_mod,    only: element_t
+    use derivative_mod, only: derivative_t, laplace_sphere_wk, vlaplace_sphere_wk
+    use edge_mod,       only: edgevpack, edgevunpack, edgeDGVunpack
+    use edgetype_mod,   only: EdgeBuffer_t, EdgeDescriptor_t
+    use bndry_mod,      only: bndry_exchange
+    use viscosity_mod,  only: biharmonic_wk_dp3d
+    
+    type (hybrid_t)    , intent(in)   :: hybrid
+    type (element_t)   , intent(inout), target :: elem(:)
+    type (derivative_t), intent(in  ) :: deriv
+    integer            , intent(in)   :: nets,nete
+    real (kind=r8)     , intent(in)   :: dt_phys
+
+    ! local
+    integer :: k,kptr,i,j,ie,ic
+    integer :: kbeg, kend, kblk
+    real (kind=r8), dimension(np,np,2,nlev,nets:nete)      :: vtens
+    real (kind=r8), dimension(np,np,nlev,nets:nete)        :: ttens
+    type (EdgeDescriptor_t)                                :: desc    
+    
+    real (kind=r8), dimension(np,np)   :: lap_t
+    real (kind=r8), dimension(np,np,2) :: lap_v
+    real (kind=r8)                     :: dt
+    real (kind=r8)                     :: nu_ratio1
+
+    kbeg=1; kend=nlev
+    
+    kblk = kend - kbeg + 1
+
+    dt=dt_phys/hypervis_subcycle_sponge
+    
+    !
+    !***************************************************************
+    !
+    ! sponge layer damping
+    !
+    !***************************************************************
+    !
+    kblk = ksponge_end    
+    do ic=1,hypervis_subcycle_sponge
+      do ie=nets,nete
+        do k=1,ksponge_end
+          call laplace_sphere_wk(elem(ie)%derived%FT(:,:,k),deriv,elem(ie),lap_t,var_coef=.false.)
+          ! increased second-order divergence damping
+          nu_ratio1=1.0_r8
+          call vlaplace_sphere_wk(elem(ie)%derived%FM(:,:,:,k),deriv,elem(ie),lap_v, var_coef=.false.,&
+               nu_ratio=nu_ratio1)
+          
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)*0.1_r8
+              vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)*0.1_r8
+              vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)*0.1_r8
+            enddo
+          enddo
+        enddo
+        
+        
+        kptr = 0
+        call edgeVpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+        
+        kptr = ksponge_end
+        call edgeVpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+        
+        kptr = 2*ksponge_end
+        call edgeVpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+      enddo
+      
+      call bndry_exchange(hybrid,edgeSponge,location='advance_hypervis_fsponge')
+      
+      do ie=nets,nete
+        
+        kptr = 0
+        call edgeVunpack(edgeSponge,ttens(:,:,1:ksponge_end,ie),kblk,kptr,ie)
+
+        kptr = ksponge_end        
+        call edgeVunpack(edgeSponge,vtens(:,:,1,1:ksponge_end,ie),kblk,kptr,ie)
+
+        kptr = 2*ksponge_end        
+        call edgeVunpack(edgeSponge,vtens(:,:,2,1:ksponge_end,ie),kblk,kptr,ie)
+        
+
+        ! apply inverse mass matrix, accumulate tendencies
+        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+        do k=1,ksponge_end
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              vtens(i,j,1,k,ie)=dt*vtens(i,j,1,k,ie)*elem(ie)%rspheremp(i,j)
+              vtens(i,j,2,k,ie)=dt*vtens(i,j,2,k,ie)*elem(ie)%rspheremp(i,j)
+              ttens(i,j,k,ie)=dt*ttens(i,j,k,ie)*elem(ie)%rspheremp(i,j)
+            enddo
+          enddo
+        enddo
+        !$omp parallel do num_threads(vert_num_threads) private(k,i,j)
+        do k=1,ksponge_end
+          !OMP_COLLAPSE_SIMD
+          !DIR_VECTOR_ALIGNED
+          do j=1,np
+            do i=1,np
+              ! update v first (gives better results than updating v after heating)
+              elem(ie)%derived%FM(i,j,:,k)=elem(ie)%derived%FM(i,j,:,k) + &
+                   vtens(i,j,:,k,ie)
+              elem(ie)%derived%FT(i,j,k)=elem(ie)%derived%FT(i,j,k) &
+                   +ttens(i,j,k,ie)
+            enddo
+          enddo
+        enddo
+      end do       
+    end do
+  end subroutine del2_sponge_uvt_tendencies
+
+
+  
    subroutine compute_and_apply_rhs(np1,nm1,n0,dt2,elem,hvcoord,hybrid,&
         deriv,nets,nete,eta_ave_w,inv_cp_full,qwater)
      ! ===================================
@@ -966,7 +1098,6 @@ contains
      use bndry_mod,       only: bndry_exchange
      use hybvcoord_mod,   only: hvcoord_t
      use physconst,       only: rair, epsilo, cappa, cpair
-     use physconst,       only: rh2o!xxx
      use prim_si_mod,     only: preq_hydrostatic
      use control_mod,     only: se_met_nudge_u, se_met_nudge_p, se_met_nudge_t, se_met_tevolve
      
@@ -1010,7 +1141,6 @@ contains
      real (kind=r8) :: vtens1(np,np,nlev),vtens2(np,np,nlev),ttens(np,np,nlev)
      real (kind=r8) :: stashdp3d (np,np,nlev),tempdp3d(np,np), tempflux(nc,nc,4)
      real (kind=r8) :: inv_epsilon, ckk, term, T_v(np,np,nlev)
-     real (kind=r8) :: T_v_tmp(np,np,nlev)!xxx
      real (kind=r8), dimension(np,np,2) :: grad_exner
      real (kind=r8), dimension(np,np)   :: theta_v
 
@@ -1076,8 +1206,6 @@ contains
              t_v(i,j,k)  = t_v(i,j,k)/(Rair*sum_water(i,j,k))
            end do
          end do
-         t_v_tmp(:,:,k) = t_v(:,:,k)
-
 
          !
          ! convert to gas pressure (dry + water vapor pressure)

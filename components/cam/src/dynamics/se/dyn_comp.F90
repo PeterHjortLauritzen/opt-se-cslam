@@ -559,15 +559,12 @@ subroutine dyn_init(dyn_in, dyn_out)
    integer :: ixo2, ixn2, ixh !needed for WACCM-x
    integer :: m_cnst, m
 
-   ! variables for initializing energy and axial angular momentum diagnostics
-   character (len = 3), dimension(15) :: stage = (/"dED","dAF","dBB","dBD","dBK","dAK","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
-   character (len = 70),dimension(15) :: stage_txt = (/&
+   ! variables for initializing energy and axial angular momentum diagnostics   
+   character (len = 3), dimension(12) :: stage = (/"dED","dAF","dBD","dAD","dAR","dBF","dBH","dCH","dAH",'dBS','dAS','p2d'/)
+   character (len = 70),dimension(12) :: stage_txt = (/&
       " end of previous dynamics                           ",& !dED
       " from previous remapping or state passed to dynamics",& !dAF - state in beginning of nsplit loop
-      " state before applying CAM forcing                  ",& !dBB - state before applyCAMforcing
       " state after applying CAM forcing                   ",& !dBD - state after applyCAMforcing
-      " state before RK time-stepping                      ",& !dBK - state before RK time-stepping
-      " state after RK time-stepping                       ",& !dAK - state after RK time-stepping      
       " before vertical remapping                          ",& !dAD - state before vertical remapping
       " after vertical remapping                           ",& !dAR - state at end of nsplit loop
       " state passed to parameterizations                  ",& !dBF
@@ -575,7 +572,7 @@ subroutine dyn_init(dyn_in, dyn_out)
       " state after hypervis but before adding heating term",& !dCH
       " state after hypervis                               ",& !dAH
       " state before sponge layer diffusion                ",& !dBS - state before sponge del2
-      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2      
+      " state after sponge layer diffusion                 ",& !dAS - state after sponge del2            
       " phys2dyn mapping errors (requires ftype-1)         " & !p2d - for assessing phys2dyn mapping errors
       /)
    character (len = 2)  , dimension(8) :: vars  = (/"WV"  ,"WL"  ,"WI"  ,"SE"   ,"KE"   ,"MR"   ,"MO"   ,"TT"   /)
@@ -593,7 +590,7 @@ subroutine dyn_init(dyn_in, dyn_out)
    character (len = 14), dimension(8)  :: &
       vars_unit = (/&
       "kg/m2        ","kg/m2        ","kg/m2        ","J/m2         ",&
-      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)
+      "J/m2         ","kg*m2/s*rad2 ","kg*m2/s*rad2 ","kg/m2        "/)   
 
    integer :: istage, ivars
    character (len=108) :: str1, str2, str3

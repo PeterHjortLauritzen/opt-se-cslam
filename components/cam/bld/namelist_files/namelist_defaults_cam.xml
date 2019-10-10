@@ -1986,8 +1986,6 @@
 <se_nsplit hgrid="ne0np4TESTONLY.ne5x4"> 7 </se_nsplit>
 
 <se_variable_nsplit                       >.false.</se_variable_nsplit>
-<se_variable_nsplit waccm_phys="1" npg="2">.true.</se_variable_nsplit>
-<se_variable_nsplit waccm_phys="1" npg="3">.true.</se_variable_nsplit>
 
 <se_phys_dyn_cp>1</se_phys_dyn_cp>
 

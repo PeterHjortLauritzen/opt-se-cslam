@@ -178,7 +178,8 @@ contains
     use hybvcoord_mod, only : hvcoord_t
     use time_mod,               only: TimeLevel_t, timelevel_update, timelevel_qdp, nsplit
     use control_mod,            only: statefreq,disable_diagnostics,qsplit, rsplit, variable_nsplit
-    use prim_advance_mod,       only: applycamforcing
+    use control_mod,            only: del2_physics_tendencies
+    use prim_advance_mod,       only: applycamforcing, del2_sponge_uvt_tendencies
     use prim_advance_mod,       only: calc_tot_energy_dynamics,compute_omega
     use prim_state_mod,         only: prim_printstate, adjust_nsplit
     use prim_advection_mod,     only: vertical_remap, deriv
@@ -240,25 +241,21 @@ contains
 
 
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
+
+    if (del2_physics_tendencies) &
+    call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+    
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
+    call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
+    call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')    
     do r=1,rsplit
-      if (r.ne.1) then
-        call TimeLevel_update(tl,"leapfrog")
-        call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
-      end if
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBB')      
-      call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt,dt_phys,nets,nete,rsplit*(nsubstep-1)+r)
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBD')
-
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dBK')
+      if (r.ne.1) call TimeLevel_update(tl,"leapfrog")
       call prim_step(elem, fvm, hybrid,nets,nete, dt, tl, hvcoord,r)
-      !compute timelevels for tracers (no longer the same as dynamics)
-      call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
-      ! note: time level update for fvm tracers takes place in fvm_mod      
-      call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%np1,np1_qdp,'dAK')      
     enddo
-    ! defer final timelevel update until after remap and diagnostics
 
+    
+    ! defer final timelevel update until after remap and diagnostics
+    call TimeLevel_Qdp( tl, qsplit, n0_qdp, np1_qdp)
 
     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     !

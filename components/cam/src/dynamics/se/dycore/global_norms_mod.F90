@@ -214,7 +214,7 @@ contains
     use reduction_mod,  only: ParallelMin,ParallelMax
     use physconst,      only: ra, rearth, pi
     use control_mod,    only: nu, nu_q, nu_div, nu_top, fine_ne, rk_stage_user, max_hypervis_courant
-    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling
+    use control_mod,    only: tstep_type, hypervis_power, hypervis_scaling, del2_physics_tendencies
     use cam_abortutils, only: endrun
     use parallel_mod,   only: global_shared_buf, global_shared_sum
     use edge_mod,       only: initedgebuffer, FreeEdgeBuffer, edgeVpack, edgeVunpack
@@ -551,6 +551,7 @@ contains
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ')
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.25_r8,'    ')
      call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,2.5_r8 ,'_div')
+     del2_physics_tendencies=.false.
     else
       !
       ! WACCM setting
@@ -558,7 +559,11 @@ contains
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_p  ,1.0_r8 ,'_p  ') 
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu    ,0.5_r8,'    ')
       call automatically_set_viscosity_coefficients(hybrid,ne,max_min_dx,min_min_dx,nu_div,5.0_r8 ,'_div')
-    end if    
+      del2_physics_tendencies=.true.
+      if (hybrid%masterthread) write(iulog,*) 'filtering u,v,T tendencies in sponge for stability'
+    end if
+    if (hybrid%masterthread) write(iulog,*) 'del2_physics_tendencies= ',del2_physics_tendencies
+
     if (nu_q<0) nu_q = nu_p ! necessary for consistency
     if (nu_s<0) nu_s = nu   ! temperature damping is always equal to nu
     
