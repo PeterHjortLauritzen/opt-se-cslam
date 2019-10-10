@@ -198,7 +198,7 @@ contains
 
   subroutine print_cfl(elem,hybrid,nets,nete,dtnu,ptop,&
        dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-       dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual,dt_phys)
+       dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,dt_tracer_visco_actual,dt_phys)
     !
     !   estimate various CFL limits
     !   also, for variable resolution viscosity coefficient, make sure
@@ -232,7 +232,8 @@ contains
     ! actual time-steps
     !
     real (kind=r8), intent(in) :: dt_remap_actual,dt_tracer_fvm_actual,dt_tracer_se_actual,&
-                           dt_dyn_actual,dt_dyn_visco_actual,dt_tracer_visco_actual, dt_phys
+                           dt_dyn_actual,dt_dyn_visco_actual,dt_dyn_del2_actual,           &
+                           dt_tracer_visco_actual, dt_phys
     
     ! Element statisics
     real (kind=r8) :: max_min_dx,min_min_dx,min_max_dx,max_unif_dx   ! used for normalizing scalar HV
@@ -661,9 +662,9 @@ contains
         if (nu_scale_top(k)>0.15_r8) then
           if(nu_top>0) then
             write(iulog,'(a,i2,a,f10.2,a,f10.2,a)') '* dt level',k,'    (del2 sponge           ; u,v,T,dM) < ',&
-                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_visco_actual,'s'
-            if (dt_dyn_visco_actual>dt_max_laplacian_top/nu_scale_top(k)) &
-                 write(iulog,*) 'WARNING: dt_dyn_vis theoretically unstable in sponge'
+                 dt_max_laplacian_top/nu_scale_top(k),'s',dt_dyn_del2_actual,'s'
+            if (dt_dyn_del2_actual>dt_max_laplacian_top/nu_scale_top(k)) &
+                 write(iulog,*) 'WARNING: theoretically unstable in sponge; increase se_hypervis_subcycle_sponge'
           end if
         end if
       end do

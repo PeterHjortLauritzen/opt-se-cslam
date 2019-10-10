@@ -33,7 +33,7 @@ contains
     use prim_state_mod,         only: prim_printstate
     use control_mod,            only: runtype, topology, rsplit, qsplit, rk_stage_user,         &
                                       nu, nu_q, nu_div, hypervis_subcycle, hypervis_subcycle_q, &
-                                      variable_nsplit
+                                      hypervis_subcycle_sponge, variable_nsplit
     use fvm_mod,                only: fill_halo_fvm,ghostBufQnhc_h
     use thread_mod,             only: omp_get_thread_num
     use global_norms_mod,       only: print_cfl
@@ -59,6 +59,7 @@ contains
 !   variables used to calculate CFL
     real (kind=r8) :: dtnu            ! timestep*viscosity parameter
     real (kind=r8) :: dt_dyn_vis      ! viscosity timestep used in dynamics
+    real (kind=r8) :: dt_dyn_del2_sponge 
     real (kind=r8) :: dt_tracer_vis      ! viscosity timestep used in tracers
 
     real (kind=r8) :: dp
@@ -81,6 +82,7 @@ contains
     ! compute most restrictive dt*nu for use by variable res viscosity:
     ! compute timestep seen by viscosity operator:
     dt_dyn_vis = tstep
+    dt_dyn_del2_sponge = tstep
     dt_tracer_vis=tstep*qsplit
 
     ! compute most restrictive condition:
@@ -89,6 +91,7 @@ contains
     ! compute actual viscosity timesteps with subcycling
     dt_tracer_vis = dt_tracer_vis/hypervis_subcycle_q
     dt_dyn_vis = dt_dyn_vis/hypervis_subcycle
+    dt_dyn_del2_sponge = dt_dyn_del2_sponge/hypervis_subcycle_sponge
     if (variable_nsplit) then
        nsplit_baseline=nsplit
        rsplit_baseline=rsplit
@@ -119,7 +122,7 @@ contains
          !dt_remap,dt_tracer_fvm,dt_tracer_se
          tstep*qsplit*rsplit,tstep*qsplit*fvm_supercycling,tstep*qsplit,&
          !dt_dyn,dt_dyn_visco,dt_tracer_visco, dt_phys
-         tstep,dt_dyn_vis,dt_tracer_vis,tstep*nsplit*qsplit*rsplit)
+         tstep,dt_dyn_vis,dt_dyn_del2_sponge,dt_tracer_vis,tstep*nsplit*qsplit*rsplit)
 
     if (hybrid%masterthread) then
        if (phys_tscale/=0) then
