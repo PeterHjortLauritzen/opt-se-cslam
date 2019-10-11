@@ -30,7 +30,6 @@ module control_mod
 
   integer, public :: phys_dyn_cp = 0 !=0; no thermal energy scaling of T increment
                                      !=1; scale increment for cp consistency between dynamics and physics
-                                     !=2; scale increment for cp consistency and mass effect on thermal energy
 
   logical, public :: del2_physics_tendencies=.false.
   

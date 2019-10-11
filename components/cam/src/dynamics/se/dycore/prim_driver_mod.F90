@@ -246,7 +246,7 @@ contains
     call TimeLevel_Qdp( tl, qsplit, n0_qdp)
 
     if (del2_physics_tendencies) &
-    call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
+         call del2_sponge_uvt_tendencies(elem,hybrid,deriv,nets,nete,dt_phys)
     
     call calc_tot_energy_dynamics(elem,fvm,nets,nete,tl%n0,n0_qdp,'dAF')
     call ApplyCAMForcing(elem,fvm,tl%n0,n0_qdp,dt_remap,dt_phys,nets,nete,nsubstep)
