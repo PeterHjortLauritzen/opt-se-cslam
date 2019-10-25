@@ -1110,6 +1110,7 @@ contains
            elem(ie)%state%v(:,:,1,:,np1)=ttmp(:,:,:,1)*dp_inv
       if ( .not. se_prescribed_wind_2d ) &
            elem(ie)%state%v(:,:,2,:,np1)=ttmp(:,:,:,2)*dp_inv
+      
 #ifdef REMAP_TE
         ! back out T from TE
       elem(ie)%state%t(:,:,:,np1) = &
