@@ -64,20 +64,16 @@ subroutine remap1(Qdp,nx,qstart,qstop,qsize,dp1,dp2,hybrid)
   integer :: qbeg, qend
   logical :: abort=.false.
 
-  if (vert_remap_q_alg == 1 .or. vert_remap_q_alg == 2 .or. vert_remap_q_alg == 3 .or. vert_remap_q_alg == 10) then
-    !call t_startf('remap_Q_ppm')
-    !if ( present(hybrid) ) then
-    !  !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
-    !  hybridnew = config_thread_region(hybrid,'tracer')
-    !  call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
-    !  call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
-    !  !$OMP END PARALLEL
-    !else
-    call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
-    !endif
-    !call t_stopf('remap_Q_ppm')
-    return
-  endif
+  !call t_startf('remap_Q_ppm')
+  !if ( present(hybrid) ) then
+  !  !$OMP PARALLEL NUM_THREADS(tracer_num_threads), DEFAULT(SHARED), PRIVATE(hybridnew,qbeg,qend)
+  !  hybridnew = config_thread_region(hybrid,'tracer')
+  !  call get_loop_ranges(hybridnew, qbeg=qbeg, qend=qend)
+  !  call remap_Q_ppm(qdp,nx,qbeg,qend,qsize,dp1,dp2)
+  !  !$OMP END PARALLEL
+  !else
+  call remap_Q_ppm(qdp,nx,qstart,qstop,qsize,dp1,dp2)
+  !call t_stopf('remap_Q_ppm')
 end subroutine remap1
 
 subroutine remap1_nofilter(Qdp,nx,qsize,dp1,dp2)
@@ -522,12 +518,12 @@ function compute_ppm( a , dx )    result(coefs)
   !material boundaries piecewise constant. Zeroing out the first and second moments, and setting the zeroth
   !moment to the cell mean is sufficient to maintain conservation.
 
-  if (vert_remap_q_alg <10) then
-    do k=1,MAX(ksponge_end-1,1)
+!  if (vert_remap_q_alg <10) then
+    do k=1,ksponge_end
       coefs(0,k)   = a(k)  !reduce to PCoM in sponge layers
       coefs(1:2,k) = 0._r8 !reduce to PCoM in sponge layers
     end do
-  end if
+!  end if
   if (vert_remap_q_alg == 2) then
     coefs(0  ,1:2        ) = a(1:2)
     coefs(1:2,1:2        ) = 0.0_r8
