@@ -330,7 +330,6 @@ subroutine remap_Q_ppm(Qdp,nx,qstart,qstop,qsize,dp1,dp2)
         enddo
         !Fill in ghost values. Ignored if vert_remap_q_alg == 2
         if (vert_remap_q_alg == 10) then
-          call linextrap(dpo(2), dpo(1), dpo(0), dpo(-1), ao(2), ao(1), ao(0), ao(-1))
           call linextrap(dpo(nlev-1), dpo(nlev), dpo(nlev+1), dpo(nlev+2), &
                ao(nlev-1), ao(nlev), ao(nlev+1), ao(nlev+2))
         else

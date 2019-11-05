@@ -2004,7 +2004,7 @@
 <se_nu_top                                   > 1.25e5 </se_nu_top>
 <se_nu_top se_refined_mesh="1"               > 2.0e5  </se_nu_top>
 <se_nu_top waccm_phys="1"                    > 2.5e6  </se_nu_top>
-<se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.5e6  </se_nu_top>
+<se_nu_top se_refined_mesh="1" waccm_phys="1"> 2.0e5 </se_nu_top>
 
 <se_qsize_condensate_loading                    > 3 </se_qsize_condensate_loading>
 <se_qsize_condensate_loading phys="cam4"        > 3 </se_qsize_condensate_loading>
@@ -2037,7 +2037,7 @@
 
 <se_tstep_type > 4 </se_tstep_type>
 
-<se_vert_remap_q_alg> 10 </se_vert_remap_q_alg>
+<se_vert_remap_q_alg> 1 </se_vert_remap_q_alg>
 
 <!-- Nudging -->
 <se_met_nudge_u> 2.0e-5 </se_met_nudge_u>
