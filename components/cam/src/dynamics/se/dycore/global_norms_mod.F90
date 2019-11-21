@@ -612,7 +612,7 @@ contains
     if (ptop>100.0_r8) then
       umax = 120.0_r8
     else
-      umax = 600.0_r8
+      umax = 400.0_r8
     end if
     ugw = 342.0_r8 !max gravity wave speed
     
