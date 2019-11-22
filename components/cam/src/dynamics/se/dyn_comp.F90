@@ -579,7 +579,6 @@ subroutine dyn_init(dyn_in, dyn_out)
    type(hybrid_t)      :: hybrid
 
    integer :: ixcldice, ixcldliq, ixrain, ixsnow, ixgraupel
-   integer :: ixo2, ixn2, ixh !needed for WACCM-x
    integer :: m_cnst, m
 
    ! variables for initializing energy and axial angular momentum diagnostics   
@@ -624,7 +623,7 @@ subroutine dyn_init(dyn_in, dyn_out)
 
    character(len=*), parameter :: subname = 'dyn_init'
 
-   real(r8) :: tau0,krange
+   real(r8) :: tau0,krange,otau0
    
    !----------------------------------------------------------------------------
 
@@ -745,8 +744,10 @@ subroutine dyn_init(dyn_in, dyn_out)
    krange = raykrange
    if (raykrange .eq. 0._r8) krange = (rayk0 - 1) / 2._r8
    tau0 = (86400._r8) * raytau0   ! convert to seconds
+   otau0 = 0._r8
+   if (tau0 .ne. 0._r8) otau0 = 1._r8/tau0
    do k = 1, nlev
-     otau(k) = (1._r8/tau0) * (1 + tanh((rayk0 - k) / krange)) / (2._r8)
+     otau(k) = otau0 * (1.0_r8 + tanh((rayk0 - k) / krange)) / (2._r8)
    enddo
    if (masterproc) then
      if (tau0 > 0._r8) then
