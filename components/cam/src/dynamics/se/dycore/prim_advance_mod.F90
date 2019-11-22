@@ -808,10 +808,10 @@ contains
             !DIR_VECTOR_ALIGNED
             do j=1,np
               do i=1,np
-                ttens(i,j,k,ie)   = 0!nu_scale_top(k)*nu_top*lap_t(i,j)  
-                dptens(i,j,k,ie)  = 0!nu_scale_top(k)*nu_top*lap_dp(i,j) 
-                vtens(i,j,1,k,ie) = 0!nu_scale_top(k)*nu_top*lap_v(i,j,1)
-                vtens(i,j,2,k,ie) = 0!nu_scale_top(k)*nu_top*lap_v(i,j,2)
+                ttens(i,j,k,ie)   = nu_scale_top(k)*nu_top*lap_t(i,j)  
+                dptens(i,j,k,ie)  = nu_scale_top(k)*nu_top*lap_dp(i,j) 
+                vtens(i,j,1,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,1)
+                vtens(i,j,2,k,ie) = nu_scale_top(k)*nu_top*lap_v(i,j,2)
               enddo
             enddo
             
